@@ -414,7 +414,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script>
   const STORAGE_KEY = 'mathLearnAI_v2';
-  const lessons = [
+  let lessons = [
     {id:1,title:'Phương trình và hệ phương trình',category:'chuyen-de',label:'Đại số',description:'Giải phương trình, hệ phương trình bậc nhất hai ẩn và bài toán lập phương trình.',tags:'phương trình hệ phương trình đại số lập hệ bài toán thực tế',icon:'function-square'},
     {id:2,title:'Hàm số bậc hai và đồ thị',category:'chuyen-de',label:'Hàm số',description:'Parabol, bảng giá trị, giao điểm và bài toán liên hệ đồ thị.',tags:'hàm số bậc hai parabol đồ thị delta tọa độ',icon:'chart-no-axes-combined'},
     {id:3,title:'Hệ thức lượng trong tam giác vuông',category:'chuyen-de',label:'Hình học',description:'Tỉ số lượng giác, hệ thức cạnh và đường cao.',tags:'hệ thức lượng tam giác vuông sin cos tan',icon:'triangle'},
@@ -985,7 +985,7 @@
     lessons=[...seedLessons.filter(s=>!s.isAdminDocument),...remote];
     renderLessons();
   }
-  async function loadSharedDocuments(){try{const r=await fetch('/api/documents');if(r.ok)mergeServerDocuments(await r.json())}catch(e){/* Static hosting or server offline: retain the local UI. */}}
+  async function loadSharedDocuments(){try{const r=await fetch('/api/documents',{cache:'no-store'});if(r.ok)mergeServerDocuments(await r.json())}catch(e){/* Static hosting or server offline: retain the local UI. */}}
   function connectSharedDocumentUpdates(){if(!('EventSource' in window))return;try{const es=new EventSource('/api/documents/events');es.addEventListener('documents',e=>{try{mergeServerDocuments(JSON.parse(e.data))}catch(err){console.warn('Invalid document update',err)}})}catch(e){}}
 
 // Initialization and safe local defaults.
