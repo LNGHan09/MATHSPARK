@@ -331,14 +331,7 @@
           <div class="hero-art" aria-hidden="true"><svg viewBox="0 0 160 130" fill="none"><path d="M10 98H151M79 8V122" stroke="#a4aab5" stroke-width="1.4" stroke-linecap="round"/><path d="M145 93l6 5-6 5M74 14l5-6 5 6" stroke="#a4aab5" stroke-width="1.4"/><path d="M20 25Q80 150 140 25" stroke="#883b4c" stroke-width="3" stroke-linecap="round"/><circle cx="80" cy="98" r="4" fill="#b78129"/><text x="145" y="115" fill="#687083" font-size="12" font-style="italic">x</text><text x="89" y="18" fill="#687083" font-size="12" font-style="italic">y</text><text x="26" y="115" fill="#b78129" font-size="17">✦</text></svg></div>
         </div>
         <div class="stats"><div class="stat"><label>Tiến độ học tập</label><strong id="homeProgress">0%</strong><small>Hoàn thành bài học</small></div><div class="stat"><label>Điểm năng lực</label><strong id="homeScore">—</strong><small id="homeScoreSub">Chưa làm bài test</small></div><div class="stat"><label>Mục tiêu điểm</label><strong id="homeTarget">8.0</strong><small>Điểm Toán vào 10</small></div></div>
-        <div class="section-head explore-head"><div><h2>Khám phá nội dung</h2><p>Chọn một khu vực để bắt đầu ôn tập</p></div><span class="carousel-hint"><i data-lucide="move-horizontal"></i> Kéo ngang để xem thêm</span></div>
-        <div class="grid category-grid" aria-label="Khám phá nội dung, kéo ngang để xem thêm">
-          <button class="category" onclick="showLessons('chuyen-de')"><span class="cat-icon"><i data-lucide="book-open"></i></span><strong>Chuyên đề ôn tập</strong><span>Đại số, hàm số, hình học và bài toán thực tế</span></button>
-          <button class="category" onclick="showLessons('de-vao-10')"><span class="cat-icon"><i data-lucide="graduation-cap"></i></span><strong>Đề thi vào 10</strong><span>Luyện cấu trúc đề và quản lý thời gian</span></button>
-          <button class="category" onclick="showLessons('de-giua-ky')"><span class="cat-icon"><i data-lucide="file-check"></i></span><strong>Đề thi giữa kỳ</strong><span>Ôn tập kiến thức trọng tâm theo học kỳ</span></button>
-          <button class="category" onclick="showLessons('de-cuoi-ky')"><span class="cat-icon"><i data-lucide="award"></i></span><strong>Đề thi cuối kỳ</strong><span>Củng cố và tổng hợp kiến thức</span></button>
-        </div>
-        <div class="section-head"><div><h2 id="lessonHeading">Đề và tài liệu</h2><p id="lessonSubheading">Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.</p></div><button class="text-link" onclick="showLessons('all')">Khám phá chuyên đề</button></div>
+        <div class="section-head"><div><h2 id="lessonHeading">Đề và tài liệu</h2><p id="lessonSubheading">Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.</p></div></div>
         <div id="lessonList" class="lesson-list resource-list"></div>
         <p class="footer-note">Tài liệu mới sẽ tự xuất hiện khi quản trị viên đăng hoặc cập nhật trên website.</p>
       </section>
@@ -675,10 +668,12 @@
   function switchView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}window.scrollTo({top:0,behavior:'smooth'});icons()}
   function norm(s){return String(s||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
   function showLessons(cat){
+    // Khu vực này chỉ hiển thị đề/tài liệu được Admin đăng; không quay về các thẻ chuyên đề mẫu.
+    if(cat==='all'){showAllResources();return;}
     activeCategory=cat;
-    homeResourceMode=false;
-    document.getElementById('lessonHeading').textContent=cat==='all'?'Tất cả chuyên đề và tài liệu':cat==='chuyen-de'?'Chuyên đề ôn tập':cat==='de-vao-10'?'Đề thi vào lớp 10':cat==='de-giua-ky'?'Đề thi giữa kỳ':'Đề thi cuối kỳ';
-    document.getElementById('lessonSubheading').textContent=cat==='de-vao-10'?'Tập trung rèn kỹ năng thi tuyển sinh lớp 10':'Các nội dung theo chương trình Toán 9';
+    homeResourceMode=true;
+    document.getElementById('lessonHeading').textContent=cat==='chuyen-de'?'Tài liệu chuyên đề':cat==='de-vao-10'?'Đề thi vào lớp 10':cat==='de-giua-ky'?'Đề thi giữa kỳ':'Đề thi cuối kỳ';
+    document.getElementById('lessonSubheading').textContent='Các tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';
     switchView('home');renderLessons();
   }
   function showAllResources(){
@@ -718,12 +713,12 @@
     return `<div class="document-reader">${toolbar('Tài liệu đính kèm')}<div class="document-reader-empty">Định dạng này chưa hỗ trợ xem trước trực tiếp trong trang. Bấm “Mở tab mới” hoặc “Tải file” để đọc.</div></div>`;
   }
   function resourceCard(item){
-    const done=state.completedLessons.includes(item.id);
+    const done=state.completedLessons.includes(`document:${item.id}`);
     const categoryLabel=resourceCategoryLabels[item.category]||item.label||'Tài liệu';
     const icon=item.icon||'file-text';
     const date=item.updatedAt||item.createdAt||'';
     const author=item.author||'Ban quản trị';
-    return `<button class="resource-card" type="button" onclick="openLesson(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
+    return `<button class="resource-card" type="button" onclick="openLesson(${Number(item.id)}, true)" aria-label="Mở ${escapeHtml(item.title)}">
       <span class="resource-art cat-${escapeHtml(item.category||'chuyen-de')}">${drawLessonArt(icon)}</span>
       <span class="resource-content">
         <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã làm':'Chưa làm'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
@@ -741,11 +736,11 @@
   function renderLessons(query=''){
     const list=document.getElementById('lessonList');
     const q=norm(query);
-    const resourceMode=homeResourceMode&&activeCategory==='all'&&!q;
+    const resourceMode=homeResourceMode;
     list.classList.toggle('resource-list',resourceMode);
     let source=resourceMode?lessons.filter(l=>l.isAdminDocument):lessons;
     let data=source.filter(l=>(activeCategory==='all'||l.category===activeCategory)&&(!q||norm(`${l.title} ${l.description} ${l.tags} ${l.label} ${l.author||''} ${l.fileName||''}`).includes(q)));
-    if(q&&!data.length){const expanded=smartLocalSearch(q);data=expanded.filter(l=>activeCategory==='all'||l.category===activeCategory)}
+    if(q&&!data.length){const expanded=smartLocalSearch(q).filter(l=>!resourceMode||l.isAdminDocument);data=expanded.filter(l=>(activeCategory==='all'||l.category===activeCategory))}
     latestFilteredLessons=data;
     if(!data.length){
       if(resourceMode){list.innerHTML='<div class="resource-empty"><strong>Chưa có đề hoặc tài liệu nào</strong><p>Khi bạn đăng tài liệu trong trang Admin, nội dung sẽ tự động xuất hiện tại đây mà không cần người học tải lại trang.</p></div>';}
@@ -754,13 +749,17 @@
     icons();
   }
   function smartLocalSearch(query){const q=norm(query);const synonyms=[[/parabol|do thi|ham so|dinh/i,['hàm số bậc hai','đồ thị']],[/phuong trinh|he pt|lap he/i,['phương trình','hệ phương trình']],[/hinh|chung minh|tiep tuyen|noi tiep/i,['hình học','đường tròn']],[/can thuc|rut gon/i,['căn thức','biểu thức']],[/de thi|thi vao 10|tuyen sinh/i,['đề thi vào lớp 10']]];let extras=[];for(const [re,words] of synonyms){if(re.test(q))extras.push(...words)}return lessons.filter(l=>norm(`${l.title} ${l.description} ${l.tags}`).includes(q)||extras.some(w=>norm(`${l.title} ${l.tags}`).includes(norm(w))))}
-  function openLesson(id){
-    const lesson=lessons.find(l=>Number(l.id)===Number(id));if(!lesson)return;
+  function openLesson(id, preferAdminDocument=false){
+    // IDs của tài liệu trên server có thể trùng với ID các bài mẫu; khi bấm thẻ tài liệu phải ưu tiên đúng bản ghi Admin.
+    const lesson=preferAdminDocument
+      ? lessons.find(l=>l.isAdminDocument && Number(l.id)===Number(id))
+      : (lessons.find(l=>!l.isAdminDocument && Number(l.id)===Number(id)) || lessons.find(l=>Number(l.id)===Number(id)));
+    if(!lesson)return;
     document.getElementById('lessonHeading').textContent=lesson.title;
     document.getElementById('lessonSubheading').textContent=lesson.description||'Thông tin tài liệu';
     if(lesson.isAdminDocument){
       const categoryLabel=resourceCategoryLabels[lesson.category]||'Tài liệu';
-      const done=state.completedLessons.includes(lesson.id);
+      const done=state.completedLessons.includes(`document:${lesson.id}`);
       document.getElementById('lessonList').className='lesson-list resource-list';
       document.getElementById('lessonList').innerHTML=`<div class="panel document-view-page">
         <button class="text-link" onclick="showAllResources()">← Quay lại Đề và tài liệu</button>
@@ -769,44 +768,20 @@
         <p class="panel-desc">${escapeHtml(lesson.description||'Chưa có mô tả cho tài liệu này.')}</p>
         <p class="muted" style="font-size:12px;font-style:italic">${escapeHtml(lesson.author||'Ban quản trị')} · ${escapeHtml(formatResourceDate(lesson.updatedAt||lesson.createdAt))}</p>
         ${renderDocumentViewer(lesson)}
-        <button class="btn ${done?'btn-light':'btn-primary'}" onclick="markLessonDone(${Number(lesson.id)})"><i data-lucide="check-circle"></i> ${done?'Đã đánh dấu hoàn thành':'Đánh dấu đã xem tài liệu'}</button>
+        <button class="btn ${done?'btn-light':'btn-primary'}" onclick="markAdminDocumentDone(${Number(lesson.id)})"><i data-lucide="check-circle"></i> ${done?'Đã đánh dấu hoàn thành':'Đánh dấu đã xem tài liệu'}</button>
       </div>`;
       icons();window.scrollTo({top:0,behavior:'smooth'});return;
     }
     let question=questionBank.find(q=>norm(q.topic)===norm(lesson.title))||questionBank.find(q=>norm(q.topic).includes(norm(lesson.title.split(' ')[0])))||questionBank[0];
     document.getElementById('lessonList').className='lesson-list';
-    document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showLessons('all')">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
-  }  function lessonAnswer(btn,index,answer,id){const panel=btn.closest('.notice');panel.querySelectorAll('.option').forEach(o=>o.disabled=true);if(index===answer){btn.classList.add('selected','correct');document.getElementById('lessonFeedback').textContent='Chính xác! Hãy thử tự trình bày vì sao đáp án này đúng.';markLessonDone(id,false)}else{btn.classList.add('selected','wrong');panel.querySelectorAll('.option')[answer].classList.add('correct');document.getElementById('lessonFeedback').textContent='Chưa đúng. Đọc lại định nghĩa, thử giải thích từng phương án rồi làm lại ở mục Luyện thi.'}}
+    document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showAllResources()">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
+  }  function markAdminDocumentDone(id,toast=true){markLessonDone(`document:${id}`,toast)}
+  function lessonAnswer(btn,index,answer,id){const panel=btn.closest('.notice');panel.querySelectorAll('.option').forEach(o=>o.disabled=true);if(index===answer){btn.classList.add('selected','correct');document.getElementById('lessonFeedback').textContent='Chính xác! Hãy thử tự trình bày vì sao đáp án này đúng.';markLessonDone(id,false)}else{btn.classList.add('selected','wrong');panel.querySelectorAll('.option')[answer].classList.add('correct');document.getElementById('lessonFeedback').textContent='Chưa đúng. Đọc lại định nghĩa, thử giải thích từng phương án rồi làm lại ở mục Luyện thi.'}}
   function markLessonDone(id,toast=true){if(!state.completedLessons.includes(id))state.completedLessons.push(id);saveState();renderLessons();if(toast)showToast('Đã lưu tiến độ bài học.');}
   function formatScore(value){const n=Number(value);return Number.isFinite(n)?String(Number(n.toFixed(2))):'8'}
     function updateStats(){const lessonsDone=Array.isArray(state.completedLessons)?state.completedLessons.length:0,plan=Array.isArray(state.plan)?state.plan:[],blocks=plan.flatMap(day=>Array.isArray(day.blocks)?day.blocks:[]),completedIds=Array.isArray(state.completedPlanIds)?state.completedPlanIds:[],planDone=blocks.filter(block=>completedIds.includes(block.id)||block.slotIds?.length&&block.slotIds.every(slotId=>completedIds.includes(planIdFor(block.date,slotId)))).length,total=lessons.length+blocks.length,p=total?Math.round((lessonsDone+planDone)/total*100):0,latestScore=state.latestPracticeScore!==null?state.latestPracticeScore:state.diagnosticPercent;document.getElementById('homeProgress').textContent=p+'%';document.getElementById('homeScore').textContent=latestScore===null?'—':formatScore(latestScore/10);document.getElementById('homeScoreSub').textContent=latestScore===null?'Chưa làm bài test':`Cập nhật ${state.lastPracticeDate||state.diagnosticDate||'sau bài test'}`;document.getElementById('homeTarget').textContent=formatScore(state.targetScore||8);document.getElementById('diagnosticNotice').classList.toggle('hidden',state.diagnosticDone)}
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 
-  // Horizontal swipe/drag carousel for the "Khám phá nội dung" cards.
-  (function setupCategoryCarousel(){
-    const track=document.querySelector('.category-grid');
-    if(!track)return;
-    let down=false,startX=0,startScroll=0,moved=false,suppressClick=false;
-    track.addEventListener('mousedown',e=>{
-      if(e.button!==0)return;
-      down=true;moved=false;startX=e.pageX;startScroll=track.scrollLeft;track.classList.add('dragging');
-    });
-    window.addEventListener('mousemove',e=>{
-      if(!down)return;
-      const delta=e.pageX-startX;
-      if(Math.abs(delta)>5)moved=true;
-      if(moved){track.scrollLeft=startScroll-delta;e.preventDefault();}
-    });
-    window.addEventListener('mouseup',()=>{
-      if(!down)return;
-      down=false;track.classList.remove('dragging');
-      if(moved){suppressClick=true;window.setTimeout(()=>{suppressClick=false},100)}
-    });
-    track.addEventListener('click',e=>{
-      if(!suppressClick)return;
-      e.preventDefault();e.stopImmediatePropagation();
-    },true);
-  })();
 
   // Search overlay matching the mobile reference UI.
   const popularSearches=['Đạo hàm','Tích phân','Hình học phẳng','Số phức'];
@@ -816,14 +791,14 @@
   function closeSearchOverlay(){const overlay=document.getElementById('searchOverlay');overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.style.overflow='';}
   function renderPopularSearches(){const el=document.getElementById('searchPopularList');el.innerHTML=popularSearches.map(q=>`<button type="button" class="search-chip" data-search-query="${escapeHtml(q)}">${escapeHtml(q)}</button>`).join('');el.querySelectorAll('[data-search-query]').forEach(btn=>btn.addEventListener('click',()=>runSearchQuery(btn.dataset.searchQuery)));}
   function renderSearchHistory(){const el=document.getElementById('searchHistoryList');const history=Array.isArray(state.history)?state.history:[];if(!history.length){el.innerHTML='<div class="search-empty">Chưa có lịch sử tìm kiếm</div>';return}el.innerHTML=history.map((q,i)=>`<div class="search-history-row"><button type="button" class="search-history-main" data-search-query="${escapeHtml(q)}"><i data-lucide="clock-3"></i><span>${escapeHtml(q)}</span></button><button type="button" class="search-remove" data-remove-search="${i}" aria-label="Xóa ${escapeHtml(q)} khỏi lịch sử"><i data-lucide="x"></i></button></div>`).join('');el.querySelectorAll('[data-search-query]').forEach(btn=>btn.addEventListener('click',()=>runSearchQuery(btn.dataset.searchQuery)));el.querySelectorAll('[data-remove-search]').forEach(btn=>btn.addEventListener('click',()=>removeSearchHistory(Number(btn.dataset.removeSearch))));icons()}
-  function renderSearchSuggestions(raw=''){const el=document.getElementById('searchSuggestionList'),heading=document.getElementById('searchSuggestionHeading'),q=String(raw||'').trim(),n=norm(q);let matches=[];if(q){heading.textContent='Kết quả gợi ý';matches=lessons.filter(l=>norm(`${l.title} ${l.description} ${l.tags} ${l.label}`).includes(n));if(!matches.length)matches=smartLocalSearch(q);if(!matches.length){const related=suggestedSearches.filter(item=>norm(item).includes(n)||n.includes(norm(item).split(' ')[0]));el.innerHTML=related.length?related.map(item=>`<div class="search-history-row"><button type="button" class="search-suggestion-main" data-search-query="${escapeHtml(item)}"><i data-lucide="search"></i><span>${escapeHtml(item)}</span></button><i data-lucide="chevron-right" style="width:14px;color:#9dabc0"></i></div>`).join(''):'<div class="search-empty">Chưa thấy gợi ý phù hợp. Nhấn Enter để tìm trong toàn bộ nội dung.</div>';el.querySelectorAll('[data-search-query]').forEach(btn=>btn.addEventListener('click',()=>runSearchQuery(btn.dataset.searchQuery)));icons();return}el.innerHTML=matches.slice(0,6).map(item=>`<div class="search-history-row"><button type="button" class="search-suggestion-main" data-search-query="${escapeHtml(item.title)}"><i data-lucide="search"></i><span>${escapeHtml(item.title)}</span></button><i data-lucide="chevron-right" style="width:14px;color:#9dabc0"></i></div>`).join('')}else{heading.textContent='Gợi ý tìm kiếm';el.innerHTML=suggestedSearches.map(item=>`<div class="search-history-row"><button type="button" class="search-suggestion-main" data-search-query="${escapeHtml(item)}"><i data-lucide="search"></i><span>${escapeHtml(item)}</span></button><i data-lucide="chevron-right" style="width:14px;color:#9dabc0"></i></div>`).join('')}el.querySelectorAll('[data-search-query]').forEach(btn=>btn.addEventListener('click',()=>runSearchQuery(btn.dataset.searchQuery)));icons()}
+  function renderSearchSuggestions(raw=''){const el=document.getElementById('searchSuggestionList'),heading=document.getElementById('searchSuggestionHeading'),q=String(raw||'').trim(),n=norm(q);let matches=[];const searchableLessons=homeResourceMode?lessons.filter(l=>l.isAdminDocument):lessons;if(q){heading.textContent='Kết quả gợi ý';matches=searchableLessons.filter(l=>norm(`${l.title} ${l.description} ${l.tags} ${l.label}`).includes(n));if(!matches.length)matches=smartLocalSearch(q).filter(l=>!homeResourceMode||l.isAdminDocument);if(!matches.length){const related=suggestedSearches.filter(item=>norm(item).includes(n)||n.includes(norm(item).split(' ')[0]));el.innerHTML=related.length?related.map(item=>`<div class="search-history-row"><button type="button" class="search-suggestion-main" data-search-query="${escapeHtml(item)}"><i data-lucide="search"></i><span>${escapeHtml(item)}</span></button><i data-lucide="chevron-right" style="width:14px;color:#9dabc0"></i></div>`).join(''):'<div class="search-empty">Chưa thấy gợi ý phù hợp. Nhấn Enter để tìm trong toàn bộ nội dung.</div>';el.querySelectorAll('[data-search-query]').forEach(btn=>btn.addEventListener('click',()=>runSearchQuery(btn.dataset.searchQuery)));icons();return}el.innerHTML=matches.slice(0,6).map(item=>`<div class="search-history-row"><button type="button" class="search-suggestion-main" data-search-query="${escapeHtml(item.title)}"><i data-lucide="search"></i><span>${escapeHtml(item.title)}</span></button><i data-lucide="chevron-right" style="width:14px;color:#9dabc0"></i></div>`).join('')}else{heading.textContent='Gợi ý tìm kiếm';el.innerHTML=suggestedSearches.map(item=>`<div class="search-history-row"><button type="button" class="search-suggestion-main" data-search-query="${escapeHtml(item)}"><i data-lucide="search"></i><span>${escapeHtml(item)}</span></button><i data-lucide="chevron-right" style="width:14px;color:#9dabc0"></i></div>`).join('')}el.querySelectorAll('[data-search-query]').forEach(btn=>btn.addEventListener('click',()=>runSearchQuery(btn.dataset.searchQuery)));icons()}
   function handleSearchModalInput(value){document.getElementById('searchClearButton').classList.toggle('hidden',!String(value||'').length);renderSearchSuggestions(value)}
   function clearSearchModalInput(){const input=document.getElementById('searchModalInput');input.value='';handleSearchModalInput('');input.focus()}
   function removeSearchHistory(index){state.history=(state.history||[]).filter((_,i)=>i!==index);saveState();renderSearchHistory()}
   function clearSearchHistory(){state.history=[];saveState();renderSearchHistory();showToast('Đã xóa lịch sử tìm kiếm.')}
   function runSearchQuery(query){const q=String(query||'').trim();if(!q)return;state.lastQuery=q;state.history=[q,...(state.history||[]).filter(item=>norm(item)!==norm(q))].slice(0,8);saveState();document.getElementById('searchModalInput').value=q;document.getElementById('searchClearButton').classList.remove('hidden');closeSearchOverlay();activeCategory='all';switchView('home');document.getElementById('lessonHeading').textContent='Kết quả tìm kiếm';document.getElementById('lessonSubheading').textContent='Tìm theo tên bài, nội dung và cách diễn đạt gần nghĩa';renderLessons(q);if(q.length>=3){clearTimeout(searchDebounce);searchDebounce=setTimeout(()=>aiSearchIfAvailable(q),450)}}
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('searchOverlay').classList.contains('open'))closeSearchOverlay()});
-  async function aiSearchIfAvailable(query){try{const r=await fetch('/api/ai/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,items:lessons.map(({id,title,description,tags,category})=>({id,title,description,tags,category}))})});if(!r.ok)return;const data=await r.json();if(Array.isArray(data.ids)){const reordered=data.ids.map(id=>lessons.find(l=>l.id===id)).filter(Boolean);if(reordered.length){latestFilteredLessons=reordered;document.getElementById('lessonList').innerHTML=reordered.map(lessonCard).join('');document.getElementById('lessonSubheading').textContent='Đã sắp xếp kết quả bằng AI theo ý định tìm kiếm';icons()}}}catch{/* local smart search remains available */}}
+  async function aiSearchIfAvailable(query){try{const searchItems=homeResourceMode?lessons.filter(l=>l.isAdminDocument):lessons;const r=await fetch('/api/ai/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,items:searchItems.map(({id,title,description,tags,category})=>({id,title,description,tags,category}))})});if(!r.ok)return;const data=await r.json();if(Array.isArray(data.ids)){const reordered=data.ids.map(id=>searchItems.find(l=>l.id===id)).filter(Boolean);if(reordered.length){latestFilteredLessons=reordered;document.getElementById('lessonList').innerHTML=reordered.map(lessonCard).join('');document.getElementById('lessonSubheading').textContent='Đã sắp xếp kết quả bằng AI theo ý định tìm kiếm';icons()}}}catch{/* local smart search remains available */}}
 
   // Calendar availability grid.
   // Adaptive weekly availability and study roadmap.
