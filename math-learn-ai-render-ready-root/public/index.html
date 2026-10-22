@@ -263,12 +263,38 @@
     }
     @media(max-width:360px){.calendar{min-width:280px;grid-template-columns:38px repeat(7,minmax(28px,1fr))}.time-label strong,.calendar-end-time strong{font-size:7px}}
 </style>
+
+<style id="mathspark-document-reader-styles">
+  .document-view-page{grid-column:1/-1;min-width:0}
+  .document-reader{margin:18px 0 14px;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#f1f0ed;box-shadow:0 3px 12px rgba(29,43,80,.045)}
+  .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;background:#fffdf9;border-bottom:1px solid var(--line)}
+  .document-reader-label{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink);font-size:13px;font-weight:bold}
+  .document-reader-label svg{width:17px;height:17px;flex:0 0 17px}
+  .document-reader-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .document-reader-actions .btn{padding:8px 11px;font-size:12px}
+  .document-reader-frame{display:block;width:100%;height:min(78vh,1000px);min-height:560px;border:0;background:#fff}
+  .document-reader-image-wrap{display:grid;place-items:center;min-height:260px;max-height:80vh;overflow:auto;background:#e9e7e2;padding:12px}
+  .document-reader-image{display:block;max-width:100%;max-height:76vh;height:auto;object-fit:contain;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .document-reader-note{margin:0;padding:10px 13px;color:var(--muted);background:#fffdf9;border-top:1px solid var(--line);font-size:12px;line-height:1.5}
+  .document-reader-empty{padding:20px;border:1px dashed #d8d1c6;border-radius:14px;background:#fffdf9;color:var(--muted);font-size:13px;line-height:1.5}
+  @media(max-width:600px){
+    .document-reader{margin-left:-4px;margin-right:-4px;border-radius:12px}
+    .document-reader-toolbar{padding:9px;align-items:flex-start}
+    .document-reader-label{font-size:12px;max-width:100%}
+    .document-reader-actions{width:100%}
+    .document-reader-actions .btn{flex:1;justify-content:center;min-height:40px}
+    .document-reader-frame{height:72dvh;min-height:460px}
+    .document-reader-image-wrap{max-height:72dvh;padding:6px}
+    .document-reader-image{max-height:68dvh}
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
   <header class="topbar">
     <div class="brand" role="button" tabindex="0" onclick="switchView('home')" aria-label="Về trang chủ">
-      <div class="logo"><img src="mathspark-mark.png" alt="Logo MathSpark"></div><div><div class="brand-title">MathSpark</div><div class="brand-sub">Cùng chinh phục Toán 9</div></div>
+      <div class="logo"><img src="mathspark-mark.png" alt="Logo MathSpark"></div><div><div class="brand-title">MathSpark</div></div>
     </div>
     <div class="searchbar" role="button" tabindex="0" aria-label="Mở tìm kiếm thông minh" onclick="openSearchOverlay()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSearchOverlay()}"><i data-lucide="search"></i><span class="search-top-placeholder">Tìm kiếm chuyên đề, bộ đề, bài học...</span><span id="searchMode" title="Tìm kiếm thông minh"><i data-lucide="sparkles"></i></span></div>
     <div class="top-right"><span class="secure"><i data-lucide="shield-check"></i> Không gian học tập</span><button class="avatar" onclick="switchView('settings')" title="Cài đặt">H</button></div>
@@ -526,6 +552,33 @@
   function drawLessonArt(icon){const known=['function-square','chart-no-axes-combined','triangle','circle','sigma','calculator','file-check','clipboard-list','award','file-text','file','book-open','file-spreadsheet'];const i=known.includes(icon)?icon:'book-open';return `<i data-lucide="${i}"></i>`}
   const resourceCategoryLabels={'chuyen-de':'Chuyên đề ôn tập','de-vao-10':'Đề thi vào 10','de-giua-ky':'Đề thi giữa kỳ','de-cuoi-ky':'Đề thi cuối kỳ'};
   function formatResourceDate(value){if(!value)return 'Vừa cập nhật';const d=new Date(value);if(Number.isNaN(d.getTime()))return 'Vừa cập nhật';return d.toLocaleDateString('vi-VN')+' • '+d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})}
+  function renderDocumentViewer(lesson){
+    if(!lesson.fileUrl){
+      return '<div class="document-reader-empty">Quản trị viên chưa tải tệp đính kèm cho tài liệu này.</div>';
+    }
+    const rawUrl=String(lesson.fileUrl);
+    let absoluteUrl=rawUrl;
+    try{absoluteUrl=new URL(rawUrl,window.location.origin).href}catch(e){}
+    const name=String(lesson.fileName||rawUrl).split(/[?#]/)[0].toLowerCase();
+    const ext=(name.includes('.')?name.split('.').pop():'');
+    const safeUrl=escapeHtml(absoluteUrl);
+    const safeName=escapeHtml(lesson.fileName||'tài liệu');
+    const openLink=`<a class="btn btn-light" href="${safeUrl}" target="_blank" rel="noopener"><i data-lucide="external-link"></i> Mở tab mới</a>`;
+    const downloadLink=`<a class="btn btn-light" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener"><i data-lucide="download"></i> Tải file</a>`;
+    const toolbar=(label)=>`<div class="document-reader-toolbar"><span class="document-reader-label"><i data-lucide="file-text"></i><span>${label}</span></span><span class="document-reader-actions">${openLink}${downloadLink}</span></div>`;
+    if(ext==='pdf'){
+      const pdfUrl=escapeHtml(absoluteUrl+'#toolbar=1&navpanes=0&view=FitH');
+      return `<div class="document-reader">${toolbar('Trình đọc PDF')}<iframe class="document-reader-frame" src="${pdfUrl}" title="${safeName}" loading="eager" allow="fullscreen"></iframe><p class="document-reader-note">Tài liệu được mở ngay tại đây. Dùng thanh công cụ trong khung PDF để đổi trang hoặc phóng to/thu nhỏ.</p></div>`;
+    }
+    if(['png','jpg','jpeg','webp','gif'].includes(ext)){
+      return `<div class="document-reader">${toolbar('Xem ảnh tài liệu')}<div class="document-reader-image-wrap"><img class="document-reader-image" src="${safeUrl}" alt="${safeName}" loading="eager"></div></div>`;
+    }
+    if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)){
+      const officeUrl='https://view.officeapps.live.com/op/embed.aspx?src='+encodeURIComponent(absoluteUrl);
+      return `<div class="document-reader">${toolbar('Trình đọc tài liệu Office')}<iframe class="document-reader-frame" src="${escapeHtml(officeUrl)}" title="${safeName}" loading="eager" allowfullscreen></iframe><p class="document-reader-note">Tệp Office được hiển thị qua Microsoft Office Online. Cần tệp có thể truy cập công khai trên Internet; nếu trình xem không tải được, hãy dùng nút “Mở tab mới” hoặc “Tải file”.</p></div>`;
+    }
+    return `<div class="document-reader">${toolbar('Tài liệu đính kèm')}<div class="document-reader-empty">Định dạng này chưa hỗ trợ xem trước trực tiếp trong trang. Bấm “Mở tab mới” hoặc “Tải file” để đọc.</div></div>`;
+  }
   function resourceCard(item){
     const done=state.completedLessons.includes(item.id);
     const categoryLabel=resourceCategoryLabels[item.category]||item.label||'Tài liệu';
@@ -571,13 +624,13 @@
       const categoryLabel=resourceCategoryLabels[lesson.category]||'Tài liệu';
       const done=state.completedLessons.includes(lesson.id);
       document.getElementById('lessonList').className='lesson-list resource-list';
-      document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1">
+      document.getElementById('lessonList').innerHTML=`<div class="panel document-view-page">
         <button class="text-link" onclick="showAllResources()">← Quay lại Đề và tài liệu</button>
         <div class="resource-meta" style="margin-top:17px"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã làm':'Chưa làm'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></div>
         <h2 style="margin:13px 0 8px;color:var(--ink)">${escapeHtml(lesson.title)}</h2>
         <p class="panel-desc">${escapeHtml(lesson.description||'Chưa có mô tả cho tài liệu này.')}</p>
         <p class="muted" style="font-size:12px;font-style:italic">${escapeHtml(lesson.author||'Ban quản trị')} · ${escapeHtml(formatResourceDate(lesson.updatedAt||lesson.createdAt))}</p>
-        ${lesson.fileUrl?`<p style="margin:17px 0"><a class="btn btn-primary" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener"><i data-lucide="file-text"></i> Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:'<div class="notice"><div class="notice-icon"><i data-lucide="info"></i></div><div><h3>Chưa có tệp đính kèm</h3><p>Quản trị viên chưa tải tệp lên cho nội dung này. Bạn có thể xem phần mô tả phía trên.</p></div></div>'}
+        ${renderDocumentViewer(lesson)}
         <button class="btn ${done?'btn-light':'btn-primary'}" onclick="markLessonDone(${Number(lesson.id)})"><i data-lucide="check-circle"></i> ${done?'Đã đánh dấu hoàn thành':'Đánh dấu đã xem tài liệu'}</button>
       </div>`;
       icons();window.scrollTo({top:0,behavior:'smooth'});return;
