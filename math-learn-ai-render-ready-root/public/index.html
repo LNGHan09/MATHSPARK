@@ -2,89 +2,131 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- Bắt buộc tích hợp thẻ viewport chuẩn để tối ưu hiển thị Mobile (Không cho phép người dùng tự zoom làm vỡ giao diện) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#f8f5f0" />
   <link rel="icon" type="image/png" href="mathspark-mark.png" />
   <title>MathSpark — Chinh phục Toán 9</title>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>window.addEventListener("error",function(e){if(e.target&&e.target.tagName==="SCRIPT"&&/lucide/.test(e.target.src)){const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js";document.head.appendChild(s)}} ,true)</script>
   <style>
     :root{--ink:#1d2b50;--ink2:#263a6b;--muted:#687083;--paper:#f8f5f0;--panel:#fffdf9;--line:#e7e0d6;--rose:#883b4c;--gold:#b78129;--green:#237653;--red:#b44455;--shadow:0 14px 40px rgba(30,40,68,.08)}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#e8e5e0;color:#20283b;font-family:"Times New Roman",Times,Georgia,serif;-webkit-font-smoothing:antialiased}.icon-fallback{display:inline-grid;place-items:center;flex:0 0 auto;min-width:1em;line-height:1;font-family:Arial,sans-serif;font-weight:600}button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8d9bc7;outline-offset:2px}button:disabled{cursor:not-allowed;opacity:.55}
-    .app{width:100%;max-width:1120px;min-height:100vh;margin:0 auto;background:var(--paper);box-shadow:var(--shadow);position:relative}.topbar{height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 28px;background:rgba(248,245,240,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}.brand{display:flex;align-items:center;gap:10px;min-width:190px}.logo{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;background:transparent;border:0;border-radius:0;position:relative}.logo img{display:block;width:100%;height:100%;object-fit:contain}.brand-title{font-weight:bold;color:var(--ink);font-size:19px}.brand-sub{font-size:12px;color:var(--muted);margin-top:2px}.searchbar{height:42px;display:flex;align-items:center;gap:9px;padding:0 14px;border:1px solid var(--line);border-radius:999px;max-width:420px;flex:1;background:#fffdf9;color:var(--muted)}.searchbar input{border:0;background:transparent;outline:0;width:100%;min-width:0;font-size:14px;color:#1f2940}.top-right{display:flex;align-items:center;gap:10px}.secure{display:flex;align-items:center;gap:6px;color:var(--green);font-size:13px;white-space:nowrap}.avatar{border:0;border-radius:50%;background:#dfe5f3;width:38px;height:38px;font-weight:bold;color:var(--ink)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#e8e5e0;color:#20283b;font-family:"Times New Roman",Times,Georgia,serif;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8d9bc7;outline-offset:2px}button:disabled{cursor:not-allowed;opacity:.55}
+    .app{max-width:1120px;min-height:100vh;margin:auto;background:var(--paper);box-shadow:var(--shadow);position:relative}.topbar{height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 28px;background:rgba(248,245,240,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}.brand{display:flex;align-items:center;gap:10px;min-width:190px}.logo{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;background:transparent;border:0;border-radius:0;position:relative}.logo img{display:block;width:100%;height:100%;object-fit:contain}.brand-title{font-weight:bold;color:var(--ink);font-size:19px}.brand-sub{font-size:12px;color:var(--muted);margin-top:2px}.searchbar{height:42px;display:flex;align-items:center;gap:9px;padding:0 14px;border:1px solid var(--line);border-radius:999px;max-width:420px;flex:1;background:#fffdf9;color:var(--muted)}.searchbar input{border:0;background:transparent;outline:0;width:100%;min-width:0;font-size:14px;color:#1f2940}.top-right{display:flex;align-items:center;gap:10px}.secure{display:flex;align-items:center;gap:6px;color:var(--green);font-size:13px;white-space:nowrap}.avatar{border:0;border-radius:50%;background:#dfe5f3;width:38px;height:38px;font-weight:bold;color:var(--ink)}
     .layout{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 76px)}.sidebar{border-right:1px solid var(--line);padding:24px 14px;display:flex;flex-direction:column;gap:7px;background:#f6f2ec}.nav-label{font-size:11px;letter-spacing:1.2px;font-weight:bold;color:#8b8d96;padding:7px 12px 3px}.nav-btn{border:0;background:transparent;border-radius:13px;display:flex;align-items:center;gap:11px;padding:12px 13px;color:#5f6678;text-align:left;font-size:15px;width:100%;transition:.16s}.nav-btn svg{width:18px;height:18px}.nav-btn:hover{background:#ebe8e2;color:var(--ink)}.nav-btn.active{background:var(--ink);color:#fff;box-shadow:0 6px 14px rgba(29,43,80,.16)}.side-note{margin-top:auto;background:#eeebe5;border:1px solid #e3ddd2;border-radius:16px;padding:14px;color:#646c7d;font-size:13px;line-height:1.45}.side-note strong{color:var(--ink);display:block;margin-bottom:5px}.content{padding:28px;min-width:0}.view{display:none;animation:fadein .2s ease}.view.active{display:block}@keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
     .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;font-weight:bold;color:var(--rose);margin:0 0 9px}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}.page-head h1{margin:0;color:var(--ink);font-size:30px;line-height:1.12}.page-head p{color:var(--muted);margin:9px 0 0;font-size:15px;line-height:1.5;max-width:650px}.hero{position:relative;overflow:hidden;padding:28px;border-radius:26px;border:1px solid #e5ddd2;background:linear-gradient(120deg,#f3eee6 0%,#fbf7ef 55%,#e9e4de 100%);min-height:194px;display:flex;align-items:center;justify-content:space-between;gap:22px}.hero-copy{max-width:65%;position:relative;z-index:2}.hero h1{font-size:32px;line-height:1.1;color:var(--ink);margin:5px 0 12px}.hero p{font-size:15px;color:#5e6474;margin:0;line-height:1.55}.hero-art{width:190px;min-width:130px;height:150px;display:grid;place-items:center;opacity:.92}.hero-art svg{max-width:100%;height:100%}.hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid transparent;border-radius:12px;padding:11px 15px;font-weight:bold;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.15s}.btn svg{width:17px;height:17px}.btn-primary{background:var(--ink);color:#fff}.btn-primary:hover{background:#2b4176;transform:translateY(-1px)}.btn-light{border-color:#ddd6cb;background:#fffdf8;color:var(--ink)}.btn-light:hover{background:#f0ebe3}.btn-rose{background:#f5e8eb;color:#803548;border-color:#ead3d9}.btn-small{padding:8px 11px;font-size:12px;border-radius:10px}.button-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:26px 0 13px}.section-head h2{font-size:20px;color:var(--ink);margin:0}.section-head p{font-size:13px;color:var(--muted);margin:4px 0 0}.text-link{border:0;background:transparent;color:var(--ink2);font-weight:bold;text-decoration:underline;text-underline-offset:3px;font-size:13px}.grid{display:grid;gap:14px}.category-grid{display:flex;gap:13px;grid-template-columns:none;overflow-x:auto;overflow-y:hidden;padding:2px 3px 12px;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;cursor:grab}.category-grid::-webkit-scrollbar{display:none}.category-grid.dragging{cursor:grabbing;scroll-snap-type:none}.category{flex:0 0 252px;scroll-snap-align:start;user-select:none;-webkit-user-select:none}.carousel-hint{display:inline-flex;align-items:center;gap:5px;color:#8b8d96;font-size:12px;white-space:nowrap;flex-shrink:0}.carousel-hint svg{width:15px;height:15px}.category{padding:17px;background:var(--panel);border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;gap:14px;text-align:left;min-height:128px;transition:.18s}.category:hover{border-color:#b9c3de;box-shadow:0 8px 18px rgba(29,43,80,.06);transform:translateY(-2px)}.category .cat-icon{width:39px;height:39px;border-radius:12px;background:#edf0f8;color:var(--ink);display:grid;place-items:center}.category:nth-child(2) .cat-icon{background:#f5e9eb;color:var(--rose)}.category:nth-child(3) .cat-icon{background:#f7efd9;color:#90671a}.category:nth-child(4) .cat-icon{background:#e7f1eb;color:var(--green)}.category strong{font-size:15px;color:var(--ink)}.category span{font-size:12px;color:var(--muted);line-height:1.4}.lesson-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.lesson-card{border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:15px;display:flex;align-items:center;gap:13px;min-width:0;text-align:left;width:100%;transition:.16s}.lesson-card:hover{border-color:#bbc4dc;box-shadow:0 8px 18px rgba(29,43,80,.05)}.lesson-art{flex:0 0 62px;width:62px;height:62px;border-radius:15px;background:#f0ece5;display:grid;place-items:center;color:var(--rose)}.lesson-art svg{width:42px;height:42px}.lesson-info{min-width:0;flex:1}.lesson-info h3{font-size:15px;color:var(--ink);margin:7px 0 5px;line-height:1.25}.lesson-info p{font-size:12px;color:var(--muted);margin:0;line-height:1.4}.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:bold;border-radius:999px;padding:4px 8px;background:#eeeaf5;color:#4e4a81;max-width:100%}.pill.green{background:#e6f2e9;color:#216944}.pill.rose{background:#f6e9ec;color:#934252}.pill.gold{background:#f8f0dd;color:#8b6518}.pill.neutral{background:#eeece8;color:#686c76}
     .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.stat{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:16px}.stat label{font-size:12px;color:var(--muted)}.stat strong{display:block;font-size:24px;color:var(--ink);margin-top:6px}.stat small{font-size:11px;color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:19px;margin-bottom:16px}.panel h2,.panel h3{color:var(--ink);margin:0 0 8px}.panel h2{font-size:20px}.panel h3{font-size:17px}.panel-desc{font-size:14px;color:var(--muted);line-height:1.5;margin:0 0 14px}.notice{display:flex;gap:13px;padding:16px;border-radius:16px;border:1px solid #e5d6b5;background:#fbf5e7;margin-bottom:18px}.notice-icon{width:40px;height:40px;border-radius:12px;background:#f1e5c8;color:#8b6518;display:grid;place-items:center;flex-shrink:0}.notice h3{margin:0 0 5px;color:#55441f;font-size:16px}.notice p{margin:0 0 10px;font-size:13px;color:#766848;line-height:1.45}
     .calendar-wrap{overflow-x:auto;padding-bottom:3px}.calendar{display:grid;grid-template-columns:90px repeat(7,minmax(66px,1fr));gap:6px;min-width:620px}.cal-head{font-size:12px;color:var(--muted);text-align:center;padding:8px 2px;font-weight:bold}.cal-head.today{color:var(--ink)}.time-label{display:flex;align-items:center;font-size:12px;color:#676d7b;padding-left:2px}.slot{height:57px;border:1px solid #e4dfd6;border-radius:10px;background:#f7f5f0;color:#747c8b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;transition:.12s}.slot:hover{border-color:#aab6d4}.slot.busy{background:#f5e5e8;border-color:#e5c4cc;color:#92394d}.slot.free{background:#e6f1e9;border-color:#c5dfce;color:#26714e}.slot svg{width:14px;height:14px}.calendar-help{font-size:12px;color:var(--muted);margin:11px 0 0}.plan-list{display:grid;gap:9px}.plan-item{display:grid;grid-template-columns:108px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:13px;background:#fffdfa}.plan-date{font-size:12px;color:var(--muted);line-height:1.5}.plan-date strong{font-size:13px;color:var(--ink);display:block}.plan-topic{font-weight:bold;color:var(--ink);font-size:14px}.plan-topic small{display:block;font-weight:normal;font-size:12px;line-height:1.4;color:var(--muted);margin-top:4px}.target-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field label{font-size:13px;color:#555e70;font-weight:bold}.field input,.field select,.field textarea{width:100%;border:1px solid #ded8ce;border-radius:11px;padding:11px 12px;background:#fffdf9;color:#242b3d;min-width:0}.field textarea{min-height:85px;resize:vertical;line-height:1.45}.field small{font-size:11px;color:var(--muted);line-height:1.4}.form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.practice-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.feature-card{padding:21px;background:var(--panel);border:1px solid var(--line);border-radius:20px;display:flex;flex-direction:column;align-items:flex-start;min-height:222px}.feature-icon{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:#edf0f8;color:var(--ink);margin-bottom:15px}.feature-icon svg{width:23px;height:23px}.feature-card:nth-child(2) .feature-icon{background:#f5e8eb;color:var(--rose)}.feature-card h3{color:var(--ink);font-size:19px;margin:0 0 7px}.feature-card p{color:var(--muted);font-size:14px;line-height:1.48;margin:0 0 18px;flex:1}.topic-controls{display:grid;grid-template-columns:1fr 150px 150px auto;gap:10px;align-items:end}.quiz-panel{margin-top:17px}.quiz-question{border-top:1px solid var(--line);padding:17px 0}.quiz-question:first-child{border-top:0}.quiz-question h4{font-size:16px;line-height:1.45;color:var(--ink);margin:8px 0 12px}.option-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.option{border:1px solid #e2ddd4;background:#fffdf9;color:#3b4355;border-radius:11px;padding:11px;text-align:left;font-size:14px;line-height:1.4}.option.selected{border-color:var(--ink2);background:#e9edf8;color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink2)}.option.correct{border-color:#98c6a8;background:#e6f4e9;color:#216944}.option.wrong{border-color:#e6b4be;background:#f9e9ec;color:#9b3648}.feedback{font-size:13px;line-height:1.5;margin:9px 0 0;color:var(--muted)}.quiz-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:15px}.result-box{background:#eaf2ed;border:1px solid #ccdfd2;border-radius:14px;padding:15px;margin:14px 0;color:#25583d}.result-box strong{font-size:22px;display:block;margin:4px 0}.tag-row{display:flex;gap:7px;flex-wrap:wrap}.dropzone{display:block;border:1.5px dashed #c9c1b5;background:#faf7f1;border-radius:14px;min-height:132px;padding:14px;text-align:center;cursor:pointer;position:relative;overflow:hidden}.dropzone:hover{border-color:#8794b8;background:#f7f5f0}.dropzone input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.dropzone svg{width:26px;height:26px;color:var(--ink);margin:7px auto}.dropzone strong{display:block;font-size:14px;color:var(--ink);margin-bottom:4px}.dropzone small{color:var(--muted);font-size:12px}.preview{max-width:100%;max-height:180px;display:block;margin:10px auto 0;border-radius:8px}.grading-result{white-space:pre-wrap;line-height:1.6;color:#343b4d;font-size:14px}.status-line{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:10px}.dot{width:8px;height:8px;border-radius:50%;background:#d19b42}.dot.live{background:#2d9462}.empty{border:1px dashed #d8d1c6;border-radius:15px;padding:22px;text-align:center;color:var(--muted);font-size:14px;line-height:1.5}.hidden{display:none!important}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.footer-note{font-size:12px;color:#777d89;line-height:1.5;margin-top:16px}.toast{position:fixed;z-index:100;bottom:24px;left:50%;transform:translate(-50%,20px);background:#202b4a;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;box-shadow:0 10px 30px rgba(20,30,60,.2);opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px)}.toast.show{opacity:1;transform:translate(-50%,0)}.loading{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.mobile-nav{display:none}
-    @media(max-width:850px){html,body{width:100%;min-width:0;overflow-x:hidden}.app{width:100%;max-width:none;margin:0;box-shadow:none}.layout,.content,.view{width:100%;min-width:0}.topbar{padding:12px 17px}.layout{grid-template-columns:1fr}.sidebar{display:none}.content{padding:21px 17px 90px}.brand{min-width:auto}.brand-sub,.secure{display:none}.searchbar{max-width:none}.top-right{gap:5px}.category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lesson-list{grid-template-columns:1fr}.mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(251,249,245,.96);backdrop-filter:blur(16px);border-top:1px solid var(--line);justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom));max-width:1120px;margin:auto}.mobile-nav .nav-btn{width:auto;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;padding:6px 9px;font-size:10px;min-width:59px;border-radius:11px}.mobile-nav .nav-btn svg{width:19px;height:19px}.mobile-nav .nav-btn.active{background:transparent;color:var(--ink);box-shadow:none}.mobile-nav .nav-btn.active:after{content:'';height:3px;width:18px;border-radius:3px;background:var(--ink);position:absolute;margin-top:42px}.page-head h1{font-size:27px}.hero{padding:22px;min-height:180px}.hero h1{font-size:29px}.hero-art{width:125px;height:120px}.stats{gap:8px}.stat{padding:12px}.stat strong{font-size:21px}.topic-controls{grid-template-columns:1fr 1fr}.topic-controls .field:first-child{grid-column:1/-1}.practice-cards{grid-template-columns:1fr 1fr}}
-    @media(max-width:540px){.app{width:100vw;max-width:100vw;margin:0;overflow-x:clip}.topbar{width:100%;padding-left:12px;padding-right:12px}.brand{flex:0 0 auto}.brand-title{white-space:nowrap}.searchbar{flex:1;min-width:0}.top-right{flex:0 0 auto}.content{width:100%;max-width:100%;padding-left:13px;padding-right:13px}.hero,.stats,.section-head,.category-grid,.lesson-list{max-width:100%;min-width:0}.category{flex-basis:232px}.carousel-hint{font-size:0;gap:0}.carousel-hint svg{width:18px;height:18px}.explore-head{align-items:center}.topbar{height:66px;gap:10px}.logo{width:35px;height:35px;flex-basis:35px}.brand-title{font-size:16px}.brand{gap:7px}.searchbar{height:38px;padding:0 10px}.searchbar input{font-size:12px}.top-right .avatar{width:32px;height:32px}.content{padding:17px 13px 90px}.page-head{margin-bottom:17px}.page-head h1{font-size:25px}.page-head p{font-size:13px}.hero{padding:18px;border-radius:21px;min-height:166px;gap:4px}.hero-copy{max-width:70%}.hero h1{font-size:25px}.hero p{font-size:13px}.hero-art{width:90px;height:105px;min-width:80px}.hero-actions{margin-top:13px}.btn{padding:10px 12px;font-size:12px}.section-head{margin-top:22px}.section-head h2{font-size:18px}.category{padding:13px;min-height:115px}.category .cat-icon{width:34px;height:34px}.lesson-card{padding:11px;gap:10px}.lesson-art{width:50px;height:50px;flex-basis:50px}.lesson-art svg{width:36px;height:36px}.lesson-info h3{font-size:14px}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat label{font-size:10px}.stat strong{font-size:18px}.stat small{font-size:9px}.panel{padding:14px;border-radius:17px}.practice-cards{grid-template-columns:1fr}.feature-card{min-height:unset;padding:17px}.feature-card p{margin-bottom:14px}.form-row{grid-template-columns:1fr}.plan-item{grid-template-columns:84px minmax(0,1fr);gap:9px}.plan-item .pill{grid-column:2;justify-self:start}.option-list{grid-template-columns:1fr}.settings-grid{grid-template-columns:1fr}.topic-controls{grid-template-columns:1fr 1fr}.target-control{align-items:stretch}.target-control .field{flex:1 1 120px}.notice{padding:12px}.notice h3{font-size:15px}.mobile-nav .nav-btn{min-width:53px;padding:6px 6px;font-size:9px}}
+    @media(max-width:850px){.topbar{padding:12px 17px}.layout{grid-template-columns:1fr}.sidebar{display:none}.content{padding:21px 17px 90px}.brand{min-width:auto}.brand-sub,.secure{display:none}.searchbar{max-width:none}.top-right{gap:5px}.category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lesson-list{grid-template-columns:1fr}.mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(251,249,245,.96);backdrop-filter:blur(16px);border-top:1px solid var(--line);justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom));max-width:1120px;margin:auto}.mobile-nav .nav-btn{width:auto;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;padding:6px 9px;font-size:10px;min-width:59px;border-radius:11px}.mobile-nav .nav-btn svg{width:19px;height:19px}.mobile-nav .nav-btn.active{background:transparent;color:var(--ink);box-shadow:none}.mobile-nav .nav-btn.active:after{content:'';height:3px;width:18px;border-radius:3px;background:var(--ink);position:absolute;margin-top:42px}.page-head h1{font-size:27px}.hero{padding:22px;min-height:180px}.hero h1{font-size:29px}.hero-art{width:125px;height:120px}.stats{gap:8px}.stat{padding:12px}.stat strong{font-size:21px}.topic-controls{grid-template-columns:1fr 1fr}.topic-controls .field:first-child{grid-column:1/-1}.practice-cards{grid-template-columns:1fr 1fr}}
+    @media(max-width:540px){.category{flex-basis:232px}.carousel-hint{font-size:0;gap:0}.carousel-hint svg{width:18px;height:18px}.explore-head{align-items:center}.topbar{height:66px;gap:10px}.logo{width:35px;height:35px;flex-basis:35px}.brand-title{font-size:16px}.brand{gap:7px}.searchbar{height:38px;padding:0 10px}.searchbar input{font-size:12px}.top-right .avatar{width:32px;height:32px}.content{padding:17px 13px 90px}.page-head{margin-bottom:17px}.page-head h1{font-size:25px}.page-head p{font-size:13px}.hero{padding:18px;border-radius:21px;min-height:166px;gap:4px}.hero-copy{max-width:70%}.hero h1{font-size:25px}.hero p{font-size:13px}.hero-art{width:90px;height:105px;min-width:80px}.hero-actions{margin-top:13px}.section-head{margin-top:22px}.section-head h2{font-size:18px}.category{padding:13px;min-height:115px}.category .cat-icon{width:34px;height:34px}.lesson-art{width:50px;height:50px;flex-basis:50px}.lesson-art svg{width:36px;height:36px}.lesson-info h3{font-size:14px}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat label{font-size:10px}.stat strong{font-size:18px}.stat small{font-size:9px}.panel{padding:14px;border-radius:17px}.practice-cards{grid-template-columns:1fr}.feature-card{min-height:unset;padding:17px}.feature-card p{margin-bottom:14px}.form-row{grid-template-columns:1fr}.plan-item{grid-template-columns:84px minmax(0,1fr);gap:9px}.plan-item .pill{grid-column:2;justify-self:start}.option-list{grid-template-columns:1fr}.settings-grid{grid-template-columns:1fr}.topic-controls{grid-template-columns:1fr 1fr}.target-control{align-items:stretch}.target-control .field{flex:1 1 120px}.notice{padding:12px}.notice h3{font-size:15px}.mobile-nav .nav-btn{min-width:53px;padding:6px 6px;font-size:9px}}
 
     /* Search overlay styled to match the reference design. */
     .searchbar{cursor:pointer;text-align:left;user-select:none}.search-top-placeholder{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:#8b96a9}.search-overlay{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(25,35,59,.72);padding:0}.search-overlay.open{display:flex}.search-screen{width:min(100%,560px);height:min(780px,92dvh);background:#f8f5f0;color:#1d2b50;display:flex;flex-direction:column;overflow:hidden;border:1px solid #e3ded6;box-shadow:0 24px 70px rgba(12,20,40,.22);border-radius:24px}.search-overlay-head{display:flex;align-items:center;gap:12px;padding:13px 16px;min-height:68px;background:rgba(248,245,240,.98);border-bottom:1px solid #e9e3db;flex-shrink:0}.search-back{display:grid;place-items:center;width:28px;height:38px;flex:0 0 28px;border:0;background:transparent;color:#2d446e;padding:0}.search-back svg{width:20px;height:20px}.search-input-wrap{height:38px;display:flex;align-items:center;gap:9px;flex:1;min-width:0;background:#e7eaf0;border-radius:999px;padding:0 13px;color:#94a0b4}.search-input-wrap>svg{width:15px;height:15px;flex:0 0 15px}.search-input-wrap input{width:100%;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;color:#293956;font-size:13px;padding:0!important}.search-input-wrap input::placeholder{color:#8c9ab2;opacity:1}.search-clear{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border:0;background:transparent;color:#8794aa;padding:0}.search-clear svg{width:15px;height:15px}.search-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 25px 34px;scrollbar-width:thin;scrollbar-color:#d9d5cd transparent}.search-section{margin:0 0 25px}.search-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.search-section h3{font-size:14px;line-height:1.35;margin:0;color:#16294f;font-weight:bold}.search-chip-list{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.search-chip{border:1px solid transparent;border-radius:999px;padding:8px 14px;min-height:31px;font-size:13px;line-height:1.1;color:#273652;background:#e6edf7;white-space:nowrap;transition:background .15s,transform .15s}.search-chip:nth-child(4n+1){background:#f4e4e9;color:#77364a}.search-chip:nth-child(4n+2){background:#e2ebf6;color:#2c456f}.search-chip:nth-child(4n+3){background:#fbf0e1;color:#845e2a}.search-chip:nth-child(4n+4){background:#e6eef7;color:#2e4b76}.search-chip:hover{filter:brightness(.97);transform:translateY(-1px)}.search-history-list,.search-suggestion-list{display:flex;flex-direction:column}.search-history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:49px;border-bottom:1px solid rgba(224,220,214,.55)}.search-history-main,.search-suggestion-main{display:flex;align-items:center;gap:10px;min-width:0;flex:1;border:0;background:transparent;padding:9px 0;text-align:left;color:#31415f;font-size:13px}.search-history-main svg,.search-suggestion-main svg{width:14px;height:14px;flex:0 0 14px;color:#8d9bb2}.search-history-main span,.search-suggestion-main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.search-remove{border:0;background:transparent;color:#9dabc0;padding:6px;display:grid;place-items:center;flex:0 0 24px}.search-remove svg{width:14px;height:14px}.search-clear-history{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;color:#91a0b7;font-size:12px;padding:4px 0;white-space:nowrap}.search-clear-history svg{width:12px;height:12px}.search-empty{color:#8993a5;font-size:12px;line-height:1.5;padding:8px 0}.search-hint{color:#929bab;font-size:11px;margin:8px 0 0;line-height:1.45}
     @media(max-width:600px){.search-overlay{align-items:stretch;padding:0;background:#f8f5f0}.search-screen{width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0;box-shadow:none}.search-overlay-head{min-height:70px;padding:13px 16px;gap:12px}.search-scroll{padding:20px 25px calc(28px + env(safe-area-inset-bottom))}.search-section{margin-bottom:25px}.search-history-row{min-height:49px}}
 
+    /* ==============================================================
+       [NÂNG CẤP UI/UX] Các đoạn style bổ sung theo yêu cầu
+       ============================================================== */
 
-    /* Mobile viewport and bottom navigation hardening: always show all five destinations. */
-    html, body { width:100%; max-width:100%; min-width:0; margin:0; overflow-x:hidden; }
-    body { min-height:100vh; min-height:100dvh; }
-    .app { min-width:0; overflow-x:clip; }
-    @media (max-width:850px), (pointer:coarse) and (max-width:1180px) {
-      .app { width:100%; max-width:none; min-height:100vh; min-height:100dvh; margin:0; box-shadow:none; }
-      .layout { width:100%; min-width:0; grid-template-columns:minmax(0,1fr); }
-      .sidebar { display:none; }
-      .content, .view { width:100%; max-width:100%; min-width:0; }
-      .content { padding-bottom:calc(104px + env(safe-area-inset-bottom)); }
-      .mobile-nav {
-        display:grid;
-        grid-template-columns:repeat(5,minmax(0,1fr));
-        align-items:stretch;
-        justify-content:initial;
-        gap:0;
-        position:fixed;
-        left:0; right:0; bottom:0;
-        width:100%; max-width:none;
-        margin:0;
-        box-sizing:border-box;
-        padding:6px 3px calc(7px + env(safe-area-inset-bottom));
-        overflow:visible;
-      }
-      .mobile-nav .nav-btn {
-        position:relative;
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-        justify-content:center;
-        gap:3px;
-        width:100%; min-width:0; max-width:none;
-        margin:0;
-        padding:6px 1px;
-        border-radius:10px;
-        font-size:clamp(8px,2.5vw,10px);
-        line-height:1.15;
-        text-align:center;
-        white-space:normal;
-        overflow-wrap:anywhere;
-      }
-      .mobile-nav .nav-btn svg { width:clamp(17px,4.8vw,21px); height:clamp(17px,4.8vw,21px); flex:0 0 auto; }
-      .mobile-nav .nav-btn.active { background:transparent; color:var(--ink); box-shadow:none; }
-      .mobile-nav .nav-btn.active:after {
-        content:'';
-        position:absolute;
-        bottom:1px;
-        left:50%; transform:translateX(-50%);
-        width:18px; height:3px; margin:0;
-        border-radius:3px; background:var(--ink);
-      }
+    /* 1. Tối ưu Touch Target (vùng chạm) và Các trạng thái của nút Option */
+    .option { padding: 14px 16px; font-size: 15px; cursor: pointer; transition: all 0.2s; }
+    .option:hover:not(:disabled) { background: #fdfaf6; border-color: #d1c8ba; }
+    .option.selected {
+      border-color: var(--ink2); background: #e9edf8; color: var(--ink);
+      box-shadow: inset 0 0 0 1.5px var(--ink2); font-weight: bold;
     }
-    @media (max-width:360px) {
-      .mobile-nav { padding-left:1px; padding-right:1px; }
-      .mobile-nav .nav-btn { font-size:8px; gap:2px; padding-left:0; padding-right:0; }
-      .mobile-nav .nav-btn svg { width:17px; height:17px; }
+    .btn { padding: 12px 18px; }
+    .lesson-card { padding: 16px; } /* Vùng chạm lớn hơn một chút cho di động */
+
+    /* 2. Điều hướng Quiz (Quiz Navigator) */
+    .quiz-navigator {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+      background: var(--paper); padding: 14px; border-radius: 16px;
+      border: 1px solid var(--line); position: sticky; top: 76px; z-index: 20;
+      box-shadow: 0 4px 14px rgba(30,40,68,0.03);
+    }
+    .quiz-nav-dot {
+      width: 34px; height: 34px; border-radius: 9px; border: 1px solid #d9dfec;
+      display: grid; place-items: center; font-size: 14px; font-weight: bold;
+      color: var(--muted); background: #fff; cursor: pointer; transition: 0.2s;
+    }
+    .quiz-nav-dot:hover { background: #f0f3f8; }
+    .quiz-nav-dot.answered {
+      background: #e9edf8; border-color: var(--ink2); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--ink2);
+    }
+    .quiz-nav-dot.correct-dot { background: #e6f4e9; border-color: #98c6a8; color: #216944; box-shadow: inset 0 0 0 1px #98c6a8; }
+    .quiz-nav-dot.wrong-dot { background: #f9e9ec; border-color: #e6b4be; color: #9b3648; box-shadow: inset 0 0 0 1px #e6b4be; }
+
+    /* 3. Cố định Nút Nộp Bài (Sticky Actions) */
+    .quiz-actions {
+      position: sticky; bottom: 0; background: var(--panel);
+      padding: 16px 19px; margin: 15px -19px -19px -19px;
+      border-top: 1px solid var(--line); border-radius: 0 0 20px 20px;
+      z-index: 25; box-shadow: 0 -8px 24px rgba(0,0,0,0.04);
     }
 
-  
-    /* Tài liệu do Admin đăng: một thẻ trên mỗi hàng, theo mẫu trạng thái + danh mục. */
-    .lesson-list.resource-list{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+    /* 4. Lịch trình tuần UI cải thiện (Bold chữ, tối ưu padding, fix overflow-x) */
+    .slot { font-weight: 600; padding: 6px; }
+    .time-label span strong { color: var(--ink); font-size: 13px; }
+    .calendar-wrap {
+      width: 100%; max-width: 100%; overflow-x: auto; 
+      scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .calendar-wrap::-webkit-scrollbar { display: none; }
+    .calendar { min-width: 600px; padding-bottom: 6px; }
+
+    /* Fix responsive trên màn hình nhỏ */
+    @media (max-width: 850px) {
+      .quiz-actions {
+        bottom: calc(56px + env(safe-area-inset-bottom)); /* Không đè lên mobile nav */
+        border-radius: 0; margin-left: -17px; margin-right: -17px;
+      }
+      .quiz-navigator { top: 66px; padding: 10px; }
+      .quiz-nav-dot { width: 30px; height: 30px; font-size: 13px; }
+    }
+    @media (max-width: 540px) {
+      .plan-item { 
+        /* Cấu trúc item lộ trình thông minh hơn trên mobile */
+        grid-template-columns: 84px minmax(0, 1fr) auto !important; 
+      }
+      .plan-actions-col { align-items: flex-end; }
+    }
+  </style>
+  <style>
+    .floating-chat-backdrop{position:fixed;inset:0;z-index:90;background:rgba(22,32,54,.25);backdrop-filter:blur(2px)}
+    .floating-chat-backdrop[hidden],.floating-chat-panel[hidden]{display:none}
+    .floating-chat-toggle{position:fixed;right:24px;bottom:24px;z-index:110;width:60px;height:60px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:#fff;box-shadow:0 10px 28px rgba(29,43,80,.28);transition:transform .16s,background .16s}
+    .floating-chat-toggle:hover{background:var(--ink2);transform:translateY(-2px)}
+    .floating-chat-toggle svg{width:25px;height:25px}
+    .floating-chat-panel{position:fixed;z-index:100;right:24px;bottom:98px;width:min(390px,calc(100vw - 32px));height:min(620px,calc(100vh - 130px));height:min(620px,calc(100dvh - 130px));display:flex;flex-direction:column;overflow:hidden;background:var(--paper);border:1px solid var(--line);border-radius:22px;box-shadow:0 22px 70px rgba(18,28,50,.3);color:var(--ink)}
+    .ai-chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);background:#fffdf9}
+    .ai-chat-title{font-size:15px;font-weight:800;line-height:1.25}
+    .ai-chat-subtitle{display:flex;align-items:center;gap:6px;margin-top:5px;color:var(--muted);font-size:12px}
+    .ai-chat-subtitle .dot{width:7px;height:7px;margin:0}
+    .ai-chat-close{flex:0 0 34px;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:white;color:var(--ink);display:grid;place-items:center}
+    .ai-chat-close svg{width:17px;height:17px}
+    .ai-chat-messages{display:flex;flex:1;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;background:#fbfaf7;overscroll-behavior:contain}
+    .ai-chat-message{max-width:88%;padding:11px 13px;border:1px solid var(--line);border-radius:16px;background:white;color:var(--ink);font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+    .ai-chat-message.assistant{align-self:flex-start;border-top-left-radius:5px}
+    .ai-chat-message.user{align-self:flex-end;border-color:#d9e2ff;border-top-right-radius:5px;background:#edf1ff}
+    .ai-chat-message p{margin:0 0 8px}.ai-chat-message p:last-child{margin-bottom:0}
+    .ai-chat-message ul,.ai-chat-message ol{margin:6px 0;padding-left:20px}
+    .ai-chat-message .katex-display{overflow-x:auto;overflow-y:hidden;padding:3px 0}
+    .ai-chat-loading{color:var(--muted);font-style:italic}
+    .ai-chat-form{display:flex;align-items:flex-end;gap:9px;padding:12px;border-top:1px solid var(--line);background:white}
+    .ai-chat-input{flex:1;min-height:44px;max-height:120px;resize:vertical;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:#fffdf9;color:var(--ink);font:inherit;font-size:14px;line-height:1.4}
+    .ai-chat-input:focus{outline:2px solid rgba(88,112,190,.28);border-color:#7589cb}
+    .ai-chat-send{flex:0 0 44px;width:44px;height:44px;border:0;border-radius:13px;background:var(--ink);color:white;display:grid;place-items:center}
+    .ai-chat-send:disabled{opacity:.55;cursor:wait}
+    .ai-chat-send svg{width:19px;height:19px}
+    .ai-chat-note{padding:0 14px 11px;margin:0;background:white;color:var(--muted);font-size:10px;line-height:1.35;text-align:center}
+    @media(max-width:540px){
+      .floating-chat-toggle{right:16px;bottom:calc(78px + env(safe-area-inset-bottom));width:54px;height:54px}
+      .floating-chat-panel{right:8px;bottom:calc(142px + env(safe-area-inset-bottom));width:calc(100vw - 16px);height:calc(100vh - 170px);height:calc(100dvh - 170px);border-radius:18px}
+    }
+  </style>
+
+  <style id="mathspark-resource-styles">
+    .resource-list{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
     .resource-card{width:100%;min-width:0;display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--line);border-radius:20px;background:var(--panel);text-align:left;color:inherit;box-shadow:0 2px 2px rgba(29,43,80,.015);transition:border-color .16s,box-shadow .16s,transform .16s}
     .resource-card:hover{border-color:#c5ccdd;box-shadow:0 8px 20px rgba(29,43,80,.06);transform:translateY(-1px)}
     .resource-art{width:70px;height:70px;flex:0 0 70px;display:grid;place-items:center;border-radius:16px;background:#f5e8eb;color:var(--rose)}
@@ -111,8 +153,116 @@
     .resource-empty strong{display:block;margin-bottom:6px;color:var(--ink);font-size:16px}
     .resource-empty p{font-size:13px;line-height:1.5;margin:0}
     @media(max-width:540px){.resource-card{gap:10px;padding:12px;border-radius:18px}.resource-art{width:61px;height:61px;flex-basis:61px;border-radius:14px}.resource-art svg{width:34px;height:34px}.resource-title{font-size:15px}.resource-meta{gap:6px}.resource-status{font-size:11px}.resource-category{font-size:10px;padding:4px 7px}.resource-date{font-size:10px}.resource-chevron{width:27px;height:27px;flex-basis:27px}}
-
   </style>
+
+<style>
+/* Adaptive schedule and mobile-first touch improvements. */
+    .countdown-chip{display:inline-flex;align-items:center;gap:7px;margin-top:12px;padding:8px 11px;border:1px solid #e5d7b8;border-radius:12px;background:rgba(255,253,248,.82);color:#72571f;font-size:13px;line-height:1.4;font-weight:bold}
+    .countdown-card{display:flex;align-items:center;gap:12px;padding:15px 18px;margin:-5px 0 17px;border:1px solid #e8d9b5;border-radius:17px;background:linear-gradient(110deg,#fbf4e4,#fffdf9);color:#6e5523}
+    .countdown-icon{width:42px;height:42px;display:grid;place-items:center;flex:0 0 42px;border-radius:13px;background:#f2e5c7;font-size:21px}
+    .countdown-card small{display:block;font-size:10px;letter-spacing:1px;font-weight:bold;color:#94732c;margin-bottom:4px}
+    .countdown-card strong{display:block;font-size:15px;line-height:1.45;color:#55441f}
+    .schedule-form-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .schedule-date-field{max-width:calc(50% - 7px)}
+    .calendar-wrap{width:100%;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:auto;scrollbar-width:thin;scrollbar-color:#d5cec2 transparent}
+    .calendar{width:100%;min-width:300px;max-width:650px;margin:0 auto;display:grid;grid-template-columns:48px repeat(7,minmax(30px,1fr));grid-template-rows:38px repeat(28,16px);gap:0;overflow:hidden;border:1px solid #b9b5ae;border-radius:5px;background:#fff;touch-action:auto}
+    .calendar-corner{border-bottom:1px solid #8d8a84}
+    .cal-head{display:flex;align-items:center;justify-content:center;padding:2px 0;font-size:10px;line-height:1.2;border-left:1px solid #c5c2bc;border-bottom:1px solid #8d8a84;background:#fff;color:#272727;touch-action:pan-x}
+    .cal-head.today{color:#111;font-weight:800;background:#f4f2ed}
+    .time-label{height:16px;min-height:0;display:flex;align-items:center;justify-content:flex-end;padding:0 4px 0 0;border-right:1px solid #9d9a93;background:#fff;color:#303030;line-height:1;touch-action:pan-y}
+    .time-label strong{font-size:9px;font-weight:normal;color:inherit;white-space:nowrap}
+    .slot{display:block;width:100%;height:16px;min-height:0;margin:0;padding:0;border:0;border-right:1px solid #706f69;border-bottom:1px solid #8d8b84;border-radius:0;background:#fff;color:transparent;font-size:0;line-height:0;box-shadow:none;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;cursor:crosshair}
+    .slot.busy{background:#f4dfe2;border-color:#81777a;color:transparent}
+    .slot.free{background:#159c13;border-color:#3c6037;color:transparent}
+    .slot:hover{filter:brightness(.96)}
+    .slot.is-touching{transform:none;box-shadow:inset 0 0 0 2px rgba(21,72,27,.75);filter:saturate(1.15)}
+    .calendar-help{line-height:1.55}
+    .plan-list{gap:10px}
+    .plan-item{grid-template-columns:100px minmax(0,1fr) auto;gap:12px;align-items:start;padding:13px}
+    .plan-item.is-done{background:#f2f7f2;border-color:#c9dfce}
+    .plan-date{overflow-wrap:anywhere}
+    .plan-date small{color:var(--muted)}
+    .plan-topic>strong{display:block;color:var(--ink);line-height:1.4}
+    .plan-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0;font-size:11px;color:var(--muted);font-weight:normal}
+    .plan-topic small{font-size:12px}
+    .plan-check{display:flex;align-items:center;gap:7px;min-height:44px;padding:3px 5px;color:#4d5968;font-size:12px;white-space:nowrap;cursor:pointer}
+    .plan-check input{width:20px;height:20px;accent-color:var(--green)}
+    .calendar-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;color:var(--muted);font-size:12px;font-weight:bold}
+    .calendar-mode{min-width:62px;min-height:44px;padding:8px 12px;background:#fffdf9;border-color:var(--line);color:var(--ink)}
+    .calendar-mode[data-slot-mode="free"].active{background:#e4f2e8;border-color:#b8d9c2;color:#216b46}
+    .calendar-mode[data-slot-mode="busy"].active{background:#f6e5e9;border-color:#e2bdc5;color:#913b50}
+    .calendar-mode[data-slot-mode="unset"].active{background:#eeece8;border-color:#d3cec5;color:#626875}
+    .calendar-corner,.time-label{position:sticky;left:0;z-index:3;background:#fff}
+    @media(max-width:540px){
+      .countdown-chip{display:flex;align-items:flex-start;width:100%;font-size:12px;padding:9px 10px}
+      .countdown-card{align-items:flex-start;padding:13px;margin:-3px 0 14px}
+      .countdown-card strong{font-size:14px}
+      .schedule-form-row{grid-template-columns:1fr}
+      .schedule-date-field{max-width:none}
+      .schedule-form-row .field input,.schedule-date-field input,.settings-grid input{font-size:16px;min-height:46px}
+      .calendar-wrap{margin-right:-5px;padding:0 5px 7px 0}
+      .calendar{min-width:300px;grid-template-columns:42px repeat(7,minmax(30px,1fr));grid-template-rows:38px repeat(28,16px)}
+      .time-label{padding-right:3px}
+      .time-label strong{font-size:8px}
+      .calendar-legend{gap:6px}
+      .calendar-legend .pill{font-size:10px}
+      .plan-item{grid-template-columns:minmax(0,1fr);gap:7px;padding:12px}
+      .plan-date{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;line-height:1.35}
+      .plan-date strong{display:inline;font-size:13px}
+      .plan-date br{display:none}
+      .plan-date span,.plan-date small{grid-column:2}
+      .plan-topic{font-size:14px}
+      .plan-check{justify-self:start;padding:0 4px}
+      .plan-check input{width:22px;height:22px}
+      .button-row .btn{min-height:44px}
+    }
+    @media(max-width:360px){.countdown-card{gap:9px}.countdown-icon{width:36px;height:36px;flex-basis:36px}.calendar{min-width:280px;grid-template-columns:38px repeat(7,minmax(28px,1fr))}}
+  
+    /* 24-hour When2meet columns and one-card-per-day roadmap timeline. */
+    .calendar-wrap{width:100%;overflow-x:auto;overflow-y:visible;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:auto;scrollbar-width:thin}
+    .calendar{width:100%;min-width:300px;max-width:680px;margin:0 auto;display:grid;grid-template-columns:48px repeat(7,minmax(30px,1fr));grid-template-rows:38px repeat(46,16px) 18px;gap:0;overflow:hidden;border:1px solid #b9b5ae;border-radius:5px;background:#fff;touch-action:auto}
+    .calendar-corner{position:sticky;left:0;z-index:4;background:#fff;border-bottom:1px solid #888}
+    .cal-head{display:flex;align-items:center;justify-content:center;padding:2px 0;font-size:10px;line-height:1.2;text-align:center;border-left:1px solid #c5c2bc;border-bottom:1px solid #888;background:#fff;color:#272727;touch-action:pan-x}
+    .cal-head.today{font-weight:800;background:#f4f2ed}
+    .time-label,.calendar-end-time{position:sticky;left:0;z-index:3;display:flex;align-items:center;justify-content:flex-end;height:16px;min-height:0;padding:0 4px 0 0;border-right:1px solid #999;background:#fff;color:#303030;line-height:1;touch-action:auto}
+    .time-label strong,.calendar-end-time strong{font-size:9px;font-weight:normal;color:inherit;white-space:nowrap}
+    .calendar-end-time{height:18px;border-top:1px solid #888}
+    .calendar-end-fill{border-top:1px solid #888;background:#fff}
+    .slot{display:block;width:100%;height:16px;min-height:0;margin:0;padding:0;border:0;border-right:1px solid #777;border-bottom:1px solid #888;border-radius:0;background:#fff;color:transparent;font-size:0;line-height:0;box-shadow:none;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;cursor:crosshair}
+    .slot.busy{background:#f4dfe2;border-color:#81777a;color:transparent}
+    .slot:hover{filter:brightness(.96)}
+    .slot.is-touching{transform:none;box-shadow:inset 0 0 0 2px rgba(119,48,61,.8);filter:saturate(1.1)}
+    .calendar-help{line-height:1.55}
+    .plan-list{display:grid;gap:12px}
+    .plan-item.day-plan{display:block;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#fffdfa}
+    .day-plan-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#f7f5f0;border-bottom:1px solid var(--line)}
+    .day-plan-title{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+    .day-plan-title strong{font-size:15px;color:var(--ink)}
+    .day-plan-title span{font-size:12px;color:var(--muted)}
+    .day-timeline{padding:0 14px}
+    .timeline-row{display:grid;grid-template-columns:112px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+    .timeline-row:last-child{border-bottom:0}
+    .timeline-row.is-done{background:#f2f7f2}
+    .timeline-time strong,.timeline-time small{display:block}
+    .timeline-time strong{font-size:13px;color:var(--ink);white-space:nowrap}
+    .timeline-time small{font-size:11px;color:var(--muted);margin-top:3px}
+    .timeline-content>strong{font-size:14px;color:var(--ink);line-height:1.4}
+    .timeline-content>small{display:block;color:var(--muted);font-size:12px;line-height:1.45}
+    .timeline-content .plan-meta{margin:5px 0}
+    .day-no-free{padding:0 15px 14px;margin:0;color:var(--muted);font-size:13px}
+    @media(max-width:540px){
+      .calendar{min-width:300px;grid-template-columns:42px repeat(7,minmax(30px,1fr));grid-template-rows:38px repeat(46,16px) 18px}
+      .time-label,.calendar-end-time{padding-right:3px}
+      .time-label strong,.calendar-end-time strong{font-size:8px}
+      .day-plan-head{align-items:flex-start;padding:12px}
+      .day-timeline{padding:0 11px}
+      .timeline-row{grid-template-columns:66px minmax(0,1fr);gap:8px;padding:12px 0}
+      .timeline-time strong{font-size:12px;white-space:normal}
+      .timeline-row .plan-check{grid-column:2;justify-self:start;min-height:44px;padding:0}
+      .timeline-content>strong{font-size:13px}
+    }
+    @media(max-width:360px){.calendar{min-width:280px;grid-template-columns:38px repeat(7,minmax(28px,1fr))}.time-label strong,.calendar-end-time strong{font-size:7px}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -137,10 +287,10 @@
       <!-- HOME -->
       <section id="view-home" class="view active">
         <div class="hero">
-          <div class="hero-copy"><p class="eyebrow">Lộ trình của riêng bạn</p><h1>Chào bạn, Hân! ✦</h1><p>Mỗi bài toán là một bước tiến. Cùng xây nền tảng vững chắc và tự tin chinh phục kỳ thi vào lớp 10 nhé.</p><div class="hero-actions"><button class="btn btn-primary" onclick="switchView('practice');startQuiz('diagnostic')"><i data-lucide="play"></i> Test năng lực</button><button class="btn btn-light" onclick="switchView('schedule')"><i data-lucide="calendar-check"></i> Lập lịch học</button></div></div>
+          <div class="hero-copy"><p class="eyebrow">Lộ trình của riêng bạn</p><h1>Chào bạn, Hân! ✦</h1><p>Mỗi bài toán là một bước tiến. Cùng xây nền tảng vững chắc và tự tin chinh phục kỳ thi vào lớp 10 nhé.</p><div id="homeCountdown" class="countdown-chip" aria-live="polite">Chọn ngày thi để bật đếm ngược.</div><div class="hero-actions"><button class="btn btn-primary" onclick="switchView('practice');startQuiz('diagnostic')"><i data-lucide="play"></i> Test năng lực</button><button class="btn btn-light" onclick="switchView('schedule')"><i data-lucide="calendar-check"></i> Lập lịch học</button></div></div>
           <div class="hero-art" aria-hidden="true"><svg viewBox="0 0 160 130" fill="none"><path d="M10 98H151M79 8V122" stroke="#a4aab5" stroke-width="1.4" stroke-linecap="round"/><path d="M145 93l6 5-6 5M74 14l5-6 5 6" stroke="#a4aab5" stroke-width="1.4"/><path d="M20 25Q80 150 140 25" stroke="#883b4c" stroke-width="3" stroke-linecap="round"/><circle cx="80" cy="98" r="4" fill="#b78129"/><text x="145" y="115" fill="#687083" font-size="12" font-style="italic">x</text><text x="89" y="18" fill="#687083" font-size="12" font-style="italic">y</text><text x="26" y="115" fill="#b78129" font-size="17">✦</text></svg></div>
         </div>
-        <div class="stats"><div class="stat"><label>Tiến độ học tập</label><strong id="homeProgress">0%</strong><small>Hoàn thành bài học</small></div><div class="stat"><label>Điểm năng lực</label><strong id="homeScore">—</strong><small id="homeScoreSub">Chưa làm bài test</small></div><div class="stat"><label>Mục tiêu điểm</label><strong id="homeTarget">8.0</strong><small>Điểm Toán vào lớp 10</small></div></div>
+        <div class="stats"><div class="stat"><label>Tiến độ học tập</label><strong id="homeProgress">0%</strong><small>Hoàn thành bài học</small></div><div class="stat"><label>Điểm năng lực</label><strong id="homeScore">—</strong><small id="homeScoreSub">Chưa làm bài test</small></div><div class="stat"><label>Mục tiêu điểm</label><strong id="homeTarget">8.0</strong><small>Điểm Toán vào 10</small></div></div>
         <div class="section-head explore-head"><div><h2>Khám phá nội dung</h2><p>Chọn một khu vực để bắt đầu ôn tập</p></div><span class="carousel-hint"><i data-lucide="move-horizontal"></i> Kéo ngang để xem thêm</span></div>
         <div class="grid category-grid" aria-label="Khám phá nội dung, kéo ngang để xem thêm">
           <button class="category" onclick="showLessons('chuyen-de')"><span class="cat-icon"><i data-lucide="book-open"></i></span><strong>Chuyên đề ôn tập</strong><span>Đại số, hàm số, hình học và bài toán thực tế</span></button>
@@ -155,16 +305,17 @@
 
       <!-- SCHEDULE -->
       <section id="view-schedule" class="view">
-        <div class="page-head"><div><p class="eyebrow">Kế hoạch cá nhân</p><h1>Lịch trình tự học</h1><p>Đánh dấu lúc bận của bạn. Hệ thống sẽ ưu tiên những khoảng thời gian còn trống để gợi ý lịch ôn tập theo mục tiêu điểm số.</p></div></div>
+        <div class="page-head"><div><p class="eyebrow">Kế hoạch cá nhân</p><h1>Lịch trình tự học</h1><p>Nền trắng là thời gian Rảnh; tô hồng các khoảng Bận. Lộ trình sẽ điều chỉnh theo mục tiêu, kết quả luyện tập và ngày thi.</p></div></div>
+        <div class="countdown-card"><span class="countdown-icon">⏳</span><div><small>ĐẾM NGƯỢC KỲ THI</small><strong id="scheduleCountdown" aria-live="polite">Chọn ngày thi để bật đếm ngược.</strong></div></div>
         <div id="diagnosticNotice" class="notice"><div class="notice-icon"><i data-lucide="clipboard-list"></i></div><div><h3>Bắt đầu bằng bài test xác định năng lực</h3><p>Làm bài test ngắn để ước lượng mức hiện tại. Sau khi hoàn thành, khung này sẽ tự ẩn và kết quả được dùng để cá nhân hóa lộ trình.</p><button class="btn btn-primary btn-small" onclick="switchView('practice');startQuiz('diagnostic')">Làm bài test <i data-lucide="arrow-right"></i></button></div></div>
-        <div class="panel"><div class="section-head" style="margin:0 0 8px"><div><h2>Lịch bận trong tuần</h2><p>Chạm vào ô thời gian để chuyển giữa rảnh và bận.</p></div><span class="pill neutral" id="weekRange">Tuần này</span></div>
-          <div class="tag-row" style="margin:12px 0 14px"><span class="pill rose">■ Bận</span><span class="pill green">■ Có thể học</span><span class="pill neutral">■ Chưa chọn</span></div>
-          <div class="calendar-wrap"><div id="calendarGrid" class="calendar"></div></div><p class="calendar-help">Mặc định là chưa chọn. Khi đánh dấu một ô là “bận”, AI sẽ không xếp lịch học vào khoảng thời gian đó.</p>
-          <div class="form-row" style="margin-top:18px"><div class="field"><label for="targetScore">Mục tiêu điểm số</label><select id="targetScore"><option value="6">6 điểm — Củng cố nền tảng</option><option value="7">7 điểm — Nắm chắc dạng cơ bản</option><option value="8" selected>8 điểm — Khá, cần luyện đều</option><option value="9">9 điểm — Nâng cao, chuyên sâu</option><option value="10">10 điểm — Tối ưu toàn diện</option></select></div><div class="field"><label for="examDate">Ngày thi dự kiến</label><input type="date" id="examDate" /></div></div>
-          <div class="button-row" style="margin-top:15px"><button class="btn btn-primary" id="generatePlanBtn" onclick="generateStudyPlan()"><i data-lucide="sparkles"></i> Tạo lịch tự học</button><button class="btn btn-light" onclick="clearBusySlots()">Xóa đánh dấu bận</button></div>
+        <div class="panel"><div class="section-head" style="margin:0 0 8px"><div><h2>Lịch rảnh trong tuần</h2><p>Mỗi ngày là một cột dọc liền mạch; vuốt qua các dải giờ để tô nhanh.</p></div><span class="pill neutral" id="weekRange">Tuần này</span></div>
+          
+          <div class="calendar-wrap" aria-label="Lịch chọn thời gian trong tuần"><div id="calendarGrid" class="calendar"></div></div><p class="calendar-help">Lịch dạng cột như When2meet: Thứ 2–Chủ nhật, 01:00–24:00; mỗi dải ngang là 30 phút. Nền trắng mặc định là Rảnh. Nhấn giữ rồi kéo/vuốt qua các dải để tô Bận màu hồng; kéo lại để xóa màu. Trang không cuộn dọc khi đang tô.</p>
+          <div class="form-row schedule-form-row" style="margin-top:18px"><div class="field"><label for="targetScore">Mục tiêu điểm số (0–10)</label><input id="targetScore" type="number" min="0" max="10" step="0.25" inputmode="decimal" value="8" aria-describedby="targetScoreHelp" /><small id="targetScoreHelp">Có thể nhập điểm lẻ, ví dụ 8.25 hoặc 9.5.</small></div><div class="field"><label for="examName">Tên kỳ thi</label><input id="examName" type="text" maxlength="80" placeholder="Ví dụ: Thi vào 10, Thi Chuyên Toán" /></div></div><div class="field schedule-date-field" style="margin-top:13px"><label for="examDate">Ngày thi dự kiến</label><input type="date" id="examDate" /></div>
+          <div class="button-row" style="margin-top:15px"><button class="btn btn-primary" id="generatePlanBtn" onclick="generateStudyPlan()"><i data-lucide="sparkles"></i> Tạo lịch tự học</button><button class="btn btn-light" onclick="clearBusySlots()">Xóa đánh dấu lịch</button></div>
           <div id="planStatus" class="status-line"><span class="dot"></span> Lịch sẽ được gợi ý dựa trên thời gian rảnh và mục tiêu của bạn.</div>
         </div>
-        <div class="panel"><div class="section-head" style="margin:0 0 13px"><div><h2>Lộ trình đề xuất</h2><p id="planSubtitle">Lịch học sẽ xuất hiện sau khi bạn tạo lộ trình.</p></div><span id="planBadge" class="pill neutral">Chưa tạo</span></div><div id="studyPlan" class="empty">Chưa có lịch trình. Chọn các khoảng thời gian bận và nhấn “Tạo lịch tự học”.</div></div>
+        <div class="panel"><div class="section-head" style="margin:0 0 13px"><div><h2>Lộ trình đề xuất</h2><p id="planSubtitle">Lịch học sẽ xuất hiện sau khi bạn tạo lộ trình.</p></div><span id="planBadge" class="pill neutral">Chưa tạo</span></div><div id="studyPlan" class="empty">Tô màu hồng các khoảng Bận; nền trắng mặc định được tính là Rảnh. Sau đó nhấn “Tạo lịch tự học”.</div></div>
       </section>
 
       <!-- PRACTICE -->
@@ -198,12 +349,20 @@
       <!-- SETTINGS -->
       <section id="view-settings" class="view">
         <div class="page-head"><div><p class="eyebrow">Cá nhân hóa</p><h1>Cài đặt học tập</h1><p>Quản lý mục tiêu điểm, tiến độ và kiểm tra trạng thái kết nối các chức năng AI.</p></div></div>
-        <div class="grid settings-grid"><div class="panel"><h3>Mục tiêu học tập</h3><p class="panel-desc">Mục tiêu này được dùng khi tạo lịch trình.</p><div class="field"><label for="settingsTarget">Điểm Toán mục tiêu</label><select id="settingsTarget"><option value="6">6 điểm</option><option value="7">7 điểm</option><option value="8" selected>8 điểm</option><option value="9">9 điểm</option><option value="10">10 điểm</option></select></div><button class="btn btn-primary" style="margin-top:13px" onclick="saveSettings()">Lưu mục tiêu</button></div><div class="panel"><h3>Kết nối AI</h3><p class="panel-desc">AI tạo câu hỏi, tìm kiếm ngữ nghĩa, lập lịch và chấm ảnh cần máy chủ Node.js cùng Gemini API key.</p><div class="status-line"><span class="dot" id="settingsApiDot"></span><span id="settingsApiText">Đang kiểm tra…</span></div><button class="btn btn-light" style="margin-top:13px" onclick="checkApiHealth(true)"><i data-lucide="refresh-cw"></i> Kiểm tra lại</button></div><div class="panel"><h3>Dữ liệu trên thiết bị</h3><p class="panel-desc">Tiến độ, lịch bận và kết quả test đang được lưu trong trình duyệt này.</p><button class="btn btn-rose" onclick="resetLocalData()"><i data-lucide="rotate-ccw"></i> Xóa dữ liệu đã lưu</button></div><div class="panel"><h3>Ghi chú phiên bản</h3><p class="panel-desc">Bản mẫu đã có lịch tương tác, lưu tiến độ cục bộ, test và câu hỏi mẫu. Chấm ảnh bằng AI thật chỉ hoạt động khi backend đã cấu hình thành công.</p><div class="tag-row"><span class="pill green">Giao diện hoạt động</span><span class="pill gold">AI cần cấu hình</span></div></div></div>
+        <div class="grid settings-grid"><div class="panel"><h3>Mục tiêu học tập</h3><p class="panel-desc">Mục tiêu này được dùng khi tạo lịch trình.</p><div class="field"><label for="settingsTarget">Điểm Toán mục tiêu</label><input id="settingsTarget" type="number" min="0" max="10" step="0.25" inputmode="decimal" value="8" /></div><button class="btn btn-primary" style="margin-top:13px" onclick="saveSettings()">Lưu mục tiêu</button></div><div class="panel"><h3>Kết nối AI</h3><p class="panel-desc">AI tạo câu hỏi, tìm kiếm ngữ nghĩa, lập lịch và chấm ảnh cần máy chủ Node.js cùng Gemini API key.</p><div class="status-line"><span class="dot" id="settingsApiDot"></span><span id="settingsApiText">Đang kiểm tra…</span></div><button class="btn btn-light" style="margin-top:13px" onclick="checkApiHealth(true)"><i data-lucide="refresh-cw"></i> Kiểm tra lại</button></div><div class="panel"><h3>Dữ liệu trên thiết bị</h3><p class="panel-desc">Tiến độ, lịch bận và kết quả test đang được lưu trong trình duyệt này.</p><button class="btn btn-rose" onclick="resetLocalData()"><i data-lucide="rotate-ccw"></i> Xóa dữ liệu đã lưu</button></div><div class="panel"><h3>Ghi chú phiên bản</h3><p class="panel-desc">Bản mẫu đã có lịch tương tác, lưu tiến độ cục bộ, test và câu hỏi mẫu. Chấm ảnh bằng AI thật chỉ hoạt động khi backend đã cấu hình thành công.</p><div class="tag-row"><span class="pill green">Giao diện hoạt động</span><span class="pill gold">AI cần cấu hình</span></div></div></div>
       </section>
     </main>
   </div>
   <nav class="mobile-nav" aria-label="Điều hướng chính"><button class="nav-btn active" data-view="home" onclick="switchView('home')"><i data-lucide="house"></i>Trang chủ</button><button class="nav-btn" data-view="schedule" onclick="switchView('schedule')"><i data-lucide="calendar-days"></i>Lịch trình</button><button class="nav-btn" data-view="practice" onclick="switchView('practice')"><i data-lucide="book-open-check"></i>Luyện thi</button><button class="nav-btn" data-view="grade" onclick="switchView('grade')"><i data-lucide="scan-text"></i>Chấm AI</button><button class="nav-btn" data-view="settings" onclick="switchView('settings')"><i data-lucide="settings"></i>Cài đặt</button></nav>
 </div>
+<div id="aiChatBackdrop" class="floating-chat-backdrop" hidden aria-hidden="true"></div>
+<section id="aiChatPanel" class="floating-chat-panel" role="dialog" aria-modal="true" aria-label="Trò chuyện với AI học tập" aria-hidden="true" hidden>
+  <header class="ai-chat-head"><div><div class="ai-chat-title">Trò chuyện với AI</div><div class="ai-chat-subtitle"><span class="dot" id="chatApiDot"></span><span id="chatApiStatus">Đang kết nối máy chủ…</span></div></div><button id="aiChatClose" class="ai-chat-close" type="button" aria-label="Đóng trò chuyện"><i data-lucide="x"></i></button></header>
+  <div id="aiChatMessages" class="ai-chat-messages" role="log" aria-live="polite" aria-relevant="additions text"><div class="ai-chat-message assistant">Chào bạn! Mình có thể giúp giải thích Toán 9, gợi ý cách làm bài và ôn tập từng bước. Bạn đang cần giúp gì?</div></div>
+  <form id="aiChatForm" class="ai-chat-form"><textarea id="aiChatInput" class="ai-chat-input" rows="2" maxlength="3000" placeholder="Nhập câu hỏi của bạn…" aria-label="Tin nhắn cho AI" required></textarea><button id="aiChatSend" class="ai-chat-send" type="submit" aria-label="Gửi tin nhắn"><i data-lucide="send"></i></button></form>
+  <p class="ai-chat-note">AI có thể nhầm lẫn. Hãy kiểm tra lại lời giải trước khi sử dụng.</p>
+</section>
+<button id="aiChatToggle" class="floating-chat-toggle" type="button" aria-label="Mở trò chuyện với AI" aria-controls="aiChatPanel" aria-expanded="false" title="Trò chuyện với AI"><i data-lucide="message-circle"></i></button>
 <div id="searchOverlay" class="search-overlay" aria-hidden="true" onclick="if(event.target===this)closeSearchOverlay()">
   <div class="search-screen" role="dialog" aria-modal="true" aria-label="Tìm kiếm bài học">
     <div class="search-overlay-head">
@@ -229,7 +388,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script>
   const STORAGE_KEY = 'mathLearnAI_v2';
-  let lessons = [
+  const lessons = [
     {id:1,title:'Phương trình và hệ phương trình',category:'chuyen-de',label:'Đại số',description:'Giải phương trình, hệ phương trình bậc nhất hai ẩn và bài toán lập phương trình.',tags:'phương trình hệ phương trình đại số lập hệ bài toán thực tế',icon:'function-square'},
     {id:2,title:'Hàm số bậc hai và đồ thị',category:'chuyen-de',label:'Hàm số',description:'Parabol, bảng giá trị, giao điểm và bài toán liên hệ đồ thị.',tags:'hàm số bậc hai parabol đồ thị delta tọa độ',icon:'chart-no-axes-combined'},
     {id:3,title:'Hệ thức lượng trong tam giác vuông',category:'chuyen-de',label:'Hình học',description:'Tỉ số lượng giác, hệ thức cạnh và đường cao.',tags:'hệ thức lượng tam giác vuông sin cos tan',icon:'triangle'},
@@ -241,6 +400,7 @@
     {id:9,title:'Đề luyện tập cuối kỳ',category:'de-cuoi-ky',label:'Cuối kỳ',description:'Củng cố kỹ năng trình bày và giải bài toán nhiều bước.',tags:'cuối kỳ tổng kết kiểm tra',icon:'award'},
     {id:10,title:'Phương trình chứa căn — nâng cao',category:'chuyen-de',label:'Nâng cao',description:'Điều kiện xác định, biến đổi tương đương và đối chiếu nghiệm.',tags:'phương trình chứa căn căn thức nâng cao',icon:'sigma'}
   ];
+  const seedLessons = [...lessons];
   const questionBank = [
     {topic:'Phương trình và hệ phương trình',difficulty:'co-ban',q:'Phương trình 2x − 6 = 0 có nghiệm là',options:['x = 2','x = 3','x = −3','x = 6'],answer:1,explain:'2x − 6 = 0 ⇔ 2x = 6 ⇔ x = 3.'},
     {topic:'Phương trình và hệ phương trình',difficulty:'van-dung',q:'Hệ phương trình x + y = 5, x − y = 1 có nghiệm (x; y) là',options:['(2; 3)','(3; 2)','(1; 4)','(4; 1)'],answer:1,explain:'Cộng hai phương trình được 2x = 6 nên x = 3; suy ra y = 2.'},
@@ -263,17 +423,91 @@
   let apiAvailable = false;
   let toastTimer;
 
+  // Tiện ích Format Ngày Việt Nam DD/MM/YYYY
+  function formatDateVN(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+  }
+
   function loadState(){
-    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',completedLessons:[],plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
+    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
   function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats()}
   function showToast(message){const el=document.getElementById('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
-  function icons(){
-    if(window.lucide?.createIcons){window.lucide.createIcons();return}
-    const glyphs={'search':'⌕','sparkles':'✧','shield-check':'✓','home':'⌂','calendar':'▦','calendar-days':'▦','book-open':'▤','book-open-check':'▣','brain-circuit':'✧','scan-text':'▤','settings':'⚙','trophy':'♜','chevron-right':'›','arrow-left':'‹','clock-3':'◷','clock':'◷','x':'×','trash':'♲','trash-2':'♲','move-horizontal':'↔','play':'▶','check-circle':'✓','pencil-line':'✎','file-text':'▤','graduation-cap':'♧','function-square':'ƒ','chart-no-axes-combined':'⌁','triangle':'△','circle':'○','sigma':'Σ','calculator':'▦','file-check':'✓','clipboard-list':'☷','award':'☆','sparkle':'✦'};
-    document.querySelectorAll('i[data-lucide]').forEach(el=>{const name=el.getAttribute('data-lucide');const span=document.createElement('span');span.className='icon-fallback';span.setAttribute('aria-hidden','true');span.textContent=glyphs[name]||'•';el.replaceWith(span)});
+  function icons(){if(window.lucide?.createIcons)window.lucide.createIcons()}
+  const aiChatHistory=[];
+  function setAIChatOpen(open){
+    const panel=document.getElementById('aiChatPanel');
+    const backdrop=document.getElementById('aiChatBackdrop');
+    const toggle=document.getElementById('aiChatToggle');
+    panel.hidden=!open;
+    panel.setAttribute('aria-hidden',String(!open));
+    backdrop.hidden=!open;
+    backdrop.setAttribute('aria-hidden',String(!open));
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.setAttribute('aria-label',open?'Đóng trò chuyện với AI':'Mở trò chuyện với AI');
+    document.body.style.overflow=open?'hidden':'';
+    if(open)document.getElementById('aiChatInput').focus({preventScroll:true});
   }
+  document.getElementById('aiChatToggle').addEventListener('click',()=>setAIChatOpen(document.getElementById('aiChatPanel').hidden));
+  document.getElementById('aiChatClose').addEventListener('click',()=>setAIChatOpen(false));
+  document.getElementById('aiChatBackdrop').addEventListener('click',()=>setAIChatOpen(false));
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!document.getElementById('aiChatPanel').hidden)setAIChatOpen(false)});
+  function appendAIChatMessage(role,text,extraClass=''){
+    const message=document.createElement('div');
+    message.className=`ai-chat-message ${role==='user'?'user':'assistant'} ${extraClass}`.trim();
+    if(role==='user')message.textContent=text;
+    else renderGradingMarkdown(text,message);
+    document.getElementById('aiChatMessages').append(message);
+    const list=document.getElementById('aiChatMessages');
+    list.scrollTop=list.scrollHeight;
+    return message;
+  }
+  function recentAIChatMessages(text){
+    const messages=[...aiChatHistory,{role:'user',text}];
+    let total=messages.reduce((count,message)=>count+message.text.length,0);
+    while(messages.length>20||total>12000){
+      const removed=messages.splice(0,2);
+      total-=removed.reduce((count,message)=>count+message.text.length,0);
+    }
+    return messages;
+  }
+  document.getElementById('aiChatInput').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('aiChatForm').requestSubmit()}});
+  document.getElementById('aiChatForm').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const input=document.getElementById('aiChatInput');
+    const text=input.value.trim();
+    if(!text)return;
+    const send=document.getElementById('aiChatSend');
+    const userBubble=appendAIChatMessage('user',text);
+    const waitingBubble=appendAIChatMessage('assistant','AI đang suy nghĩ…','ai-chat-loading');
+    send.disabled=true;
+    input.readOnly=true;
+    try{
+      const messages=recentAIChatMessages(text);
+      const response=await fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'AI chưa trả lời được. Vui lòng thử lại.');
+      const reply=String(data.reply||'').trim();
+      if(!reply)throw new Error('AI chưa gửi nội dung trả lời. Vui lòng thử lại.');
+      aiChatHistory.splice(0,aiChatHistory.length,...messages,{role:'model',text:reply});
+      waitingBubble.remove();
+      appendAIChatMessage('assistant',reply);
+      input.value='';
+    }catch(error){
+      userBubble.remove();
+      waitingBubble.remove();
+      appendAIChatMessage('assistant',error.message||'Không kết nối được máy chủ AI.');
+      showToast('Chưa gửi được tin nhắn. Hãy thử lại.');
+    }finally{
+      send.disabled=false;
+      input.readOnly=false;
+      input.focus({preventScroll:true});
+    }
+  });
   function switchView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}window.scrollTo({top:0,behavior:'smooth'});icons()}
   function norm(s){return String(s||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
   function showLessons(cat){
@@ -351,13 +585,13 @@
     let question=questionBank.find(q=>norm(q.topic)===norm(lesson.title))||questionBank.find(q=>norm(q.topic).includes(norm(lesson.title.split(' ')[0])))||questionBank[0];
     document.getElementById('lessonList').className='lesson-list';
     document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showLessons('all')">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
-  }  function lessonAnswer(btn,index,answer,id){const panel=btn.closest('.notice');panel.querySelectorAll('.option').forEach(o=>o.disabled=true);if(index===answer){btn.classList.add('correct');document.getElementById('lessonFeedback').textContent='Chính xác! Hãy thử tự trình bày vì sao đáp án này đúng.';markLessonDone(id,false)}else{btn.classList.add('wrong');panel.querySelectorAll('.option')[answer].classList.add('correct');document.getElementById('lessonFeedback').textContent='Chưa đúng. Đọc lại định nghĩa, thử giải thích từng phương án rồi làm lại ở mục Luyện thi.'}}
+  }  function lessonAnswer(btn,index,answer,id){const panel=btn.closest('.notice');panel.querySelectorAll('.option').forEach(o=>o.disabled=true);if(index===answer){btn.classList.add('selected','correct');document.getElementById('lessonFeedback').textContent='Chính xác! Hãy thử tự trình bày vì sao đáp án này đúng.';markLessonDone(id,false)}else{btn.classList.add('selected','wrong');panel.querySelectorAll('.option')[answer].classList.add('correct');document.getElementById('lessonFeedback').textContent='Chưa đúng. Đọc lại định nghĩa, thử giải thích từng phương án rồi làm lại ở mục Luyện thi.'}}
   function markLessonDone(id,toast=true){if(!state.completedLessons.includes(id))state.completedLessons.push(id);saveState();renderLessons();if(toast)showToast('Đã lưu tiến độ bài học.');}
-  function updateStats(){let p=Math.round(state.completedLessons.length/lessons.length*100);document.getElementById('homeProgress').textContent=p+'%';document.getElementById('homeScore').textContent=state.diagnosticPercent===null?'—':`${(state.diagnosticPercent/10).toFixed(1)}`;document.getElementById('homeScoreSub').textContent=state.diagnosticPercent===null?'Chưa làm bài test':`Đã làm ${state.diagnosticDate||'bài test'}`;document.getElementById('homeTarget').textContent=Number(state.targetScore||8).toFixed(1);document.getElementById('diagnosticNotice').classList.toggle('hidden',state.diagnosticDone)}
+  function formatScore(value){const n=Number(value);return Number.isFinite(n)?String(Number(n.toFixed(2))):'8'}
+    function updateStats(){const lessonsDone=Array.isArray(state.completedLessons)?state.completedLessons.length:0,plan=Array.isArray(state.plan)?state.plan:[],blocks=plan.flatMap(day=>Array.isArray(day.blocks)?day.blocks:[]),completedIds=Array.isArray(state.completedPlanIds)?state.completedPlanIds:[],planDone=blocks.filter(block=>completedIds.includes(block.id)||block.slotIds?.length&&block.slotIds.every(slotId=>completedIds.includes(planIdFor(block.date,slotId)))).length,total=lessons.length+blocks.length,p=total?Math.round((lessonsDone+planDone)/total*100):0,latestScore=state.latestPracticeScore!==null?state.latestPracticeScore:state.diagnosticPercent;document.getElementById('homeProgress').textContent=p+'%';document.getElementById('homeScore').textContent=latestScore===null?'—':formatScore(latestScore/10);document.getElementById('homeScoreSub').textContent=latestScore===null?'Chưa làm bài test':`Cập nhật ${state.lastPracticeDate||state.diagnosticDate||'sau bài test'}`;document.getElementById('homeTarget').textContent=formatScore(state.targetScore||8);document.getElementById('diagnosticNotice').classList.toggle('hidden',state.diagnosticDone)}
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 
   // Horizontal swipe/drag carousel for the "Khám phá nội dung" cards.
-  // Touch devices use native swipe; this adds mouse dragging for desktop.
   (function setupCategoryCarousel(){
     const track=document.querySelector('.category-grid');
     if(!track)return;
@@ -396,54 +630,315 @@
   function clearSearchModalInput(){const input=document.getElementById('searchModalInput');input.value='';handleSearchModalInput('');input.focus()}
   function removeSearchHistory(index){state.history=(state.history||[]).filter((_,i)=>i!==index);saveState();renderSearchHistory()}
   function clearSearchHistory(){state.history=[];saveState();renderSearchHistory();showToast('Đã xóa lịch sử tìm kiếm.')}
-  function runSearchQuery(query){const q=String(query||'').trim();if(!q)return;homeResourceMode=false;state.lastQuery=q;state.history=[q,...(state.history||[]).filter(item=>norm(item)!==norm(q))].slice(0,8);saveState();document.getElementById('searchModalInput').value=q;document.getElementById('searchClearButton').classList.remove('hidden');closeSearchOverlay();activeCategory='all';switchView('home');document.getElementById('lessonHeading').textContent='Kết quả tìm kiếm';document.getElementById('lessonSubheading').textContent='Tìm theo tên bài, nội dung và cách diễn đạt gần nghĩa';renderLessons(q);if(q.length>=3){clearTimeout(searchDebounce);searchDebounce=setTimeout(()=>aiSearchIfAvailable(q),450)}}
+  function runSearchQuery(query){const q=String(query||'').trim();if(!q)return;state.lastQuery=q;state.history=[q,...(state.history||[]).filter(item=>norm(item)!==norm(q))].slice(0,8);saveState();document.getElementById('searchModalInput').value=q;document.getElementById('searchClearButton').classList.remove('hidden');closeSearchOverlay();activeCategory='all';switchView('home');document.getElementById('lessonHeading').textContent='Kết quả tìm kiếm';document.getElementById('lessonSubheading').textContent='Tìm theo tên bài, nội dung và cách diễn đạt gần nghĩa';renderLessons(q);if(q.length>=3){clearTimeout(searchDebounce);searchDebounce=setTimeout(()=>aiSearchIfAvailable(q),450)}}
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('searchOverlay').classList.contains('open'))closeSearchOverlay()});
   async function aiSearchIfAvailable(query){try{const r=await fetch('/api/ai/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,items:lessons.map(({id,title,description,tags,category})=>({id,title,description,tags,category}))})});if(!r.ok)return;const data=await r.json();if(Array.isArray(data.ids)){const reordered=data.ids.map(id=>lessons.find(l=>l.id===id)).filter(Boolean);if(reordered.length){latestFilteredLessons=reordered;document.getElementById('lessonList').innerHTML=reordered.map(lessonCard).join('');document.getElementById('lessonSubheading').textContent='Đã sắp xếp kết quả bằng AI theo ý định tìm kiếm';icons()}}}catch{/* local smart search remains available */}}
 
   // Calendar availability grid.
-  const sessions=[{id:'morning',label:'Sáng',time:'08:00–09:00'},{id:'afternoon',label:'Chiều',time:'15:00–16:00'},{id:'evening',label:'Tối',time:'19:30–20:30'}];
+  // Adaptive weekly availability and study roadmap.
+  const sessions=Array.from({length:46},(_,index)=>{const startMinutes=60+index*30,endMinutes=startMinutes+30,hour=Math.floor(startMinutes/60),minute=startMinutes%60,endHour=Math.floor(endMinutes/60),endMinute=endMinutes%60,label=`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`,endLabel=`${String(endHour).padStart(2,'0')}:${String(endMinute).padStart(2,'0')}`;return {id:`h${String(hour).padStart(2,'0')}m${String(minute).padStart(2,'0')}`,label,endLabel,time:`${label}–${endLabel}`,hour,minute,duration:30}});
+  const weekdayNames=['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
+  const defaultTopics=['Phương trình và hệ phương trình','Hàm số bậc hai và đồ thị','Hệ thức lượng trong tam giác vuông','Đường tròn','Biểu thức đại số và căn thức','Bài toán thực tế'];
+  let pointerSelection=null,suppressSlotClick=false;
   function mondayOf(d){const x=new Date(d);const wd=(x.getDay()+6)%7;x.setDate(x.getDate()-wd);x.setHours(0,0,0,0);return x}
   function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-  function renderCalendar(){const now=new Date(),monday=mondayOf(now),days=Array.from({length:7},(_,i)=>{let x=new Date(monday);x.setDate(monday.getDate()+i);return x});document.getElementById('weekRange').textContent=`${days[0].getDate()}/${days[0].getMonth()+1} – ${days[6].getDate()}/${days[6].getMonth()+1}`;let html='<div></div>';const short=['T2','T3','T4','T5','T6','T7','CN'];days.forEach((d,i)=>html+=`<div class="cal-head ${dateKey(d)===dateKey(now)?'today':''}">${short[i]}<br>${d.getDate()}/${d.getMonth()+1}</div>`);sessions.forEach(s=>{html+=`<div class="time-label"><span><strong>${s.label}</strong><br><small>${s.time}</small></span></div>`;days.forEach((d,i)=>{const key=`${dateKey(d)}_${s.id}`,busy=state.busySlots.includes(key),picked=state.busySlots.includes(key+'__free');const free=picked;const cls=busy?'busy':free?'free':'';const icon=busy?'calendar-x':free?'check':'circle';const title=busy?'Đánh dấu là rảnh':free?'Bỏ chọn trạng thái rảnh':'Đánh dấu là bận';html+=`<button class="slot ${cls}" data-slot="${key}" aria-label="${short[i]} ${s.label}: ${busy?'bận':free?'rảnh':'chưa chọn'}" title="${title}" onclick="toggleSlot('${key}')"><i data-lucide="${icon}"></i><span>${busy?'Bận':free?'Rảnh':'Chọn'}</span></button>`})});document.getElementById('calendarGrid').innerHTML=html;icons();document.getElementById('targetScore').value=state.targetScore||'8';if(state.examDate)document.getElementById('examDate').value=state.examDate;else if(!document.getElementById('examDate').value){let e=new Date();e.setMonth(e.getMonth()+7);document.getElementById('examDate').value=dateKey(e)}renderPlan()}
-  function toggleSlot(key){const freeKey=key+'__free';if(state.busySlots.includes(key)){state.busySlots=state.busySlots.filter(x=>x!==key);state.busySlots.push(freeKey)}else if(state.busySlots.includes(freeKey)){state.busySlots=state.busySlots.filter(x=>x!==freeKey)}else state.busySlots.push(key);saveState();renderCalendar()}
-  function clearBusySlots(){state.busySlots=[];saveState();renderCalendar();showToast('Đã xóa các đánh dấu trong lịch.')}
-  function slotIsBusy(key){return state.busySlots.includes(key)}
-  function slotIsFree(key){return state.busySlots.includes(key+'__free')}
-  function availableSlots(){const monday=mondayOf(new Date());let arr=[];for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);for(const s of sessions){const key=`${dateKey(d)}_${s.id}`;if(!slotIsBusy(key))arr.push({date:new Date(d),day:i,session:s,key,explicitFree:slotIsFree(key)})}}return arr}
-  async function generateStudyPlan(){const btn=document.getElementById('generatePlanBtn');state.targetScore=document.getElementById('targetScore').value;state.examDate=document.getElementById('examDate').value;saveState();const slots=availableSlots();if(!slots.length){showToast('Tuần này bạn đã đánh dấu bận toàn bộ. Hãy chọn ít nhất một khoảng có thể học.');return}btn.disabled=true;btn.innerHTML='<span class="loading"></span> Đang lập lịch…';let weakTopics=['Phương trình và hệ phương trình','Hàm số bậc hai và đồ thị','Hệ thức lượng trong tam giác vuông','Đường tròn','Biểu thức đại số và căn thức','Bài toán thực tế'];if(state.diagnosticPercent!==null&&state.diagnosticPercent<70)weakTopics=['Phương trình và hệ phương trình','Biểu thức đại số và căn thức','Hàm số bậc hai và đồ thị','Hệ thức lượng trong tam giác vuông','Đường tròn','Bài toán thực tế'];let localPlan=buildLocalPlan(slots,weakTopics,Number(state.targetScore));try{const response=await fetch('/api/ai/study-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetScore:Number(state.targetScore),examDate:state.examDate,diagnosticScore:state.diagnosticPercent,availableSlots:slots.map(x=>({date:dateKey(x.date),day:['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'][x.day],session:x.session.label,time:x.session.time})),weakTopics})});if(response.ok){const data=await response.json();if(Array.isArray(data.plan)&&data.plan.length){state.plan=data.plan;state.planSource='ai';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lịch được cá nhân hóa bằng AI từ những khoảng thời gian rảnh bạn đã chọn.';showToast('Đã tạo lịch tự học bằng AI.');btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Tạo lịch tự học';icons();return}}}catch(e){/* fallback plan below */}state.plan=localPlan;state.planSource='rule';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot"></span> Đang dùng lịch gợi ý theo quy tắc vì AI chưa sẵn sàng. Kết nối máy chủ để cá nhân hóa bằng Gemini.';showToast('Đã tạo lịch gợi ý. Kết nối AI để cá nhân hóa sâu hơn.');btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Tạo lịch tự học';icons()}
-  function buildLocalPlan(slots,topics,target){let difficulty=target>=9?'Nâng cao':target>=8?'Vận dụng':target>=7?'Cơ bản + vận dụng':'Nền tảng';let count=Math.min(7,Math.max(4,slots.length));return slots.slice(0,count).map((s,i)=>({date:dateKey(s.date),day:['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'][s.day],session:s.session.label,time:s.session.time,topic:topics[i%topics.length],task:`${difficulty}: ôn kiến thức trọng tâm, giải 4–6 câu và ghi lại lỗi sai.`,duration:45}))}
-  function renderPlan(){const el=document.getElementById('studyPlan'),subtitle=document.getElementById('planSubtitle'),badge=document.getElementById('planBadge');if(!Array.isArray(state.plan)||!state.plan.length){el.className='empty';el.textContent='Chưa có lịch trình. Chọn các khoảng thời gian bận và nhấn “Tạo lịch tự học”.';subtitle.textContent='Lịch học sẽ xuất hiện sau khi bạn tạo lộ trình.';badge.className='pill neutral';badge.textContent='Chưa tạo';return}el.className='plan-list';badge.className='pill '+(state.planSource==='ai'?'green':'gold');badge.textContent=state.planSource==='ai'?'AI cá nhân hóa':'Lịch gợi ý';subtitle.textContent=`Mục tiêu ${state.targetScore}/10 · ${state.plan.length} buổi gợi ý trong tuần`;el.innerHTML=state.plan.map(p=>`<div class="plan-item"><div class="plan-date"><strong>${escapeHtml(p.day||p.date)}</strong>${escapeHtml(p.date||'')}<br>${escapeHtml(p.session||'')}</div><div class="plan-topic">${escapeHtml(p.topic||'Ôn tập Toán 9')}<small>${escapeHtml(p.task||'Ôn lý thuyết và làm bài tập')} · ${Number(p.duration||45)} phút</small></div><span class="pill neutral">${escapeHtml(p.time||'')}</span></div>`).join('')}
+  function planIdFor(date,sessionId){return `plan_${String(date||'').replace(/[^0-9]/g,'')}_${sessionId||'study'}`}
+  function blockIdFor(date,sessionId,endMinute){return `plan_${String(date||'').replace(/[^0-9]/g,'')}_block_${sessionId||'study'}_e${String(endMinute||0).padStart(4,'0')}`}
+  function slotState(key){return state.busySlots.includes(key)?'busy':'free'}
+  function setSlotState(key,status){state.busySlots=state.busySlots.filter(value=>value!==key&&value!==`${key}__free`);if(status==='busy')state.busySlots.push(key)}
+  function paintSlotButton(button,status){if(!button)return;button.classList.toggle('busy',status==='busy');button.dataset.state=status;const label=status==='busy'?'bận':'rảnh';button.setAttribute('aria-label',`${button.dataset.day} ${button.dataset.session}: ${label}`);button.setAttribute('aria-pressed',String(status==='busy'));button.title=`${button.dataset.day} ${button.dataset.session}: ${label}`}
+  function migrateLegacyAvailability(){
+    if(!Array.isArray(state.busySlots))state.busySlots=[];
+    if(!Array.isArray(state.completedPlanIds))state.completedPlanIds=[];
+    let changed=false;const normalizedBusy=new Set();
+    state.busySlots.forEach(value=>{const text=String(value),match=text.match(/^(\d{4}-\d{2}-\d{2})_(h(\d{2})(?:m(00|30))?|morning|afternoon|evening)(__free)?$/);if(!match){if(!text.endsWith('__free'))normalizedBusy.add(text);return}if(match[5])return;const hour=match[3]?Number(match[3]):match[2]==='morning'?8:match[2]==='afternoon'?15:20;if(match[4])normalizedBusy.add(text);else for(const minute of [0,30])normalizedBusy.add(`${match[1]}_h${String(hour).padStart(2,'0')}m${String(minute).padStart(2,'0')}`)});
+    const nextBusy=[...normalizedBusy];if(JSON.stringify(nextBusy)!==JSON.stringify(state.busySlots)){state.busySlots=nextBusy;changed=true}
+    const expandOldPlanId=id=>{const match=String(id).match(/^plan_(\d{8})_(h(\d{2})(?:m(00|30))?|morning|afternoon|evening)$/);if(!match)return [id];if(match[4])return [id];const hour=match[3]?Number(match[3]):match[2]==='morning'?8:match[2]==='afternoon'?15:20;return [0,30].map(minute=>`plan_${match[1]}_h${String(hour).padStart(2,'0')}m${String(minute).padStart(2,'0')}`)};
+    const oldCompleted=[...state.completedPlanIds],migratedCompleted=[...new Set(oldCompleted.flatMap(expandOldPlanId))];if(JSON.stringify(migratedCompleted)!==JSON.stringify(oldCompleted)){state.completedPlanIds=migratedCompleted;changed=true}
+    if(Array.isArray(state.plan)&&state.plan.length&&state.plan.some(item=>!Array.isArray(item.blocks))){const previousDone=new Set(state.completedPlanIds),rebuilt=buildLocalPlan(availableSlots()),newDone=[];rebuilt.forEach(day=>day.blocks.forEach(block=>{if(block.slotIds.length&&block.slotIds.every(slotId=>previousDone.has(planIdFor(day.date,slotId))))newDone.push(block.id)}));state.completedPlanIds=[...new Set([...state.completedPlanIds,...newDone])];state.plan=rebuilt;state.planSource='adaptive';changed=true}
+    return changed;
+  }
+  function renderCalendar(){
+    const now=new Date(),monday=mondayOf(now),days=Array.from({length:7},(_,i)=>{const x=new Date(monday);x.setDate(monday.getDate()+i);return x});
+    document.getElementById('weekRange').textContent=`${days[0].getDate()}/${days[0].getMonth()+1} – ${days[6].getDate()}/${days[6].getMonth()+1}`;
+    const short=['T2','T3','T4','T5','T6','T7','CN'];let markup='<div class="calendar-corner" aria-hidden="true"></div>';
+    days.forEach((day,index)=>markup+=`<div class="cal-head ${dateKey(day)===dateKey(now)?'today':''}">${short[index]}<br>${day.getDate()}/${day.getMonth()+1}</div>`);
+    sessions.forEach(session=>{
+      markup+=`<div class="time-label">${session.minute===0?`<strong>${session.label}</strong>`:''}</div>`;
+      days.forEach((day,index)=>{const key=`${dateKey(day)}_${session.id}`,status=slotState(key),label=status==='busy'?'bận':'rảnh';markup+=`<button type="button" class="slot ${status==='busy'?'busy':''}" data-slot="${key}" data-day="${weekdayNames[index]}" data-session="${session.time}" data-state="${status}" aria-label="${weekdayNames[index]} ${session.time}: ${label}" aria-pressed="${status==='busy'}" title="${weekdayNames[index]} ${session.time}: ${label}"></button>`});
+    });
+    markup+='<div class="calendar-end-time"><strong>24:00</strong></div>'+days.map(()=>'<div class="calendar-end-fill" aria-hidden="true"></div>').join('');
+    document.getElementById('calendarGrid').innerHTML=markup;
+    document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('examName').value=state.examName||'';
+    if(state.examDate)document.getElementById('examDate').value=state.examDate;else if(!document.getElementById('examDate').value){const e=new Date();e.setMonth(e.getMonth()+7);document.getElementById('examDate').value=dateKey(e)}
+    renderPlan();renderCountdowns();
+  }
+  function persistCalendarEdit(){if(Array.isArray(state.plan)&&state.plan.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';const count=state.plan.reduce((sum,day)=>sum+day.blocks.length,0);document.getElementById('planStatus').innerHTML=count?'<span class="dot live"></span> Lộ trình đã tự cập nhật theo các khoảng Rảnh vừa chọn.':'<span class="dot"></span> Tuần này đang được đánh dấu Bận ở tất cả khung giờ.'}saveState();renderCalendar()}
+  function setupCalendarInteraction(){
+    const grid=document.getElementById('calendarGrid');const findSlot=(x,y)=>{const el=document.elementFromPoint(x,y);return el?.closest?.('.slot[data-slot]')||null};
+    grid.addEventListener('pointerdown',event=>{const button=event.target.closest('.slot[data-slot]');if(!button||(event.pointerType==='mouse'&&event.button!==0))return;event.preventDefault();pointerSelection={pointerId:event.pointerId,target:slotState(button.dataset.slot)==='busy'?'free':'busy',lastKey:null,changed:false};suppressSlotClick=true;try{grid.setPointerCapture(event.pointerId)}catch{}applyPointerSlot(button)});
+    function applyPointerSlot(button){if(!pointerSelection||!button||pointerSelection.lastKey===button.dataset.slot)return;pointerSelection.lastKey=button.dataset.slot;setSlotState(button.dataset.slot,pointerSelection.target);paintSlotButton(button,pointerSelection.target);button.classList.add('is-touching');pointerSelection.changed=true}
+    grid.addEventListener('pointermove',event=>{if(!pointerSelection||event.pointerId!==pointerSelection.pointerId)return;event.preventDefault();applyPointerSlot(findSlot(event.clientX,event.clientY))});
+    function finishPointer(event){if(!pointerSelection||event.pointerId!==pointerSelection.pointerId)return;const changed=pointerSelection.changed;pointerSelection=null;try{if(grid.hasPointerCapture(event.pointerId))grid.releasePointerCapture(event.pointerId)}catch{}if(changed)persistCalendarEdit();setTimeout(()=>{suppressSlotClick=false},0)}
+    grid.addEventListener('pointerup',finishPointer);grid.addEventListener('pointercancel',finishPointer);
+    grid.addEventListener('click',event=>{const button=event.target.closest('.slot[data-slot]');if(!button)return;if(suppressSlotClick){event.preventDefault();return}if(event.detail===0){const target=slotState(button.dataset.slot)==='busy'?'free':'busy';setSlotState(button.dataset.slot,target);persistCalendarEdit()}});
+  }
+  function toggleSlot(key){setSlotState(key,slotState(key)==='busy'?'free':'busy');persistCalendarEdit()}
+  function clearBusySlots(){state.busySlots=[];if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive'}saveState();renderCalendar();showToast('Đã xóa các mốc Bận; khoảng trắng được tính là Rảnh.')}
+  function slotIsBusy(key){return slotState(key)==='busy'}
+  function slotIsFree(key){return slotState(key)==='free'}
+  function availableSlots(){const monday=mondayOf(new Date()),arr=[];for(let i=0;i<7;i++){const day=new Date(monday);day.setDate(monday.getDate()+i);for(const session of sessions){const key=`${dateKey(day)}_${session.id}`;if(slotIsFree(key))arr.push({date:new Date(day),day:i,session,key,explicitFree:true})}}return arr}
+  function groupFreeRanges(slots){const ordered=[...slots].sort((a,b)=>a.date-b.date||a.session.hour-b.session.hour||a.session.minute-b.session.minute),byDate=new Map();ordered.forEach(slot=>{const key=dateKey(slot.date),ranges=byDate.get(key)||[],start=slot.session.hour*60+slot.session.minute,last=ranges[ranges.length-1];if(last&&last.endMinute===start){last.endMinute+=30;last.slotIds.push(slot.session.id)}else ranges.push({date:new Date(slot.date),day:slot.day,startMinute:start,endMinute:start+30,slotIds:[slot.session.id]});byDate.set(key,ranges)});return byDate}
+  function minuteLabel(minutes){return `${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`}
+  function parseExamDate(value){const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(year,month-1,day);if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return null;return {year,month,day}}
+  function examDateAtEight(value){const parsed=parseExamDate(value);return parsed?new Date(parsed.year,parsed.month-1,parsed.day,8,0,0,0):null}
+  function renderCountdowns(){const dateValue=document.getElementById('examDate')?.value||state.examDate||'',examName=(document.getElementById('examName')?.value||state.examName||'').trim()||'kỳ thi của bạn',home=document.getElementById('homeCountdown'),schedule=document.getElementById('scheduleCountdown');let message='Chọn ngày thi để bật đếm ngược.';const target=examDateAtEight(dateValue);if(target){const now=new Date(),dateLabel=`${String(target.getDate()).padStart(2,'0')}/${String(target.getMonth()+1).padStart(2,'0')}/${target.getFullYear()}`,remaining=target.getTime()-now.getTime();if(remaining<=0)message=`Kỳ thi ${examName} (${dateLabel}) đã bắt đầu.`;else{const days=Math.floor(remaining/86400000),hours=Math.floor((remaining%86400000)/3600000);message=`⏳ Còn ${days} ngày ${hours} giờ đến kỳ thi ${examName} (${dateLabel})`}}if(home)home.textContent=message;if(schedule)schedule.textContent=message}
+  function examDaysLeft(){const parsed=parseExamDate(document.getElementById('examDate')?.value||state.examDate||'');if(!parsed)return null;const now=new Date(),todayUtc=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()),examUtc=Date.UTC(parsed.year,parsed.month-1,parsed.day);return Math.max(0,Math.round((examUtc-todayUtc)/86400000))}
+  function weakTopicList(){const stored=Array.isArray(state.weakTopics)?state.weakTopics:[];const normalized=stored.map(item=>typeof item==='string'?{topic:item,misses:1}:item).filter(item=>item&&item.topic&&Number(item.misses)>0).sort((a,b)=>Number(b.misses)-Number(a.misses)||Number(b.updatedAt||0)-Number(a.updatedAt||0));return normalized.map(item=>String(item.topic))}
+  function currentScore(){if(Number.isFinite(Number(state.latestPracticeScore))&&state.latestPracticeScore!==null)return Number(state.latestPracticeScore)/10;if(Number.isFinite(Number(state.diagnosticPercent))&&state.diagnosticPercent!==null)return Number(state.diagnosticPercent)/10;return 6}
+  function buildLocalPlan(slots){
+    const monday=mondayOf(new Date()),rangesByDate=groupFreeRanges(slots),score=currentScore(),target=Number(state.targetScore||8),gap=Math.max(0,target-score),daysLeft=examDaysLeft(),weak=weakTopicList(),rotation=weak.length?weak:defaultTopics;let globalIndex=0;
+    return Array.from({length:7},(_,dayIndex)=>{const date=new Date(monday);date.setDate(monday.getDate()+dayIndex);const dateString=dateKey(date),ranges=rangesByDate.get(dateString)||[],blocks=ranges.map(range=>{const index=globalIndex++,firstId=range.slotIds[0],id=blockIdFor(dateString,firstId,range.endMinute),duration=range.endMinute-range.startMinute;let topic=rotation[index%rotation.length],kind='topic',level=gap>=2?'Nâng cao':gap>=1?'Vận dụng':'Cơ bản',baseQuestions=gap>=2?8:gap>=1?6:4,questionCount=Math.max(3,Math.min(24,Math.ceil(duration/60*baseQuestions)));
+        if(index<Math.min(weak.length,4)&&!(daysLeft!==null&&daysLeft<=30&&index%2===0)){kind='support';topic=weak[index%weak.length]}
+        else if(daysLeft!==null&&daysLeft<=14&&index%3===0){kind='exam';topic='Luyện đề tổng hợp';level='Nâng cao';questionCount=Math.max(6,Math.min(24,Math.ceil(duration/60*10)))}
+        else if(daysLeft!==null&&daysLeft<=30&&index%3===1){kind='review';topic=`Sửa bẫy lỗi sai: ${rotation[index%rotation.length]}`;level='Vận dụng'}
+        else if(index%3===2){kind='spaced';topic=`Ôn lặp lại cách quãng: ${rotation[Math.floor(index/2)%rotation.length]}`}
+        const task=kind==='support'?`Buổi củng cố lỗi sai: xem lại ${topic}, tự trình bày cách giải rồi làm ${questionCount} câu tương tự.`:kind==='exam'?`Luyện đề tổng hợp trong khung giờ này; tự chấm, phân loại lỗi và ghi lại câu cần xem.`:kind==='review'?`Sửa bẫy ở ${topic}; giải lại câu sai rồi làm câu tương tự không nhìn lời giải.`:kind==='spaced'?`Ôn lặp lại ${topic}; tự nhớ công thức trước rồi giải bài mới để củng cố trí nhớ.`:`Ôn ${topic}, làm ${questionCount} câu mức ${level.toLowerCase()} và ghi lại lỗi sai.`;
+        return {id,sessionId:firstId,date:dateString,day:weekdayNames[dayIndex],start:minuteLabel(range.startMinute),end:minuteLabel(range.endMinute),session:`${minuteLabel(range.startMinute)}–${minuteLabel(range.endMinute)}`,time:`${minuteLabel(range.startMinute)}–${minuteLabel(range.endMinute)}`,duration,slotIds:range.slotIds,topic,task,level,questionCount,kind};
+      });return {id:`day_${dateString}`,date:dateString,day:weekdayNames[dayIndex],blocks}});
+  }
+  function refreshPlanAfterAssessment(){const slots=availableSlots();state.plan=buildLocalPlan(slots);state.planSource='adaptive';document.getElementById('planStatus').innerHTML=slots.length?'<span class="dot live"></span> Lộ trình đã tự cập nhật từ điểm mới và chuyên đề cần củng cố.':'<span class="dot"></span> Tuần này không còn khoảng Rảnh để xếp lịch.';return slots.length>0}
+  async function generateStudyPlan(options={}){
+    const btn=document.getElementById('generatePlanBtn'),silent=!!options.silent,localOnly=!!options.localOnly;
+    if(!silent){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();document.getElementById('targetScore').value=state.targetScore;saveState()}
+    const slots=availableSlots(),localPlan=buildLocalPlan(slots);if(!slots.length){state.plan=localPlan;state.planSource='adaptive';document.getElementById('planStatus').innerHTML='<span class="dot"></span> Tuần này không còn khoảng Rảnh để xếp lịch.';renderPlan();saveState();if(!silent)showToast('Tất cả các mốc giờ đang được đánh dấu Bận.');return false}
+    if(!silent){btn.disabled=true;btn.innerHTML='<span class="loading"></span> Đang lập lịch…'}
+    try{
+      if(!localOnly){try{const topics=weakTopicList(),baseBlocks=localPlan.flatMap(day=>day.blocks),response=await fetch('/api/ai/study-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetScore:Number(state.targetScore),examName:state.examName,examDate:state.examDate,diagnosticScore:state.diagnosticPercent,practiceScore:state.latestPracticeScore,scoreGap:Math.max(0,Number(state.targetScore)-currentScore()),daysLeft:examDaysLeft(),availableSlots:baseBlocks.map(block=>({date:block.date,day:block.day,session:block.session,time:block.time,duration:block.duration,topic:block.topic})),weakTopics:topics.length?topics:defaultTopics})});if(response.ok){const data=await response.json();if(Array.isArray(data.plan)&&data.plan.length){let index=0;state.plan=localPlan.map(day=>({...day,blocks:day.blocks.map(base=>{const candidate=data.plan[index++],item=candidate&&typeof candidate==='object'?candidate:{};return {...base,topic:item.topic||base.topic,task:item.task||base.task,level:item.level||base.level,questionCount:Number(item.questionCount||base.questionCount),duration:base.duration}})}));state.planSource='ai';document.getElementById('planStatus').innerHTML='<span class="dot live"></span> AI gợi ý chuyên đề; lịch vẫn giữ nguyên các khoảng Rảnh đã chọn.';renderPlan();saveState();if(!silent)showToast('Đã tạo lộ trình theo các khoảng Rảnh trong tuần.');return true}}}catch(error){/* The local adaptive roadmap remains available when AI is offline. */}}
+      state.plan=localPlan;state.planSource=options.silent?'adaptive':'rule';document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lộ trình đã gom các khoảng Rảnh liên tiếp theo từng ngày.';renderPlan();saveState();if(!silent)showToast('Đã tạo lịch tự học cho các khoảng Rảnh trong tuần.');return true;
+    }finally{if(!silent){btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Tạo lịch tự học';icons()}}
+  }
+  function renderPlan(){
+    const el=document.getElementById('studyPlan'),subtitle=document.getElementById('planSubtitle'),badge=document.getElementById('planBadge'),plan=Array.isArray(state.plan)?state.plan:[],blocks=plan.flatMap(day=>Array.isArray(day.blocks)?day.blocks:[]),doneIds=Array.isArray(state.completedPlanIds)?state.completedPlanIds:[];
+    if(!plan.length){el.className='empty';el.textContent='Chưa có lộ trình. Đánh dấu các khoảng Bận, phần nền trắng sẽ được tính là Rảnh, rồi nhấn “Tạo lịch tự học”.';subtitle.textContent='Lộ trình sẽ gom các khoảng Rảnh liên tiếp thành timeline theo từng ngày.';badge.className='pill neutral';badge.textContent='Chưa tạo';return}
+    el.className='plan-list';badge.className='pill '+(state.planSource==='ai'?'green':state.planSource==='adaptive'?'green':'gold');badge.textContent=state.planSource==='ai'?'AI cá nhân hóa':state.planSource==='adaptive'?'Đã thích ứng':'Lịch gợi ý';const daysLeft=examDaysLeft(),gap=Math.max(0,Number(state.targetScore||8)-currentScore());subtitle.textContent=`${blocks.length} khoảng học · mục tiêu ${formatScore(state.targetScore)}/10 · cách ${gap.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')} điểm${daysLeft===null?'':` · còn ${daysLeft} ngày đến thi`}`;
+    el.innerHTML=plan.map(day=>`<article class="plan-item day-plan"><div class="day-plan-head"><div class="day-plan-title"><strong>${escapeHtml(day.day||'')}</strong><span>${escapeHtml(day.date||'')}</span></div><span class="pill ${day.blocks.length?'green':'neutral'}">${day.blocks.length?`${day.blocks.length} khoảng học`:'Không có giờ Rảnh'}</span></div>${day.blocks.length?`<div class="day-timeline">${day.blocks.map(block=>{const done=doneIds.includes(block.id),questionCount=Number(block.questionCount||4);return `<div class="timeline-row ${done?'is-done':''}"><div class="timeline-time"><strong>${escapeHtml(block.time)}</strong><small>${Number(block.duration||30)} phút</small></div><div class="timeline-content"><strong>${escapeHtml(block.topic||'Ôn tập Toán')}</strong><div class="plan-meta"><span class="pill neutral">${escapeHtml(block.level||'Cơ bản')}</span><span>${questionCount} câu gợi ý</span></div><small>${escapeHtml(block.task||'Ôn kiến thức và luyện tập.')}</small></div><label class="plan-check"><input type="checkbox" data-plan-done="${escapeHtml(block.id)}" ${done?'checked':''} aria-label="Đánh dấu ${escapeHtml(block.topic||'buổi học')} đã hoàn thành"><span>Đã hoàn thành</span></label></div>`}).join('')}</div>`:'<p class="day-no-free">Không có khoảng Rảnh trong ngày này; hãy bỏ đánh dấu Bận nếu muốn thêm thời gian học.</p>'}</article>`).join('');
+    el.querySelectorAll('[data-plan-done]').forEach(input=>input.addEventListener('change',()=>togglePlanDone(input.dataset.planDone,input.checked)));
+  }
+  function togglePlanDone(id,done){if(!Array.isArray(state.completedPlanIds))state.completedPlanIds=[];state.completedPlanIds=done?[...new Set([...state.completedPlanIds,id])]:state.completedPlanIds.filter(value=>value!==id);saveState();renderPlan();showToast(done?'Đã cập nhật tiến độ buổi học.':'Đã bỏ đánh dấu hoàn thành.')}
 
-  // Diagnostic/practice quizzes.
   function startQuiz(mode,customQuestions=null,source='mẫu'){const isDiagnostic=mode==='diagnostic';const topic= document.getElementById('practiceTopic')?.value||'Đề tổng hợp vào lớp 10';let pool=customQuestions||questionBank.filter(q=>isDiagnostic||topic==='Đề tổng hợp vào lớp 10'||q.topic===topic||norm(q.topic).includes(norm(topic).split(' ')[0]));if(!pool.length)pool=questionBank.filter(q=>q.topic===topic||topic==='Đề tổng hợp vào lớp 10');if(!pool.length)pool=questionBank.slice();pool=[...pool];if(isDiagnostic)pool=questionBank.slice(0,5);else if(!customQuestions){const count=Number(document.getElementById('practiceCount')?.value||5);const diff=document.getElementById('practiceLevel')?.value||'van-dung';let exact=pool.filter(q=>q.difficulty===diff);if(exact.length)pool=exact;pool=pool.slice(0,count);if(pool.length<count){const more=questionBank.filter(q=>!pool.includes(q));pool=pool.concat(more.slice(0,count-pool.length))}}activeQuiz={mode,questions:pool.map(q=>({...q})),answers:{},submitted:false,source};renderQuiz();document.getElementById('quizArea').scrollIntoView({behavior:'smooth',block:'start'});icons()}
-  function renderQuiz(){const area=document.getElementById('quizArea');if(!activeQuiz){area.innerHTML='';return}const isSubmitted=activeQuiz.submitted;const correct=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===q.answer).length;const score=Math.round(correct/activeQuiz.questions.length*100);area.innerHTML=`<div class="panel quiz-panel"><div class="section-head" style="margin:0 0 7px"><div><h2>${activeQuiz.mode==='diagnostic'?'Bài test xác định năng lực':'Bộ câu hỏi luyện tập'}</h2><p>${activeQuiz.questions.length} câu · Nguồn: ${escapeHtml(activeQuiz.source||'câu hỏi mẫu')}</p></div><span class="pill ${isSubmitted?'green':'neutral'}">${isSubmitted?'Đã chấm':'Đang làm'}</span></div>${isSubmitted?`<div class="result-box"><small>KẾT QUẢ</small><strong>${correct}/${activeQuiz.questions.length} câu đúng · ${score}%</strong>${score>=80?'Bạn đang nắm khá chắc phần kiến thức này.':score>=60?'Bạn đã có nền tảng, hãy xem lại các câu sai.':'Nên ôn lại kiến thức nền tảng trước khi chuyển sang câu khó.'}</div>`:''}${activeQuiz.questions.map((q,qi)=>`<div class="quiz-question"><span class="pill neutral">Câu ${qi+1} · ${escapeHtml(q.topic||'Toán 9')}</span><h4>${escapeHtml(q.q)}</h4><div class="option-list">${q.options.map((o,oi)=>{let cls='option';if(activeQuiz.answers[qi]===oi)cls+=' selected';if(isSubmitted&&oi===q.answer)cls+=' correct';if(isSubmitted&&activeQuiz.answers[qi]===oi&&oi!==q.answer)cls+=' wrong';return `<button class="${cls}" ${isSubmitted?'disabled':''} onclick="selectAnswer(${qi},${oi})">${String.fromCharCode(65+oi)}. ${escapeHtml(o)}</button>`}).join('')}</div>${isSubmitted?`<div class="feedback"><strong>${activeQuiz.answers[qi]===q.answer?'Đúng.':'Chưa đúng.'}</strong> ${escapeHtml(q.explain||'Hãy đối chiếu cách giải với kiến thức đã học.')}</div>`:''}</div>`).join('')}<div class="quiz-actions"><span class="feedback">${isSubmitted?'Kết quả được lưu trên trình duyệt của bạn.':'Chọn một đáp án ở từng câu rồi nộp bài để xem giải thích.'}</span><div class="button-row">${isSubmitted?'<button class="btn btn-light" onclick="activeQuiz=null;document.getElementById(\'quizArea\').innerHTML=\'\'">Đóng kết quả</button>':'<button class="btn btn-light" onclick="activeQuiz=null;document.getElementById(\'quizArea\').innerHTML=\'\'">Thoát</button><button class="btn btn-primary" onclick="submitQuiz()">Nộp bài <i data-lucide="check"></i></button>'}</div></div></div>`;icons()}
-  function selectAnswer(qi,oi){if(!activeQuiz||activeQuiz.submitted)return;activeQuiz.answers[qi]=oi;renderQuiz()}
-  function submitQuiz(){if(!activeQuiz)return;const missing=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===undefined).length;if(missing){showToast(`Bạn còn ${missing} câu chưa chọn đáp án.`);return}activeQuiz.submitted=true;const right=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===q.answer).length;const percent=Math.round(right/activeQuiz.questions.length*100);if(activeQuiz.mode==='diagnostic'){state.diagnosticDone=true;state.diagnosticPercent=percent;state.diagnosticDate=new Date().toLocaleDateString('vi-VN');saveState();document.getElementById('diagnosticNotice').classList.add('hidden');}saveState();renderQuiz();updateStats();showToast(activeQuiz.mode==='diagnostic'?'Đã lưu kết quả đánh giá năng lực.':'Đã chấm xong bài luyện tập.');}
+  function renderQuiz(){
+    const area=document.getElementById('quizArea');
+    if(!activeQuiz){area.innerHTML='';return}
+    const isSubmitted=activeQuiz.submitted;
+    const correct=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===q.answer).length;
+    const score=Math.round(correct/activeQuiz.questions.length*100);
+    
+    // Xây dựng Widget Điều hướng Quiz (Quiz Navigator)
+    const navHtml = `
+      <div class="quiz-navigator" id="quizNavigator">
+        ${activeQuiz.questions.map((q, qi) => {
+           let cls = 'quiz-nav-dot';
+           if(activeQuiz.answers[qi] !== undefined) cls += ' answered';
+           if(isSubmitted) {
+               if(activeQuiz.answers[qi] === q.answer) cls += ' correct-dot';
+               else cls += ' wrong-dot';
+           }
+           return `<button type="button" class="${cls}" onclick="document.getElementById('q-${qi}').scrollIntoView({behavior: 'smooth', block: 'center'})">${qi + 1}</button>`;
+        }).join('')}
+      </div>
+    `;
+
+    area.innerHTML=`
+      <div class="panel quiz-panel">
+        <div class="section-head" style="margin:0 0 14px">
+          <div>
+            <h2>${activeQuiz.mode==='diagnostic'?'Bài test xác định năng lực':'Bộ câu hỏi luyện tập'}</h2>
+            <p>${activeQuiz.questions.length} câu · Nguồn: ${escapeHtml(activeQuiz.source||'câu hỏi mẫu')}</p>
+          </div>
+          <span class="pill ${isSubmitted?'green':'neutral'}">${isSubmitted?'Đã chấm':'Đang làm'}</span>
+        </div>
+        
+        ${navHtml}
+        
+        ${isSubmitted?`<div class="result-box"><small>KẾT QUẢ</small><strong>${correct}/${activeQuiz.questions.length} câu đúng · ${score}%</strong>${score>=80?'Bạn đang nắm khá chắc phần kiến thức này.':score>=60?'Bạn đã có nền tảng, hãy xem lại các câu sai.':'Nên ôn lại kiến thức nền tảng trước khi chuyển sang câu khó.'}</div>`:''}
+        
+        ${activeQuiz.questions.map((q,qi)=>`
+          <div class="quiz-question" id="q-${qi}">
+            <span class="pill neutral">Câu ${qi+1} · ${escapeHtml(q.topic||'Toán 9')}</span>
+            <h4>${escapeHtml(q.q)}</h4>
+            <div class="option-list">
+              ${q.options.map((o,oi)=>{
+                let cls='option';
+                if(activeQuiz.answers[qi]===oi) cls+=' selected';
+                if(isSubmitted&&oi===q.answer) cls+=' correct';
+                if(isSubmitted&&activeQuiz.answers[qi]===oi&&oi!==q.answer) cls+=' wrong';
+                return `<button class="${cls}" ${isSubmitted?'disabled':''} onclick="selectAnswer(${qi},${oi})">${String.fromCharCode(65+oi)}. ${escapeHtml(o)}</button>`
+              }).join('')}
+            </div>
+            ${isSubmitted?`<div class="feedback"><strong>${activeQuiz.answers[qi]===q.answer?'Đúng.':'Chưa đúng.'}</strong> ${escapeHtml(q.explain||'Hãy đối chiếu cách giải với kiến thức đã học.')}</div>`:''}
+          </div>
+        `).join('')}
+        
+        <div class="quiz-actions">
+          <span class="feedback">${isSubmitted?'Kết quả được lưu trên trình duyệt của bạn.':'Chọn một đáp án ở từng câu rồi nộp bài để xem giải.'}</span>
+          <div class="button-row">
+            ${isSubmitted
+              ? `<button class="btn btn-light" onclick="activeQuiz=null;document.getElementById('quizArea').innerHTML=''">Đóng kết quả</button>`
+              : `<button class="btn btn-light" onclick="activeQuiz=null;document.getElementById('quizArea').innerHTML=''">Thoát</button>
+                 <button class="btn btn-primary" onclick="submitQuiz()">Nộp bài <i data-lucide="check"></i></button>`
+            }
+          </div>
+        </div>
+      </div>`;
+    icons();
+  }
+  
+  // Update state without fully re-rendering to prevent scroll jump
+  function selectAnswer(qi,oi){
+    if(!activeQuiz||activeQuiz.submitted) return;
+    activeQuiz.answers[qi]=oi;
+    
+    // Cập nhật DOM trực tiếp cho đáp án
+    const questionDiv = document.getElementById(`q-${qi}`);
+    if (questionDiv) {
+      const options = questionDiv.querySelectorAll('.option');
+      options.forEach((opt, idx) => {
+        if (idx === oi) opt.classList.add('selected');
+        else opt.classList.remove('selected');
+      });
+    }
+    
+    // Cập nhật điểm đánh dấu trên Quiz Navigator
+    const navDots = document.querySelectorAll('.quiz-nav-dot');
+    if (navDots[qi]) navDots[qi].classList.add('answered');
+  }
+
+  function updateWeakTopicsFromQuiz(){if(!activeQuiz)return;const grouped=new Map();activeQuiz.questions.forEach((q,i)=>{const topic=q.topic||'Toán 9';const row=grouped.get(topic)||{total:0,misses:0};row.total++;if(activeQuiz.answers[i]!==q.answer)row.misses++;grouped.set(topic,row)});const rows=Array.isArray(state.weakTopics)?state.weakTopics.map(x=>typeof x==='string'?{topic:x,misses:1}:x):[];for(const [topic,result] of grouped){let item=rows.find(x=>x.topic===topic);if(!item){item={topic,misses:0};rows.push(item)}item.misses=Math.max(0,Number(item.misses||0)+result.misses-(result.total-result.misses));item.updatedAt=Date.now();item.lastMisses=result.misses}state.weakTopics=rows.filter(x=>Number(x.misses)>0);}
+    function submitQuiz(){if(!activeQuiz)return;const missing=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===undefined).length;if(missing){showToast(`Bạn còn ${missing} câu chưa chọn đáp án.`);return}activeQuiz.submitted=true;const right=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===q.answer).length;const percent=Math.round(right/activeQuiz.questions.length*100);state.latestPracticeScore=percent;state.lastPracticeDate=new Date().toLocaleDateString('vi-VN');updateWeakTopicsFromQuiz();if(activeQuiz.mode==='diagnostic'){state.diagnosticDone=true;state.diagnosticPercent=percent;state.diagnosticDate=state.lastPracticeDate;document.getElementById('diagnosticNotice').classList.add('hidden')}const planUpdated=refreshPlanAfterAssessment();saveState();renderQuiz();renderPlan();updateStats();showToast(activeQuiz.mode==='diagnostic'?'Đã lưu kết quả đánh giá năng lực.':planUpdated?'Đã lưu kết quả và tự cập nhật lộ trình.':'Đã chấm xong bài luyện tập.');}
   async function generatePracticeQuestions(){const btn=document.getElementById('generateQuestionsBtn'),topic=document.getElementById('practiceTopic').value,difficulty=document.getElementById('practiceLevel').value,count=Number(document.getElementById('practiceCount').value);btn.disabled=true;btn.innerHTML='<span class="loading"></span> Đang tạo…';document.getElementById('questionSource').innerHTML='<span class="dot"></span> Đang gửi yêu cầu tạo câu hỏi…';try{const r=await fetch('/api/ai/generate-questions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,difficulty,count,grade:9,examType:'tuyển sinh vào lớp 10'})});if(!r.ok)throw new Error('AI endpoint not ready');const d=await r.json();if(!Array.isArray(d.questions)||!d.questions.length)throw new Error('Empty AI result');const qs=d.questions.map(q=>({...q,answer:Number(q.answer)}));document.getElementById('questionSource').innerHTML='<span class="dot live"></span> Bộ câu hỏi mới do AI tạo.';startQuiz('practice',qs,'AI tạo mới');}catch(e){let candidates=questionBank.filter(q=>topic==='Đề tổng hợp vào lớp 10'||q.topic===topic);if(difficulty==='nang-cao'){const hard=candidates.filter(q=>q.difficulty==='nang-cao');if(hard.length)candidates=hard}if(!candidates.length)candidates=questionBank;const qs=[];while(qs.length<count){qs.push(candidates[qs.length%candidates.length])}document.getElementById('questionSource').innerHTML='<span class="dot"></span> Đang dùng câu hỏi mẫu; cần cấu hình Gemini API để AI tạo câu hỏi mới.';startQuiz('practice',qs,'câu hỏi mẫu (chưa kết nối AI)');}finally{btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Tạo câu hỏi';icons()}}
 
   // AI image grading: never claim it worked if the server is not connected.
   function setupImagePreview(inputId,previewId){const input=document.getElementById(inputId),preview=document.getElementById(previewId);input.addEventListener('change',()=>{const file=input.files[0];if(!file){preview.src='';preview.classList.add('hidden');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){showToast('Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP.');input.value='';return}if(file.size>7*1024*1024){showToast('Ảnh vượt quá 7 MB. Hãy chọn ảnh nhẹ hơn.');input.value='';return}preview.src=URL.createObjectURL(file);preview.classList.remove('hidden')})}
   setupImagePreview('problemImage','problemPreview');setupImagePreview('solutionImage','solutionPreview');
-  document.getElementById('gradingForm').addEventListener('submit',async e=>{e.preventDefault();const problem=document.getElementById('problemImage').files[0],solution=document.getElementById('solutionImage').files[0];if(!problem||!solution){showToast('Hãy tải cả ảnh đề bài và ảnh lời giải.');return}const btn=document.getElementById('gradeSubmitBtn'),panel=document.getElementById('gradingResultPanel'),result=document.getElementById('gradingResult');btn.disabled=true;btn.innerHTML='<span class="loading"></span> AI đang đọc ảnh…';panel.classList.remove('hidden');result.textContent='Đang gửi ảnh lên máy chủ và phân tích bài làm. Không đóng trang trong lúc xử lý.';try{const fd=new FormData();fd.append('problemImage',problem);fd.append('solutionImage',solution);fd.append('topic',document.getElementById('gradingTopic').value);fd.append('scoreScale',document.getElementById('gradingScore').value);fd.append('notes',document.getElementById('gradingNotes').value);const r=await fetch('/api/ai/grade-solution',{method:'POST',body:fd});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Máy chủ AI chưa sẵn sàng.');result.textContent=data.feedback||data.text||'Máy chủ không trả về nhận xét.';showToast('Đã nhận kết quả phân tích từ máy chủ AI.')}catch(err){result.textContent='CHƯA CHẤM ĐƯỢC BẰNG AI THẬT\n\n'+(err.message||'Không kết nối được máy chủ.')+'\n\nBạn vẫn có thể dùng giao diện này để thử luồng tải ảnh. Để chấm thật, cần chạy server.js, đặt GEMINI_API_KEY ở máy chủ và kiểm tra kết nối trong mục Cài đặt. Không có kết quả chấm nào được giả lập trong trường hợp này.';showToast('Chưa kết nối được AI; ảnh chưa được chấm.')}finally{btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Phân tích bài làm';icons()}});
-  document.getElementById('resetGradeBtn').addEventListener('click',()=>{setTimeout(()=>{document.getElementById('problemPreview').classList.add('hidden');document.getElementById('solutionPreview').classList.add('hidden');document.getElementById('gradingResultPanel').classList.add('hidden')},0)});
-  async function checkApiHealth(showMessage=false){try{const r=await fetch('/api/health');if(!r.ok)throw new Error('not ok');const d=await r.json();apiAvailable=!!d.aiConfigured;syncApiStatus();if(showMessage)showToast(d.aiConfigured?'Máy chủ và AI đã sẵn sàng.':'Máy chủ chạy nhưng chưa có Gemini API key.')}catch{apiAvailable=false;syncApiStatus();if(showMessage)showToast('Không kết nối được máy chủ. Chạy npm start để bật backend.')}}
-  function syncApiStatus(){const label=apiAvailable?'Máy chủ đã cấu hình AI.':'Chưa kết nối AI thật (có thể đang mở file HTML trực tiếp).';['apiStatusText','settingsApiText'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=label});['apiStatusDot','settingsApiDot'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('live',apiAvailable)})}
-  function saveSettings(){state.targetScore=document.getElementById('settingsTarget').value;document.getElementById('targetScore').value=state.targetScore;saveState();showToast('Đã lưu mục tiêu điểm.')}
-  function resetLocalData(){if(!confirm('Bạn có chắc muốn xóa kết quả test, lịch bận và tiến độ lưu trên trình duyệt này?'))return;localStorage.removeItem(STORAGE_KEY);state=loadState();renderCalendar();updateStats();renderLessons();showToast('Đã xóa dữ liệu trên trình duyệt.')}
+  // Render Gemini's Markdown safely; KaTeX typesets its LaTeX when the CDN is available.
+  const gradingScripts = {};
+  function loadGradingScript(url, globalName) {
+    if (window[globalName]) return Promise.resolve();
+    if (!gradingScripts[globalName]) {
+      gradingScripts[globalName] = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Không tải được thư viện hiển thị kết quả.'));
+        document.head.appendChild(script);
+      });
+    }
+    return gradingScripts[globalName];
+  }
+  async function renderGradingMarkdown(markdown, target) {
+    try {
+      if (!document.getElementById('gradingKatexStyles')) {
+        const link = document.createElement('link');
+        link.id = 'gradingKatexStyles';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css';
+        document.head.appendChild(link);
+      }
+      await Promise.all([
+        loadGradingScript('https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js', 'marked'),
+        loadGradingScript('https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js', 'DOMPurify'),
+        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js', 'katex'),
+        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js', 'renderMathInElement')
+      ]);
+      target.innerHTML = window.DOMPurify.sanitize(window.marked.parse(markdown));
+      window.renderMathInElement(target, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    } catch {
+      target.textContent = markdown;
+    }
+  }
 
-  // Shared document library: fetch once and receive live updates from the server.
-  const seedLessons = [...lessons];
+  document.getElementById('gradingForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const problem = document.getElementById('problemImage').files[0];
+    const solution = document.getElementById('solutionImage').files[0];
+    if (!problem || !solution) {
+      showToast('Hãy tải cả ảnh đề bài và ảnh lời giải.');
+      return;
+    }
+    const btn = document.getElementById('gradeSubmitBtn');
+    const panel = document.getElementById('gradingResultPanel');
+    const result = document.getElementById('gradingResult');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading"></span> Đang phân tích…';
+    panel.classList.remove('hidden');
+    result.textContent = 'Đang phân tích bài làm, vui lòng chờ trong giây lát...';
+    try {
+      const fd = new FormData();
+      fd.append('problemImage', problem);
+      fd.append('solutionImage', solution);
+      fd.append('topic', document.getElementById('gradingTopic').value);
+      fd.append('scoreScale', document.getElementById('gradingScore').value);
+      fd.append('notes', document.getElementById('gradingNotes').value);
+      const response = await fetch('/api/ai/grade-solution', { method: 'POST', body: fd });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Máy chủ AI chưa sẵn sàng.');
+      await renderGradingMarkdown(data.feedback || data.text || 'Gemini không trả về nhận xét.', result);
+      showToast('Đã nhận kết quả phân tích từ Gemini.');
+    } catch (error) {
+      result.textContent = 'CHƯA CHẤM ĐƯỢC BẰNG AI THẬT\n\n' +
+        (error.message || 'Không kết nối được máy chủ.') +
+        '\n\nKiểm tra trạng thái máy chủ trong mục Cài đặt rồi thử lại.';
+      showToast('Chưa kết nối được Gemini; bài làm chưa được chấm.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="sparkles"></i> Phân tích bài làm';
+      icons();
+    }
+  });
+
+  document.getElementById('resetGradeBtn').addEventListener('click', () => {
+    setTimeout(() => {
+      ['problemPreview', 'solutionPreview'].forEach(id => {
+        const preview = document.getElementById(id);
+        if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
+        preview.removeAttribute('src');
+        preview.classList.add('hidden');
+      });
+      document.getElementById('gradingResult').replaceChildren();
+      document.getElementById('gradingResultPanel').classList.add('hidden');
+    }, 0);
+  });
+  async function checkApiHealth(showMessage=false){try{const r=await fetch('/api/health');if(!r.ok)throw new Error('not ok');const d=await r.json();apiAvailable=!!d.aiConfigured;syncApiStatus();if(showMessage)showToast(d.aiConfigured?'Máy chủ và AI đã sẵn sàng.':'Máy chủ chạy nhưng chưa có Gemini API key.')}catch{apiAvailable=false;syncApiStatus();if(showMessage)showToast('Không kết nối được máy chủ. Chạy npm start để bật backend.')}}
+  function syncApiStatus(){const label=apiAvailable?'Máy chủ đã cấu hình AI.':'Chưa kết nối AI thật (có thể đang mở file HTML trực tiếp).';['apiStatusText','settingsApiText'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=label});['apiStatusDot','settingsApiDot'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('live',apiAvailable)});const chatStatus=document.getElementById('chatApiStatus'),chatDot=document.getElementById('chatApiDot');if(chatStatus)chatStatus.textContent=apiAvailable?'Đang sẵn sàng trả lời':'Chưa kết nối AI';if(chatDot)chatDot.classList.toggle('live',apiAvailable)}
+  function saveSettings(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('settingsTarget').value||8))));document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan()}saveState();showToast('Đã lưu mục tiêu điểm và cập nhật lộ trình.')}
+  function resetLocalData(){if(!confirm('Bạn có chắc muốn xóa kết quả test, lịch bận và tiến độ lưu trên trình duyệt này?'))return;localStorage.removeItem(STORAGE_KEY);state=loadState();document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('examDate').value='';document.getElementById('examName').value='';const nextExam=new Date();nextExam.setMonth(nextExam.getMonth()+7);document.getElementById('examDate').value=dateKey(nextExam);renderCalendar();updateStats();renderLessons();renderCountdowns();showToast('Đã xóa dữ liệu trên trình duyệt.')}
+
+  const categoryLabelsForAdmin={'chuyen-de':'Chuyên đề ôn tập','de-vao-10':'Đề thi vào 10','de-giua-ky':'Đề thi giữa kỳ','de-cuoi-ky':'Đề thi cuối kỳ'};
   function mergeServerDocuments(docs){
     const categoryLabels={'chuyen-de':'Chuyên đề ôn tập','de-vao-10':'Đề thi vào 10','de-giua-ky':'Đề thi giữa kỳ','de-cuoi-ky':'Đề thi cuối kỳ'};
     const categoryIcons={'chuyen-de':'book-open','de-vao-10':'file-check','de-giua-ky':'clipboard-list','de-cuoi-ky':'award'};
     const remote=(Array.isArray(docs)?docs:[]).map(d=>({id:Number(d.id),title:d.title,category:d.category||'chuyen-de',label:categoryLabels[d.category]||'Tài liệu',description:d.description||'Tài liệu được quản trị viên cập nhật.',tags:[d.tags||'',d.fileName||''].join(' '),icon:categoryIcons[d.category]||'file-text',fileUrl:d.fileUrl||'',fileName:d.fileName||'',author:d.author||'Ban quản trị',isAdminDocument:true,updatedAt:d.updatedAt||d.createdAt||'',createdAt:d.createdAt||''}));
-    lessons=[...seedLessons.filter(s=>!s.isAdminDocument),...remote];renderLessons();
+    lessons=[...seedLessons.filter(s=>!s.isAdminDocument),...remote];
+    renderLessons();
   }
-  async function loadSharedDocuments(){try{const r=await fetch('/api/documents');if(r.ok)mergeServerDocuments(await r.json())}catch(e){/* opened as static HTML or server offline */}}
+  async function loadSharedDocuments(){try{const r=await fetch('/api/documents');if(r.ok)mergeServerDocuments(await r.json())}catch(e){/* Static hosting or server offline: retain the local UI. */}}
   function connectSharedDocumentUpdates(){if(!('EventSource' in window))return;try{const es=new EventSource('/api/documents/events');es.addEventListener('documents',e=>{try{mergeServerDocuments(JSON.parse(e.data))}catch(err){console.warn('Invalid document update',err)}})}catch(e){}}
-  // Initialization and safe local defaults.
-  document.getElementById('targetScore').addEventListener('change',e=>{state.targetScore=e.target.value;saveState()});document.getElementById('examDate').addEventListener('change',e=>{state.examDate=e.target.value;saveState()});
-  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';renderLessons();updateStats();renderCalendar();icons();checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();
+
+// Initialization and safe local defaults.
+  function scheduleInputsChanged(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lộ trình đã cập nhật theo mục tiêu và thời gian còn lại.'}saveState();renderCountdowns()}
+  ['targetScore','examDate','examName'].forEach(id=>document.getElementById(id).addEventListener('change',scheduleInputsChanged));document.getElementById('examDate').addEventListener('input',renderCountdowns);document.getElementById('examName').addEventListener('input',renderCountdowns);document.getElementById('targetScore').addEventListener('input',()=>{document.getElementById('homeTarget').textContent=formatScore(document.getElementById('targetScore').value||8)});
+  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();icons();renderCountdowns();setInterval(renderCountdowns,60000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();
 </script>
 </body>
 </html>
