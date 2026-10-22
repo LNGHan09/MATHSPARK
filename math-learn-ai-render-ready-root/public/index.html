@@ -8,6 +8,7 @@
   <link rel="icon" type="image/png" href="mathspark-mark.png" />
   <title>MathSpark — Chinh phục Toán 9</title>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{--ink:#1d2b50;--ink2:#263a6b;--muted:#687083;--paper:#f8f5f0;--panel:#fffdf9;--line:#e7e0d6;--rose:#883b4c;--gold:#b78129;--green:#237653;--red:#b44455;--shadow:0 14px 40px rgba(30,40,68,.08)}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#e8e5e0;color:#20283b;font-family:"Times New Roman",Times,Georgia,serif;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8d9bc7;outline-offset:2px}button:disabled{cursor:not-allowed;opacity:.55}
@@ -289,6 +290,19 @@
   }
 </style>
 
+
+  <style id="mathspark-supabase-account-styles">
+    .account-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#fffdf9;color:var(--ink);font-weight:bold;font-size:13px;max-width:180px}
+    .account-button svg{width:17px;height:17px;flex:0 0 17px}.account-button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .account-modal[hidden]{display:none!important}.account-modal{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(20,30,52,.62);backdrop-filter:blur(5px)}
+    .account-card{width:min(100%,430px);max-height:min(90dvh,720px);overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.22)}
+    .account-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}.account-card h2{font-size:23px;color:var(--ink);margin:0 0 7px}.account-card p{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
+    .account-close{width:36px;height:36px;flex:0 0 36px;border:1px solid var(--line);border-radius:50%;background:#fffdf9;color:var(--ink);display:grid;place-items:center}.account-close svg{width:18px;height:18px}
+    .account-form{display:grid;gap:13px}.account-form .field input{min-height:46px;font-size:16px}.account-form .btn{width:100%;min-height:45px}.account-switch{margin-top:16px;text-align:center;color:var(--muted);font-size:13px}.account-switch button{border:0;background:transparent;color:var(--ink2);font-weight:bold;text-decoration:underline;text-underline-offset:3px;padding:6px}
+    .account-status{font-size:12px;line-height:1.5;color:var(--rose);overflow-wrap:anywhere}.account-status:empty{display:none}.account-user-box{border:1px solid var(--line);background:#fffdf9;border-radius:15px;padding:15px;margin:12px 0}.account-user-box strong{display:block;color:var(--ink);overflow-wrap:anywhere}.account-user-box span{display:block;color:var(--muted);font-size:12px;margin-top:5px;overflow-wrap:anywhere}.account-user-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.account-user-actions .btn{flex:1 1 130px}
+    @media(max-width:540px){.account-button{width:34px;height:34px;min-height:34px;max-width:34px;padding:0;border-radius:50%;flex:0 0 34px}.account-button span{display:none}.account-button svg{width:17px}.account-card{padding:19px;border-radius:20px}.top-right{gap:5px}}
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -297,7 +311,7 @@
       <div class="logo"><img src="mathspark-mark.png" alt="Logo MathSpark"></div><div><div class="brand-title">MathSpark</div></div>
     </div>
     <div class="searchbar" role="button" tabindex="0" aria-label="Mở tìm kiếm thông minh" onclick="openSearchOverlay()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSearchOverlay()}"><i data-lucide="search"></i><span class="search-top-placeholder">Tìm kiếm chuyên đề, bộ đề, bài học...</span><span id="searchMode" title="Tìm kiếm thông minh"><i data-lucide="sparkles"></i></span></div>
-    <div class="top-right"><span class="secure"><i data-lucide="shield-check"></i> Không gian học tập</span><button class="avatar" onclick="switchView('settings')" title="Cài đặt">H</button></div>
+    <div class="top-right"><span class="secure"><i data-lucide="shield-check"></i> Không gian học tập</span><button id="accountButton" class="account-button" type="button" onclick="openAccountModal()" title="Đăng nhập hoặc quản lý tài khoản"><i data-lucide="user-round"></i><span id="accountButtonLabel">Tài khoản</span></button><button class="avatar" onclick="switchView('settings')" title="Cài đặt">H</button></div>
   </header>
   <div class="layout">
     <aside class="sidebar">
@@ -412,8 +426,34 @@
   </div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<div id="accountModal" class="account-modal" hidden onclick="if(event.target===this)closeAccountModal()">
+  <section class="account-card" role="dialog" aria-modal="true" aria-labelledby="accountDialogTitle">
+    <div class="account-card-head"><div><h2 id="accountDialogTitle">Đăng nhập MathSpark</h2><p id="accountDialogSubtitle">Đăng nhập để lưu lịch học, điểm số và lộ trình trên nhiều thiết bị.</p></div><button type="button" class="account-close" onclick="closeAccountModal()" aria-label="Đóng"><i data-lucide="x"></i></button></div>
+    <div id="accountSignedIn" class="hidden">
+      <div class="account-user-box"><strong id="accountDisplayCurrent">Tài khoản đã đăng nhập</strong><span id="accountEmailCurrent"></span><span>Dữ liệu lịch trình và tiến độ được đồng bộ với tài khoản này khi lưu thành công.</span></div>
+      <div class="account-user-actions"><button class="btn btn-light" type="button" onclick="closeAccountModal()">Đóng</button><button class="btn btn-rose" type="button" onclick="signOutStudent()">Đăng xuất</button></div>
+    </div>
+    <form id="accountForm" class="account-form" onsubmit="handleAccountSubmit(event)">
+      <div id="accountNameField" class="field hidden"><label for="accountDisplayName">Tên hiển thị</label><input id="accountDisplayName" type="text" maxlength="80" autocomplete="name" placeholder="Tên của bạn"></div>
+      <div class="field"><label for="accountEmail">Email</label><input id="accountEmail" type="email" required autocomplete="email" placeholder="ban@example.com"></div>
+      <div class="field"><label for="accountPassword">Mật khẩu</label><input id="accountPassword" type="password" required minlength="8" autocomplete="current-password" placeholder="Ít nhất 8 ký tự"></div>
+      <button id="accountSubmit" class="btn btn-primary" type="submit">Đăng nhập</button>
+      <div id="accountStatus" class="account-status" role="status" aria-live="polite"></div>
+    </form>
+    <div id="accountSwitchRow" class="account-switch">Chưa có tài khoản? <button type="button" onclick="toggleAccountMode()">Tạo tài khoản</button></div>
+    <p style="font-size:11px;margin-top:14px">Chỉ sử dụng email của chính bạn hoặc email được gia đình/nhà trường cho phép. Không chia sẻ mật khẩu cho người khác.</p>
+  </section>
+</div>
+
 <script>
   const STORAGE_KEY = 'mathLearnAI_v2';
+  const ACCOUNT_OWNER_KEY = 'mathSparkAccountId';
+  let supabaseClient = null;
+  let currentStudent = null;
+  let cloudSaveTimer = null;
+  let applyingCloudState = false;
+  let accountMode = 'signin';
   let lessons = [
     {id:1,title:'Phương trình và hệ phương trình',category:'chuyen-de',label:'Đại số',description:'Giải phương trình, hệ phương trình bậc nhất hai ẩn và bài toán lập phương trình.',tags:'phương trình hệ phương trình đại số lập hệ bài toán thực tế',icon:'function-square'},
     {id:2,title:'Hàm số bậc hai và đồ thị',category:'chuyen-de',label:'Hàm số',description:'Parabol, bảng giá trị, giao điểm và bài toán liên hệ đồ thị.',tags:'hàm số bậc hai parabol đồ thị delta tọa độ',icon:'chart-no-axes-combined'},
@@ -461,7 +501,105 @@
     const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
-  function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats()}
+  function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
+
+  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
+  function scheduleCloudStateSave(){
+    if(!supabaseClient||!currentStudent||applyingCloudState)return;
+    clearTimeout(cloudSaveTimer);
+    const ownerId=currentStudent.id;
+    const snapshot=JSON.parse(JSON.stringify(state));
+    cloudSaveTimer=setTimeout(async()=>{
+      if(!supabaseClient||!currentStudent||currentStudent.id!==ownerId)return;
+      try{
+        const {error}=await supabaseClient.from('student_learning_state').upsert({user_id:ownerId,payload:snapshot,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+        if(error)throw error;
+        const label=document.getElementById('accountStatus');if(label&& !document.getElementById('accountModal').hidden)label.textContent='Đã đồng bộ tiến độ lên tài khoản.';
+      }catch(err){console.warn('Supabase cloud save failed:',err.message);const label=document.getElementById('accountStatus');if(label&& !document.getElementById('accountModal').hidden)label.textContent='Chưa đồng bộ được dữ liệu. Kiểm tra SQL/RLS trong Supabase và kết nối mạng.';}
+    },900);
+  }
+  function refreshAfterStudentStateLoad(){
+    const target=document.getElementById('targetScore'),settings=document.getElementById('settingsTarget'),exam=document.getElementById('examDate'),examName=document.getElementById('examName');
+    if(target)target.value=state.targetScore||'8';if(settings)settings.value=state.targetScore||'8';if(exam)exam.value=state.examDate||'';if(examName)examName.value=state.examName||'';
+    if(typeof renderCalendar==='function')renderCalendar();if(typeof updateStats==='function')updateStats();if(typeof renderLessons==='function')renderLessons();if(typeof renderPlan==='function')renderPlan();if(typeof renderCountdowns==='function')renderCountdowns();if(typeof icons==='function')icons();
+  }
+  async function activateStudent(user){
+    if(!supabaseClient||!user)return;
+    const previousOwner=localStorage.getItem(ACCOUNT_OWNER_KEY);
+    currentStudent=user;syncAccountButton();
+    try{
+      const {data,error}=await supabaseClient.from('student_learning_state').select('payload').eq('user_id',user.id).maybeSingle();
+      if(error)throw error;
+      if(data&&data.payload&&typeof data.payload==='object'&&Object.keys(data.payload).length>0){
+        applyingCloudState=true;state={...freshStudentState(),...data.payload};localStorage.setItem(STORAGE_KEY,JSON.stringify(state));applyingCloudState=false;
+      }else{
+        // Migrate anonymous browser progress only for the first account on this browser.
+        applyingCloudState=true;state=!previousOwner?{...freshStudentState(),...loadState()}:freshStudentState();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));applyingCloudState=false;
+        const {error:saveError}=await supabaseClient.from('student_learning_state').upsert({user_id:user.id,payload:state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+        if(saveError)throw saveError;
+      }
+      localStorage.setItem(ACCOUNT_OWNER_KEY,user.id);refreshAfterStudentStateLoad();
+      const status=document.getElementById('accountStatus');if(status&&!document.getElementById('accountModal').hidden)status.textContent='Đăng nhập thành công; tiến độ đã được tải.';
+      return true;
+    }catch(err){
+      applyingCloudState=false;console.error('Could not load student data from Supabase:',err);
+      const status=document.getElementById('accountStatus');if(status)status.textContent='Đăng nhập được nhưng chưa tải/lưu được tiến độ. Hãy kiểm tra đã chạy supabase/setup.sql và chính sách RLS chưa. Chi tiết: '+(err.message||'Lỗi không xác định');
+      return false;
+    }
+  }
+  function syncAccountButton(){
+    const label=document.getElementById('accountButtonLabel'),button=document.getElementById('accountButton');
+    if(!label||!button)return;
+    const name=currentStudent&&(currentStudent.user_metadata?.display_name||currentStudent.email||'Tài khoản');
+    label.textContent=name?String(name).split('@')[0]:'Tài khoản';button.title=currentStudent?`Đã đăng nhập: ${currentStudent.email||name}`:'Đăng nhập hoặc tạo tài khoản';
+    const signedIn=document.getElementById('accountSignedIn'),form=document.getElementById('accountForm'),switchRow=document.getElementById('accountSwitchRow');
+    if(signedIn)signedIn.classList.toggle('hidden',!currentStudent);if(form)form.classList.toggle('hidden',!!currentStudent);if(switchRow)switchRow.classList.toggle('hidden',!!currentStudent);
+    const currentName=document.getElementById('accountDisplayCurrent'),email=document.getElementById('accountEmailCurrent');if(currentName)currentName.textContent=currentStudent?.user_metadata?.display_name||'Tài khoản học sinh';if(email)email.textContent=currentStudent?.email||'';
+    if(currentStudent){document.getElementById('accountDialogTitle').textContent='Tài khoản MathSpark';document.getElementById('accountDialogSubtitle').textContent='Thông tin tài khoản và trạng thái đồng bộ.';}
+  }
+  function openAccountModal(){
+    const modal=document.getElementById('accountModal');modal.hidden=false;
+    if(currentStudent){syncAccountButton();}
+    else{document.getElementById('accountStatus').textContent='';setAccountMode('signin');if(!supabaseClient)document.getElementById('accountStatus').textContent='Chưa kết nối Supabase. Hãy cấu hình SUPABASE_URL và SUPABASE_ANON_KEY trên Render, rồi tải lại trang.';}
+    icons();
+  }
+  function closeAccountModal(){document.getElementById('accountModal').hidden=true}
+  function setAccountMode(mode){accountMode=mode==='signup'?'signup':'signin';const signup=accountMode==='signup';document.getElementById('accountDialogTitle').textContent=signup?'Tạo tài khoản MathSpark':'Đăng nhập MathSpark';document.getElementById('accountDialogSubtitle').textContent=signup?'Tạo tài khoản để lưu lịch học, điểm số và lộ trình trên nhiều thiết bị.':'Đăng nhập để tiếp tục lộ trình cá nhân của bạn.';document.getElementById('accountNameField').classList.toggle('hidden',!signup);document.getElementById('accountSubmit').textContent=signup?'Tạo tài khoản':'Đăng nhập';document.getElementById('accountPassword').autocomplete=signup?'new-password':'current-password';document.getElementById('accountSwitchRow').innerHTML=signup?'Đã có tài khoản? <button type="button" onclick="toggleAccountMode()">Đăng nhập</button>':'Chưa có tài khoản? <button type="button" onclick="toggleAccountMode()">Tạo tài khoản</button>';document.getElementById('accountStatus').textContent='';}
+  function toggleAccountMode(){setAccountMode(accountMode==='signin'?'signup':'signin')}
+  async function handleAccountSubmit(event){
+    event.preventDefault();const status=document.getElementById('accountStatus'),submit=document.getElementById('accountSubmit');
+    if(!supabaseClient){status.textContent='Supabase chưa được cấu hình. Hãy kiểm tra biến môi trường trên Render.';return;}
+    const email=document.getElementById('accountEmail').value.trim(),password=document.getElementById('accountPassword').value,name=document.getElementById('accountDisplayName').value.trim();submit.disabled=true;status.textContent=accountMode==='signup'?'Đang tạo tài khoản…':'Đang đăng nhập…';
+    try{
+      if(accountMode==='signup'){
+        const {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:window.location.origin+'/'}});if(error)throw error;
+        if(data.session?.user){const ready=await activateStudent(data.session.user);if(ready)status.textContent='Tài khoản đã tạo và đăng nhập thành công.';}
+        else{status.textContent='Đã gửi yêu cầu đăng ký. Hãy mở email để xác nhận tài khoản, rồi quay lại đăng nhập.';}
+      }else{
+        const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const ready=await activateStudent(data.user||data.session?.user);if(ready)status.textContent='Đăng nhập thành công.';
+      }
+      if(currentStudent){syncAccountButton();refreshAfterStudentStateLoad();}
+    }catch(err){status.textContent=err.message||'Không thể đăng nhập. Hãy thử lại.';}
+    finally{submit.disabled=false;}
+  }
+  async function signOutStudent(){
+    if(!supabaseClient)return;const oldId=currentStudent?.id;clearTimeout(cloudSaveTimer);
+    try{const {error}=await supabaseClient.auth.signOut();if(error)throw error;}catch(err){document.getElementById('accountStatus').textContent='Không đăng xuất được: '+err.message;return;}
+    currentStudent=null;applyingCloudState=true;state=freshStudentState();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch{}applyingCloudState=false;
+    if(oldId)localStorage.setItem(ACCOUNT_OWNER_KEY,oldId);refreshAfterStudentStateLoad();syncAccountButton();document.getElementById('accountStatus').textContent='Đã đăng xuất. Dữ liệu tài khoản sẽ được tải lại khi chủ tài khoản đăng nhập.';showToast('Đã đăng xuất khỏi MathSpark.');
+  }
+  async function initializeSupabaseAuth(){
+    try{
+      const response=await fetch('/api/config',{cache:'no-store'});if(!response.ok)throw new Error('Máy chủ chưa cung cấp cấu hình Supabase.');const config=await response.json();
+      if(!config.supabaseReady){console.info('Supabase chưa cấu hình ở Render.');return;}
+      if(!window.supabase||typeof window.supabase.createClient!=='function')throw new Error('Không tải được thư viện Supabase JS.');
+      supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+      const {data,error}=await supabaseClient.auth.getSession();if(error)throw error;if(data.session?.user)await activateStudent(data.session.user);
+      supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'&&currentStudent){currentStudent=null;clearTimeout(cloudSaveTimer);applyingCloudState=true;state=freshStudentState();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch{}applyingCloudState=false;refreshAfterStudentStateLoad();syncAccountButton();} });
+      syncAccountButton();
+    }catch(err){console.warn('Supabase Auth initialization failed:',err.message);}
+  }
+
   function showToast(message){const el=document.getElementById('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
   function icons(){if(window.lucide?.createIcons)window.lucide.createIcons()}
   const aiChatHistory=[];
@@ -991,7 +1129,7 @@
 // Initialization and safe local defaults.
   function scheduleInputsChanged(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lộ trình đã cập nhật theo mục tiêu và thời gian còn lại.'}saveState();renderCountdowns()}
   ['targetScore','examDate','examName'].forEach(id=>document.getElementById(id).addEventListener('change',scheduleInputsChanged));document.getElementById('examDate').addEventListener('input',renderCountdowns);document.getElementById('examName').addEventListener('input',renderCountdowns);document.getElementById('targetScore').addEventListener('input',()=>{document.getElementById('homeTarget').textContent=formatScore(document.getElementById('targetScore').value||8)});
-  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();icons();renderCountdowns();setInterval(renderCountdowns,60000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();
+  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();icons();renderCountdowns();setInterval(renderCountdowns,60000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();initializeSupabaseAuth();syncAccountButton();
 </script>
 </body>
 </html>
