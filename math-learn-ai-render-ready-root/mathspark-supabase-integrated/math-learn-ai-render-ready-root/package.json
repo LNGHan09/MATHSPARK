@@ -1,0 +1,16 @@
+{
+  "name": "math-learn-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MathSpark: Toán 9, tài khoản học sinh, lộ trình cá nhân và tài liệu lưu trên Supabase",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "dotenv": "^16.4.7",
+    "@supabase/supabase-js": "^2.57.4"
+  }
+}
