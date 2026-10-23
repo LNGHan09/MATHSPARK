@@ -267,6 +267,13 @@
 
 <style id="mathspark-document-reader-styles">
   .document-view-page{grid-column:1/-1;min-width:0}
+  .document-inline-view{grid-column:1/-1;min-width:0;width:100%;padding:16px;margin:-3px 0 8px;border-color:#e5d8c5;background:var(--panel);scroll-margin-top:90px}
+  .document-inline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .document-inline-heading{flex:1 1 240px;min-width:0}
+  .document-inline-heading h3{margin:8px 0 6px;color:var(--ink);font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+  .document-inline-heading p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+  .document-inline-close{flex:0 0 auto;min-height:40px}
+  .document-inline-view .document-reader{margin-top:14px}
   .document-reader{margin:18px 0 14px;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#f1f0ed;box-shadow:0 3px 12px rgba(29,43,80,.045)}
   .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;background:#fffdf9;border-bottom:1px solid var(--line)}
   .document-reader-label{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink);font-size:13px;font-weight:bold}
@@ -279,7 +286,10 @@
   .document-reader-note{margin:0;padding:10px 13px;color:var(--muted);background:#fffdf9;border-top:1px solid var(--line);font-size:12px;line-height:1.5}
   .document-reader-empty{padding:20px;border:1px dashed #d8d1c6;border-radius:14px;background:#fffdf9;color:var(--muted);font-size:13px;line-height:1.5}
   @media(max-width:600px){
-    .document-reader{margin-left:-4px;margin-right:-4px;border-radius:12px}
+    .document-inline-view{padding:12px;margin-left:0;margin-right:0;border-radius:15px}
+    .document-inline-heading{flex-basis:100%}
+    .document-inline-close{width:100%;justify-content:center}
+    .document-reader{margin-left:0;margin-right:0;border-radius:12px}
     .document-reader-toolbar{padding:9px;align-items:flex-start}
     .document-reader-label{font-size:12px;max-width:100%}
     .document-reader-actions{width:100%}
@@ -356,7 +366,7 @@
 <body>
 <div class="app">
   <header class="topbar">
-    <div class="brand" role="button" tabindex="0" onclick="switchView('home')" aria-label="Về trang chủ">
+    <div class="brand" role="button" tabindex="0" onclick="returnHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();returnHome()}" aria-label="Về trang chủ" title="Về trang chủ">
       <div class="logo"><img src="mathspark-mark.png" alt="Logo MathSpark"></div><div><div class="brand-title">MathSpark</div></div>
     </div>
     <div class="searchbar" role="button" tabindex="0" aria-label="Mở tìm kiếm thông minh" onclick="openSearchOverlay()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openSearchOverlay()}"><i data-lucide="search"></i><span class="search-top-placeholder">Tìm kiếm chuyên đề, bộ đề, bài học...</span><span id="searchMode" title="Tìm kiếm thông minh"><i data-lucide="sparkles"></i></span></div>
@@ -526,6 +536,8 @@
   let state = loadState();
   let activeCategory = 'all';
   let homeResourceMode = true;
+  // The selected Admin resource opens inline in the document list (never jumps to the top).
+  let openAdminDocumentId = null;
   let activeQuiz = null;
   let latestFilteredLessons = [...lessons];
   let apiAvailable = false;
@@ -750,7 +762,8 @@
       input.focus({preventScroll:true});
     }
   });
-  function switchView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}window.scrollTo({top:0,behavior:'smooth'});icons()}
+  function switchView(name){finalizeOpenAdminDocument();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}window.scrollTo({top:0,behavior:'smooth'});icons()}
+  function returnHome(){finalizeOpenAdminDocument();activeCategory='all';homeResourceMode=true;document.getElementById('lessonHeading').textContent='Đề và tài liệu';document.getElementById('lessonSubheading').textContent='Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';switchView('home')}
   function norm(s){return String(s||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
   function showLessons(cat){
     // Khu vực này chỉ hiển thị đề/tài liệu được Admin đăng; không quay về các thẻ chuyên đề mẫu.
@@ -799,19 +812,65 @@
   }
   function resourceCard(item){
     const done=state.completedLessons.includes(`document:${item.id}`);
+    const isOpen=String(openAdminDocumentId)===String(item.id);
     const categoryLabel=resourceCategoryLabels[item.category]||item.label||'Tài liệu';
     const icon=item.icon||'file-text';
     const date=item.updatedAt||item.createdAt||'';
     const author=item.author||'Ban quản trị';
-    return `<button class="resource-card" type="button" onclick="openLesson(${Number(item.id)}, true)" aria-label="Mở ${escapeHtml(item.title)}">
+    const card=`<button class="resource-card" type="button" onclick="openAdminDocumentInline(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
       <span class="resource-art cat-${escapeHtml(item.category||'chuyen-de')}">${drawLessonArt(icon)}</span>
       <span class="resource-content">
-        <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã làm':'Chưa làm'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
+        <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã đọc':'Chưa đọc'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
         <strong class="resource-title">${escapeHtml(item.title)}</strong>
         <span class="resource-author">${escapeHtml(author)}</span>
         <span class="resource-date"><i data-lucide="clock-3"></i>${escapeHtml(formatResourceDate(date))}</span>
-      </span><span class="resource-chevron"><i data-lucide="chevron-right"></i></span>
+      </span><span class="resource-chevron"><i data-lucide="${isOpen?'chevron-down':'chevron-right'}"></i></span>
     </button>`;
+    return card+(isOpen?renderInlineAdminDocument(item):'');
+  }
+  function renderInlineAdminDocument(lesson){
+    const categoryLabel=resourceCategoryLabels[lesson.category]||'Tài liệu';
+    const author=lesson.author||'Ban quản trị';
+    return `<section class="panel document-inline-view" aria-label="Trình xem ${escapeHtml(lesson.title)}">
+      <div class="document-inline-head">
+        <div class="document-inline-heading">
+          <span class="pill resource-category">${escapeHtml(categoryLabel)}</span>
+          <h3>${escapeHtml(lesson.title)}</h3>
+          <p>${escapeHtml(lesson.description||'Tài liệu do quản trị viên cập nhật.')} · ${escapeHtml(author)}</p>
+        </div>
+        <button class="btn btn-light btn-small document-inline-close" type="button" onclick="closeAdminDocument(${Number(lesson.id)})"><i data-lucide="x"></i> Đóng tài liệu</button>
+      </div>
+      ${renderDocumentViewer(lesson)}
+    </section>`;
+  }
+  function markDocumentReadState(id){
+    const key=`document:${id}`;
+    if(!state.completedLessons.includes(key)){state.completedLessons.push(key);saveState();}
+  }
+  function finalizeOpenAdminDocument(){
+    if(openAdminDocumentId===null||openAdminDocumentId===undefined)return;
+    const id=openAdminDocumentId;
+    openAdminDocumentId=null;
+    markDocumentReadState(id);
+  }
+  function openAdminDocumentInline(id){
+    const item=lessons.find(l=>l.isAdminDocument&&String(l.id)===String(id));
+    if(!item)return;
+    if(openAdminDocumentId!==null&&String(openAdminDocumentId)!==String(id))finalizeOpenAdminDocument();
+    openAdminDocumentId=String(id);
+    const y=window.scrollY;
+    renderLessons();
+    window.scrollTo({top:y,behavior:'auto'});
+  }
+  function closeAdminDocument(id){
+    const current=openAdminDocumentId;
+    if(current===null||current===undefined)return;
+    markDocumentReadState(id===undefined?current:id);
+    openAdminDocumentId=null;
+    const y=window.scrollY;
+    renderLessons();
+    window.scrollTo({top:y,behavior:'auto'});
+    showToast('Đã tự động cập nhật trạng thái đã đọc.');
   }
   function lessonCard(item){
     if(item.isAdminDocument)return resourceCard(item);
@@ -826,6 +885,7 @@
     let source=resourceMode?lessons.filter(l=>l.isAdminDocument):lessons;
     let data=source.filter(l=>(activeCategory==='all'||l.category===activeCategory)&&(!q||norm(`${l.title} ${l.description} ${l.tags} ${l.label} ${l.author||''} ${l.fileName||''}`).includes(q)));
     if(q&&!data.length){const expanded=smartLocalSearch(q).filter(l=>!resourceMode||l.isAdminDocument);data=expanded.filter(l=>(activeCategory==='all'||l.category===activeCategory))}
+    if(openAdminDocumentId!==null&&!data.some(l=>l.isAdminDocument&&String(l.id)===String(openAdminDocumentId))){finalizeOpenAdminDocument();}
     latestFilteredLessons=data;
     if(!data.length){
       if(resourceMode){list.innerHTML='<div class="resource-empty"><strong>Chưa có đề hoặc tài liệu nào</strong><p>Khi bạn đăng tài liệu trong trang Admin, nội dung sẽ tự động xuất hiện tại đây mà không cần người học tải lại trang.</p></div>';}
@@ -842,21 +902,7 @@
     if(!lesson)return;
     document.getElementById('lessonHeading').textContent=lesson.title;
     document.getElementById('lessonSubheading').textContent=lesson.description||'Thông tin tài liệu';
-    if(lesson.isAdminDocument){
-      const categoryLabel=resourceCategoryLabels[lesson.category]||'Tài liệu';
-      const done=state.completedLessons.includes(`document:${lesson.id}`);
-      document.getElementById('lessonList').className='lesson-list resource-list';
-      document.getElementById('lessonList').innerHTML=`<div class="panel document-view-page">
-        <button class="text-link" onclick="showAllResources()">← Quay lại Đề và tài liệu</button>
-        <div class="resource-meta" style="margin-top:17px"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã làm':'Chưa làm'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></div>
-        <h2 style="margin:13px 0 8px;color:var(--ink)">${escapeHtml(lesson.title)}</h2>
-        <p class="panel-desc">${escapeHtml(lesson.description||'Chưa có mô tả cho tài liệu này.')}</p>
-        <p class="muted" style="font-size:12px;font-style:italic">${escapeHtml(lesson.author||'Ban quản trị')} · ${escapeHtml(formatResourceDate(lesson.updatedAt||lesson.createdAt))}</p>
-        ${renderDocumentViewer(lesson)}
-        <button class="btn ${done?'btn-light':'btn-primary'}" onclick="markAdminDocumentDone(${Number(lesson.id)})"><i data-lucide="check-circle"></i> ${done?'Đã đánh dấu hoàn thành':'Đánh dấu đã xem tài liệu'}</button>
-      </div>`;
-      icons();window.scrollTo({top:0,behavior:'smooth'});return;
-    }
+    if(lesson.isAdminDocument){openAdminDocumentInline(lesson.id);return;}
     let question=questionBank.find(q=>norm(q.topic)===norm(lesson.title))||questionBank.find(q=>norm(q.topic).includes(norm(lesson.title.split(' ')[0])))||questionBank[0];
     document.getElementById('lessonList').className='lesson-list';
     document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showAllResources()">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
