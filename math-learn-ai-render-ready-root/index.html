@@ -276,7 +276,7 @@
   .document-page-title{margin:0;color:var(--ink);font-size:clamp(22px,3vw,30px);line-height:1.25;overflow-wrap:anywhere;}
   .document-page-description{margin:8px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;overflow-wrap:anywhere;}
   .document-page-shell{width:100%;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:17px;background:#fffdf9;box-shadow:0 3px 12px rgba(29,43,80,.04);}
-  .document-page-shell .document-reader{display:flex;flex-direction:column;width:100%;height:calc(100dvh - 285px);min-height:430px;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff;}
+  .document-page-shell .document-reader{display:flex;flex-direction:column;width:100%;height:calc(100dvh - 205px);min-height:520px;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff;}
   .document-page-shell .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;padding:10px 13px;background:#fffdf9;border-bottom:1px solid var(--line);}
   .document-page-shell .document-reader-label{min-width:0;overflow-wrap:anywhere;}
   .document-page-shell .document-reader-actions{margin-left:auto;}
@@ -287,14 +287,14 @@
   .document-page-shell .document-reader-image{display:block;max-width:100%;max-height:calc(100dvh - 365px);height:auto;object-fit:contain;background:#fff;}
   .document-page-shell .document-reader-empty{margin:16px;line-height:1.6;}
   @media(max-width:850px){
-    .document-page-shell .document-reader{height:calc(100dvh - 285px);min-height:390px;}
+    .document-page-shell .document-reader{height:calc(100dvh - 190px);min-height:480px;}
   }
   @media(max-width:600px){
     .document-page-backrow{margin-bottom:12px;}
     .document-page-back{min-height:42px;}
     .document-page-description{font-size:13px;margin-bottom:13px;}
     .document-page-shell{border-radius:13px;}
-    .document-page-shell .document-reader{height:calc(100dvh - 245px);min-height:360px;}
+    .document-page-shell .document-reader{height:calc(100dvh - 175px);min-height:450px;}
     .document-page-shell .document-reader-toolbar{padding:8px 9px;}
     .document-page-shell .document-reader-label{font-size:12px;}
     .document-page-shell .document-reader-actions .btn{min-height:38px;padding:7px 9px;}
@@ -811,10 +811,11 @@
     const safeUrl=escapeHtml(absoluteUrl);
     const safeName=escapeHtml(lesson.fileName||'tài liệu');
     const downloadLink=`<a class="btn btn-light" href="${safeUrl}" download="${safeName}" rel="noopener"><i data-lucide="download"></i> Tải file</a>`;
-    const toolbar=(label)=>`<div class="document-reader-toolbar"><span class="document-reader-label"><i data-lucide="file-text"></i><span>${label}</span></span><span class="document-reader-actions">${downloadLink}</span></div>`;
+    const toolbar=(label)=>`<div class="document-reader-toolbar">${label?`<span class="document-reader-label"><i data-lucide="file-text"></i><span>${label}</span></span>`:''}<span class="document-reader-actions">${downloadLink}</span></div>`;
     if(ext==='pdf'){
-      const pdfUrl=escapeHtml(absoluteUrl+'#toolbar=1&navpanes=0&view=FitH');
-      return `<div class="document-reader">${toolbar('Trình đọc PDF')}<iframe class="document-reader-frame" src="${pdfUrl}" title="${safeName}" loading="eager" allow="fullscreen"></iframe><p class="document-reader-note">Tài liệu được mở ngay tại đây. Dùng thanh công cụ trong khung PDF để đổi trang hoặc phóng to/thu nhỏ.</p></div>`;
+      // Prefer a wider initial page zoom so the document uses the available reader width.
+      const pdfUrl=escapeHtml(absoluteUrl+'#toolbar=1&navpanes=0&zoom=page-width');
+      return `<div class="document-reader">${toolbar('')}<iframe class="document-reader-frame" src="${pdfUrl}" title="${safeName}" loading="eager" allow="fullscreen"></iframe><p class="document-reader-note">Tài liệu được mở ngay tại đây. Dùng thanh công cụ trong khung PDF để đổi trang hoặc phóng to/thu nhỏ.</p></div>`;
     }
     if(['png','jpg','jpeg','webp','gif'].includes(ext)){
       return `<div class="document-reader">${toolbar('Xem ảnh tài liệu')}<div class="document-reader-image-wrap"><img class="document-reader-image" src="${safeUrl}" alt="${safeName}" loading="eager"></div></div>`;
