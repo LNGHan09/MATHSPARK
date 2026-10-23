@@ -267,13 +267,6 @@
 
 <style id="mathspark-document-reader-styles">
   .document-view-page{grid-column:1/-1;min-width:0}
-  .document-inline-view{grid-column:1/-1;min-width:0;width:100%;padding:16px;margin:-3px 0 8px;border-color:#e5d8c5;background:var(--panel);scroll-margin-top:90px}
-  .document-inline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .document-inline-heading{flex:1 1 240px;min-width:0}
-  .document-inline-heading h3{margin:8px 0 6px;color:var(--ink);font-size:18px;line-height:1.35;overflow-wrap:anywhere}
-  .document-inline-heading p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
-  .document-inline-close{flex:0 0 auto;min-height:40px}
-  .document-inline-view .document-reader{margin-top:14px}
   .document-reader{margin:18px 0 14px;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#f1f0ed;box-shadow:0 3px 12px rgba(29,43,80,.045)}
   .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;background:#fffdf9;border-bottom:1px solid var(--line)}
   .document-reader-label{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink);font-size:13px;font-weight:bold}
@@ -285,10 +278,24 @@
   .document-reader-image{display:block;max-width:100%;max-height:76vh;height:auto;object-fit:contain;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08)}
   .document-reader-note{margin:0;padding:10px 13px;color:var(--muted);background:#fffdf9;border-top:1px solid var(--line);font-size:12px;line-height:1.5}
   .document-reader-empty{padding:20px;border:1px dashed #d8d1c6;border-radius:14px;background:#fffdf9;color:var(--muted);font-size:13px;line-height:1.5}
+  .document-reader-screen[hidden]{display:none!important}
+  .document-reader-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;width:100%;height:100dvh;overflow:hidden;background:#f7f4ee;color:var(--ink);}
+  .document-screen-head{display:flex;align-items:center;gap:12px;flex:0 0 auto;min-height:66px;padding:10px 18px;background:#fffdf9;border-bottom:1px solid var(--line);box-shadow:0 2px 8px rgba(29,43,80,.06)}
+  .document-screen-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:bold;cursor:pointer}
+  .document-screen-back svg{width:18px;height:18px}
+  .document-screen-heading{flex:1 1 auto;min-width:0}
+  .document-screen-kicker{margin:0 0 2px;color:var(--muted);font-size:10px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase}
+  .document-screen-title{margin:0;color:var(--ink);font-size:16px;font-weight:bold;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .document-screen-download{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;min-height:40px;padding:0 11px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);font-size:12px;font-weight:bold;text-decoration:none}
+  .document-screen-download svg{width:16px;height:16px}
+  .document-screen-content{flex:1 1 auto;min-width:0;min-height:0;overflow:hidden;background:#fff}
+  .document-screen-content .document-reader{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff}
+  .document-screen-content .document-reader-toolbar,.document-screen-content .document-reader-note{display:none!important}
+  .document-screen-content .document-reader-frame{flex:1 1 auto;width:100%;height:100%;min-height:0;max-height:none;border:0}
+  .document-screen-content .document-reader-image-wrap{flex:1 1 auto;height:100%;min-height:0;max-height:none;padding:12px}
+  .document-screen-content .document-reader-image{max-width:100%;max-height:calc(100dvh - 66px);}
+  .document-screen-content .document-reader-empty{margin:16px}
   @media(max-width:600px){
-    .document-inline-view{padding:12px;margin-left:0;margin-right:0;border-radius:15px}
-    .document-inline-heading{flex-basis:100%}
-    .document-inline-close{width:100%;justify-content:center}
     .document-reader{margin-left:0;margin-right:0;border-radius:12px}
     .document-reader-toolbar{padding:9px;align-items:flex-start}
     .document-reader-label{font-size:12px;max-width:100%}
@@ -297,6 +304,14 @@
     .document-reader-frame{height:72dvh;min-height:460px}
     .document-reader-image-wrap{max-height:72dvh;padding:6px}
     .document-reader-image{max-height:68dvh}
+    .document-screen-head{gap:8px;min-height:60px;padding:8px}
+    .document-screen-back{min-height:42px;padding:0 9px;font-size:12px;white-space:nowrap}
+    .document-screen-back span{display:none}
+    .document-screen-title{font-size:14px;-webkit-line-clamp:2}
+    .document-screen-kicker{font-size:9px}
+    .document-screen-download{width:40px;min-width:40px;min-height:40px;padding:0}
+    .document-screen-download span{display:none}
+    .document-screen-content .document-reader-image{max-height:calc(100dvh - 60px)}
   }
 </style>
 
@@ -812,66 +827,85 @@
   }
   function resourceCard(item){
     const done=state.completedLessons.includes(`document:${item.id}`);
-    const isOpen=String(openAdminDocumentId)===String(item.id);
     const categoryLabel=resourceCategoryLabels[item.category]||item.label||'Tài liệu';
     const icon=item.icon||'file-text';
     const date=item.updatedAt||item.createdAt||'';
     const author=item.author||'Ban quản trị';
-    const card=`<button class="resource-card" type="button" onclick="openAdminDocumentInline(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
+    return `<button class="resource-card" type="button" onclick="openAdminDocumentScreen(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
       <span class="resource-art cat-${escapeHtml(item.category||'chuyen-de')}">${drawLessonArt(icon)}</span>
       <span class="resource-content">
         <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã đọc':'Chưa đọc'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
         <strong class="resource-title">${escapeHtml(item.title)}</strong>
         <span class="resource-author">${escapeHtml(author)}</span>
         <span class="resource-date"><i data-lucide="clock-3"></i>${escapeHtml(formatResourceDate(date))}</span>
-      </span><span class="resource-chevron"><i data-lucide="${isOpen?'chevron-down':'chevron-right'}"></i></span>
+      </span><span class="resource-chevron"><i data-lucide="chevron-right"></i></span>
     </button>`;
-    return card+(isOpen?renderInlineAdminDocument(item):'');
-  }
-  function renderInlineAdminDocument(lesson){
-    const categoryLabel=resourceCategoryLabels[lesson.category]||'Tài liệu';
-    const author=lesson.author||'Ban quản trị';
-    return `<section class="panel document-inline-view" aria-label="Trình xem ${escapeHtml(lesson.title)}">
-      <div class="document-inline-head">
-        <div class="document-inline-heading">
-          <span class="pill resource-category">${escapeHtml(categoryLabel)}</span>
-          <h3>${escapeHtml(lesson.title)}</h3>
-          <p>${escapeHtml(lesson.description||'Tài liệu do quản trị viên cập nhật.')} · ${escapeHtml(author)}</p>
-        </div>
-        <button class="btn btn-light btn-small document-inline-close" type="button" onclick="closeAdminDocument(${Number(lesson.id)})"><i data-lucide="x"></i> Đóng tài liệu</button>
-      </div>
-      ${renderDocumentViewer(lesson)}
-    </section>`;
   }
   function markDocumentReadState(id){
     const key=`document:${id}`;
     if(!state.completedLessons.includes(key)){state.completedLessons.push(key);saveState();}
   }
-  function finalizeOpenAdminDocument(){
+  let documentReaderReturnScrollY=0;
+  let documentReaderPreviousBodyOverflow='';
+  function ensureDocumentReaderScreen(){
+    let screen=document.getElementById('documentReaderScreen');
+    if(screen)return screen;
+    screen=document.createElement('section');
+    screen.id='documentReaderScreen';
+    screen.className='document-reader-screen';
+    screen.hidden=true;
+    screen.setAttribute('aria-hidden','true');
+    screen.setAttribute('role','dialog');
+    screen.setAttribute('aria-modal','true');
+    screen.setAttribute('aria-label','Trình đọc tài liệu');
+    screen.innerHTML=`<header class="document-screen-head">
+      <button id="documentScreenBack" class="document-screen-back" type="button" onclick="closeAdminDocument()" aria-label="Quay lại danh sách"><i data-lucide="arrow-left"></i><span>Quay lại</span></button>
+      <div class="document-screen-heading"><p class="document-screen-kicker">Đang xem tài liệu</p><h1 id="documentScreenTitle" class="document-screen-title">Tài liệu</h1></div>
+      <a id="documentScreenDownload" class="document-screen-download" href="#" download><i data-lucide="download"></i><span>Tải file</span></a>
+    </header><div id="documentScreenContent" class="document-screen-content"></div>`;
+    document.body.appendChild(screen);
+    return screen;
+  }
+  function finalizeOpenAdminDocument(options={}){
     if(openAdminDocumentId===null||openAdminDocumentId===undefined)return;
     const id=openAdminDocumentId;
     openAdminDocumentId=null;
+    const screen=document.getElementById('documentReaderScreen');
+    if(screen){screen.hidden=true;screen.setAttribute('aria-hidden','true');}
+    document.body.style.overflow=documentReaderPreviousBodyOverflow;
     markDocumentReadState(id);
+    if(options.render!==false&&typeof renderLessons==='function')renderLessons();
+    if(options.restoreScroll!==false)window.scrollTo({top:documentReaderReturnScrollY,behavior:'auto'});
+    if(options.toast)showToast('Đã tự động cập nhật trạng thái đã đọc.');
   }
-  function openAdminDocumentInline(id){
+  function openAdminDocumentScreen(id){
     const item=lessons.find(l=>l.isAdminDocument&&String(l.id)===String(id));
     if(!item)return;
-    if(openAdminDocumentId!==null&&String(openAdminDocumentId)!==String(id))finalizeOpenAdminDocument();
+    if(openAdminDocumentId!==null&&String(openAdminDocumentId)!==String(id))finalizeOpenAdminDocument({render:false,restoreScroll:false});
+    documentReaderReturnScrollY=window.scrollY;
+    documentReaderPreviousBodyOverflow=document.body.style.overflow||'';
     openAdminDocumentId=String(id);
-    const y=window.scrollY;
-    renderLessons();
-    window.scrollTo({top:y,behavior:'auto'});
+    const screen=ensureDocumentReaderScreen();
+    const title=document.getElementById('documentScreenTitle');
+    const content=document.getElementById('documentScreenContent');
+    const download=document.getElementById('documentScreenDownload');
+    title.textContent=item.title||'Tài liệu';
+    content.innerHTML=renderDocumentViewer(item);
+    if(item.fileUrl){download.href=item.fileUrl;download.download=item.fileName||item.title||'tai-lieu';download.hidden=false;download.setAttribute('aria-label','Tải '+(item.fileName||item.title||'tài liệu'));}
+    else{download.hidden=true;download.removeAttribute('href');}
+    screen.hidden=false;
+    screen.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';
+    icons();
+    document.getElementById('documentScreenBack')?.focus({preventScroll:true});
   }
-  function closeAdminDocument(id){
-    const current=openAdminDocumentId;
-    if(current===null||current===undefined)return;
-    markDocumentReadState(id===undefined?current:id);
-    openAdminDocumentId=null;
-    const y=window.scrollY;
-    renderLessons();
-    window.scrollTo({top:y,behavior:'auto'});
-    showToast('Đã tự động cập nhật trạng thái đã đọc.');
+  function closeAdminDocument(){
+    if(openAdminDocumentId===null||openAdminDocumentId===undefined)return;
+    finalizeOpenAdminDocument({render:true,restoreScroll:true,toast:true});
   }
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&openAdminDocumentId!==null&&openAdminDocumentId!==undefined){event.preventDefault();closeAdminDocument();}
+  });
   function lessonCard(item){
     if(item.isAdminDocument)return resourceCard(item);
     const done=state.completedLessons.includes(item.id);
@@ -885,7 +919,7 @@
     let source=resourceMode?lessons.filter(l=>l.isAdminDocument):lessons;
     let data=source.filter(l=>(activeCategory==='all'||l.category===activeCategory)&&(!q||norm(`${l.title} ${l.description} ${l.tags} ${l.label} ${l.author||''} ${l.fileName||''}`).includes(q)));
     if(q&&!data.length){const expanded=smartLocalSearch(q).filter(l=>!resourceMode||l.isAdminDocument);data=expanded.filter(l=>(activeCategory==='all'||l.category===activeCategory))}
-    if(openAdminDocumentId!==null&&!data.some(l=>l.isAdminDocument&&String(l.id)===String(openAdminDocumentId))){finalizeOpenAdminDocument();}
+    if(openAdminDocumentId!==null&&!data.some(l=>l.isAdminDocument&&String(l.id)===String(openAdminDocumentId))){finalizeOpenAdminDocument({render:false,restoreScroll:false});}
     latestFilteredLessons=data;
     if(!data.length){
       if(resourceMode){list.innerHTML='<div class="resource-empty"><strong>Chưa có đề hoặc tài liệu nào</strong><p>Khi bạn đăng tài liệu trong trang Admin, nội dung sẽ tự động xuất hiện tại đây mà không cần người học tải lại trang.</p></div>';}
@@ -902,7 +936,7 @@
     if(!lesson)return;
     document.getElementById('lessonHeading').textContent=lesson.title;
     document.getElementById('lessonSubheading').textContent=lesson.description||'Thông tin tài liệu';
-    if(lesson.isAdminDocument){openAdminDocumentInline(lesson.id);return;}
+    if(lesson.isAdminDocument){openAdminDocumentScreen(lesson.id);return;}
     let question=questionBank.find(q=>norm(q.topic)===norm(lesson.title))||questionBank.find(q=>norm(q.topic).includes(norm(lesson.title.split(' ')[0])))||questionBank[0];
     document.getElementById('lessonList').className='lesson-list';
     document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showAllResources()">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
