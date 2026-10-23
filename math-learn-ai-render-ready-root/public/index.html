@@ -268,6 +268,7 @@
 <style id="mathspark-document-reader-styles">
   /* Document reading is a normal MathSpark view: keep the app header/sidebar/mobile nav,
      replace only the main content instead of covering the whole viewport with a modal. */
+  /* PDF reader is deliberately set to 2.5x its previous responsive height. */
   .document-page-view{min-width:0;width:100%;}
   .document-page-backrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 15px;}
   .document-page-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px;font-weight:bold;cursor:pointer;}
@@ -276,7 +277,7 @@
   .document-page-title{margin:0;color:var(--ink);font-size:clamp(22px,3vw,30px);line-height:1.25;overflow-wrap:anywhere;}
   .document-page-description{margin:8px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;overflow-wrap:anywhere;}
   .document-page-shell{width:100%;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:17px;background:#fffdf9;box-shadow:0 3px 12px rgba(29,43,80,.04);}
-  .document-page-shell .document-reader{display:flex;flex-direction:column;width:100%;height:calc(100dvh - 205px);min-height:520px;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff;}
+  .document-page-shell .document-reader{display:flex;flex-direction:column;width:100%;height:calc(250dvh - 513px);min-height:1300px;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff;}
   .document-page-shell .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;padding:10px 13px;background:#fffdf9;border-bottom:1px solid var(--line);}
   .document-page-shell .document-reader-label{min-width:0;overflow-wrap:anywhere;}
   .document-page-shell .document-reader-actions{margin-left:auto;}
@@ -287,14 +288,14 @@
   .document-page-shell .document-reader-image{display:block;max-width:100%;max-height:calc(100dvh - 365px);height:auto;object-fit:contain;background:#fff;}
   .document-page-shell .document-reader-empty{margin:16px;line-height:1.6;}
   @media(max-width:850px){
-    .document-page-shell .document-reader{height:calc(100dvh - 190px);min-height:480px;}
+    .document-page-shell .document-reader{height:calc(250dvh - 475px);min-height:1200px;}
   }
   @media(max-width:600px){
     .document-page-backrow{margin-bottom:12px;}
     .document-page-back{min-height:42px;}
     .document-page-description{font-size:13px;margin-bottom:13px;}
     .document-page-shell{border-radius:13px;}
-    .document-page-shell .document-reader{height:calc(100dvh - 175px);min-height:450px;}
+    .document-page-shell .document-reader{height:calc(250dvh - 438px);min-height:1125px;}
     .document-page-shell .document-reader-toolbar{padding:8px 9px;}
     .document-page-shell .document-reader-label{font-size:12px;}
     .document-page-shell .document-reader-actions .btn{min-height:38px;padding:7px 9px;}
