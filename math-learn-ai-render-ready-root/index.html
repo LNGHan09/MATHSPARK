@@ -266,52 +266,41 @@
 </style>
 
 <style id="mathspark-document-reader-styles">
-  .document-view-page{grid-column:1/-1;min-width:0}
-  .document-reader{margin:18px 0 14px;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#f1f0ed;box-shadow:0 3px 12px rgba(29,43,80,.045)}
-  .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;background:#fffdf9;border-bottom:1px solid var(--line)}
-  .document-reader-label{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink);font-size:13px;font-weight:bold}
-  .document-reader-label svg{width:17px;height:17px;flex:0 0 17px}
-  .document-reader-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .document-reader-actions .btn{padding:8px 11px;font-size:12px}
-  .document-reader-frame{display:block;width:100%;height:min(78vh,1000px);min-height:560px;border:0;background:#fff}
-  .document-reader-image-wrap{display:grid;place-items:center;min-height:260px;max-height:80vh;overflow:auto;background:#e9e7e2;padding:12px}
-  .document-reader-image{display:block;max-width:100%;max-height:76vh;height:auto;object-fit:contain;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-  .document-reader-note{margin:0;padding:10px 13px;color:var(--muted);background:#fffdf9;border-top:1px solid var(--line);font-size:12px;line-height:1.5}
-  .document-reader-empty{padding:20px;border:1px dashed #d8d1c6;border-radius:14px;background:#fffdf9;color:var(--muted);font-size:13px;line-height:1.5}
-  .document-reader-screen[hidden]{display:none!important}
-  .document-reader-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;width:100%;height:100dvh;overflow:hidden;background:#f7f4ee;color:var(--ink);}
-  .document-screen-head{display:flex;align-items:center;gap:12px;flex:0 0 auto;min-height:66px;padding:10px 18px;background:#fffdf9;border-bottom:1px solid var(--line);box-shadow:0 2px 8px rgba(29,43,80,.06)}
-  .document-screen-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-weight:bold;cursor:pointer}
-  .document-screen-back svg{width:18px;height:18px}
-  .document-screen-heading{flex:1 1 auto;min-width:0}
-  .document-screen-kicker{margin:0 0 2px;color:var(--muted);font-size:10px;font-weight:bold;letter-spacing:.08em;text-transform:uppercase}
-  .document-screen-title{margin:0;color:var(--ink);font-size:16px;font-weight:bold;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .document-screen-download{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;min-height:40px;padding:0 11px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);font-size:12px;font-weight:bold;text-decoration:none}
-  .document-screen-download svg{width:16px;height:16px}
-  .document-screen-content{flex:1 1 auto;min-width:0;min-height:0;overflow:hidden;background:#fff}
-  .document-screen-content .document-reader{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff}
-  .document-screen-content .document-reader-toolbar,.document-screen-content .document-reader-note{display:none!important}
-  .document-screen-content .document-reader-frame{flex:1 1 auto;width:100%;height:100%;min-height:0;max-height:none;border:0}
-  .document-screen-content .document-reader-image-wrap{flex:1 1 auto;height:100%;min-height:0;max-height:none;padding:12px}
-  .document-screen-content .document-reader-image{max-width:100%;max-height:calc(100dvh - 66px);}
-  .document-screen-content .document-reader-empty{margin:16px}
+  /* Document reading is a normal MathSpark view: keep the app header/sidebar/mobile nav,
+     replace only the main content instead of covering the whole viewport with a modal. */
+  .document-page-view{min-width:0;width:100%;}
+  .document-page-backrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 15px;}
+  .document-page-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px;font-weight:bold;cursor:pointer;}
+  .document-page-back svg{width:17px;height:17px;}
+  .document-page-kicker{margin:0 0 5px;color:var(--muted);font-size:11px;font-weight:bold;letter-spacing:.1em;text-transform:uppercase;}
+  .document-page-title{margin:0;color:var(--ink);font-size:clamp(22px,3vw,30px);line-height:1.25;overflow-wrap:anywhere;}
+  .document-page-description{margin:8px 0 18px;color:var(--muted);font-size:14px;line-height:1.5;overflow-wrap:anywhere;}
+  .document-page-shell{width:100%;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:17px;background:#fffdf9;box-shadow:0 3px 12px rgba(29,43,80,.04);}
+  .document-page-shell .document-reader{display:flex;flex-direction:column;width:100%;height:calc(100dvh - 285px);min-height:430px;margin:0;border:0;border-radius:0;box-shadow:none;background:#fff;}
+  .document-page-shell .document-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;padding:10px 13px;background:#fffdf9;border-bottom:1px solid var(--line);}
+  .document-page-shell .document-reader-label{min-width:0;overflow-wrap:anywhere;}
+  .document-page-shell .document-reader-actions{margin-left:auto;}
+  .document-page-shell .document-reader-actions .btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 11px;font-size:12px;}
+  .document-page-shell .document-reader-frame{display:block;flex:1 1 auto;width:100%;height:100%;min-height:0;max-height:none;border:0;background:#fff;}
+  .document-page-shell .document-reader-note{display:none!important;}
+  .document-page-shell .document-reader-image-wrap{display:grid;place-items:center;flex:1 1 auto;width:100%;height:calc(100dvh - 335px);min-height:300px;max-height:none;overflow:auto;padding:14px;background:#eeece7;}
+  .document-page-shell .document-reader-image{display:block;max-width:100%;max-height:calc(100dvh - 365px);height:auto;object-fit:contain;background:#fff;}
+  .document-page-shell .document-reader-empty{margin:16px;line-height:1.6;}
+  @media(max-width:850px){
+    .document-page-shell .document-reader{height:calc(100dvh - 285px);min-height:390px;}
+  }
   @media(max-width:600px){
-    .document-reader{margin-left:0;margin-right:0;border-radius:12px}
-    .document-reader-toolbar{padding:9px;align-items:flex-start}
-    .document-reader-label{font-size:12px;max-width:100%}
-    .document-reader-actions{width:100%}
-    .document-reader-actions .btn{flex:1;justify-content:center;min-height:40px}
-    .document-reader-frame{height:72dvh;min-height:460px}
-    .document-reader-image-wrap{max-height:72dvh;padding:6px}
-    .document-reader-image{max-height:68dvh}
-    .document-screen-head{gap:8px;min-height:60px;padding:8px}
-    .document-screen-back{min-height:42px;padding:0 9px;font-size:12px;white-space:nowrap}
-    .document-screen-back span{display:none}
-    .document-screen-title{font-size:14px;-webkit-line-clamp:2}
-    .document-screen-kicker{font-size:9px}
-    .document-screen-download{width:40px;min-width:40px;min-height:40px;padding:0}
-    .document-screen-download span{display:none}
-    .document-screen-content .document-reader-image{max-height:calc(100dvh - 60px)}
+    .document-page-backrow{margin-bottom:12px;}
+    .document-page-back{min-height:42px;}
+    .document-page-description{font-size:13px;margin-bottom:13px;}
+    .document-page-shell{border-radius:13px;}
+    .document-page-shell .document-reader{height:calc(100dvh - 245px);min-height:360px;}
+    .document-page-shell .document-reader-toolbar{padding:8px 9px;}
+    .document-page-shell .document-reader-label{font-size:12px;}
+    .document-page-shell .document-reader-actions .btn{min-height:38px;padding:7px 9px;}
+    .document-page-shell .document-reader-frame{min-height:0;}
+    .document-page-shell .document-reader-image-wrap{height:calc(100dvh - 300px);min-height:280px;padding:7px;}
+    .document-page-shell .document-reader-image{max-height:calc(100dvh - 320px);}
   }
 </style>
 
@@ -408,6 +397,18 @@
         <div class="section-head"><div><h2 id="lessonHeading">Đề và tài liệu</h2><p id="lessonSubheading">Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.</p></div></div>
         <div id="lessonList" class="lesson-list resource-list"></div>
         <p class="footer-note">Tài liệu mới sẽ tự xuất hiện khi quản trị viên đăng hoặc cập nhật trên website.</p>
+      </section>
+
+      <!-- DOCUMENT READER: preserves the MathSpark shell and swaps only main-page content. -->
+      <section id="view-document-reader" class="view document-page-view">
+        <div class="document-page-backrow">
+          <button id="documentPageBack" class="document-page-back" type="button" onclick="closeAdminDocument()"><i data-lucide="arrow-left"></i> Quay lại Đề và tài liệu</button>
+          <span class="pill neutral">Tài liệu học tập</span>
+        </div>
+        <p class="document-page-kicker">Đang đọc tài liệu</p>
+        <h1 id="documentPageTitle" class="document-page-title">Tài liệu</h1>
+        <p id="documentPageDescription" class="document-page-description">Nội dung được hiển thị ngay trong MathSpark.</p>
+        <div id="documentPageViewer" class="document-page-shell"></div>
       </section>
 
       <!-- SCHEDULE -->
@@ -777,7 +778,7 @@
       input.focus({preventScroll:true});
     }
   });
-  function switchView(name){finalizeOpenAdminDocument();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}window.scrollTo({top:0,behavior:'smooth'});icons()}
+  function switchView(name,options={}){if(name!=='document-reader')finalizeOpenAdminDocument();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));const navName=name==='document-reader'?'home':name;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===navName));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}if(!options.keepScroll)window.scrollTo({top:0,behavior:'smooth'});icons()}
   function returnHome(){finalizeOpenAdminDocument();activeCategory='all';homeResourceMode=true;document.getElementById('lessonHeading').textContent='Đề và tài liệu';document.getElementById('lessonSubheading').textContent='Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';switchView('home')}
   function norm(s){return String(s||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
   function showLessons(cat){
@@ -809,9 +810,8 @@
     const ext=(name.includes('.')?name.split('.').pop():'');
     const safeUrl=escapeHtml(absoluteUrl);
     const safeName=escapeHtml(lesson.fileName||'tài liệu');
-    const openLink=`<a class="btn btn-light" href="${safeUrl}" target="_blank" rel="noopener"><i data-lucide="external-link"></i> Mở tab mới</a>`;
-    const downloadLink=`<a class="btn btn-light" href="${safeUrl}" download="${safeName}" target="_blank" rel="noopener"><i data-lucide="download"></i> Tải file</a>`;
-    const toolbar=(label)=>`<div class="document-reader-toolbar"><span class="document-reader-label"><i data-lucide="file-text"></i><span>${label}</span></span><span class="document-reader-actions">${openLink}${downloadLink}</span></div>`;
+    const downloadLink=`<a class="btn btn-light" href="${safeUrl}" download="${safeName}" rel="noopener"><i data-lucide="download"></i> Tải file</a>`;
+    const toolbar=(label)=>`<div class="document-reader-toolbar"><span class="document-reader-label"><i data-lucide="file-text"></i><span>${label}</span></span><span class="document-reader-actions">${downloadLink}</span></div>`;
     if(ext==='pdf'){
       const pdfUrl=escapeHtml(absoluteUrl+'#toolbar=1&navpanes=0&view=FitH');
       return `<div class="document-reader">${toolbar('Trình đọc PDF')}<iframe class="document-reader-frame" src="${pdfUrl}" title="${safeName}" loading="eager" allow="fullscreen"></iframe><p class="document-reader-note">Tài liệu được mở ngay tại đây. Dùng thanh công cụ trong khung PDF để đổi trang hoặc phóng to/thu nhỏ.</p></div>`;
@@ -821,9 +821,9 @@
     }
     if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)){
       const officeUrl='https://view.officeapps.live.com/op/embed.aspx?src='+encodeURIComponent(absoluteUrl);
-      return `<div class="document-reader">${toolbar('Trình đọc tài liệu Office')}<iframe class="document-reader-frame" src="${escapeHtml(officeUrl)}" title="${safeName}" loading="eager" allowfullscreen></iframe><p class="document-reader-note">Tệp Office được hiển thị qua Microsoft Office Online. Cần tệp có thể truy cập công khai trên Internet; nếu trình xem không tải được, hãy dùng nút “Mở tab mới” hoặc “Tải file”.</p></div>`;
+      return `<div class="document-reader">${toolbar('Trình đọc tài liệu Office')}<iframe class="document-reader-frame" src="${escapeHtml(officeUrl)}" title="${safeName}" loading="eager" allowfullscreen></iframe><p class="document-reader-note">Tệp Office được hiển thị ngay trong MathSpark qua Microsoft Office Online. Tệp cần truy cập công khai; nếu trình xem không tải được, hãy tải file về để đọc.</p></div>`;
     }
-    return `<div class="document-reader">${toolbar('Tài liệu đính kèm')}<div class="document-reader-empty">Định dạng này chưa hỗ trợ xem trước trực tiếp trong trang. Bấm “Mở tab mới” hoặc “Tải file” để đọc.</div></div>`;
+    return `<div class="document-reader">${toolbar('Tài liệu đính kèm')}<div class="document-reader-empty">Định dạng này chưa hỗ trợ xem trước trực tiếp trong trang. Tải file về để đọc định dạng này.</div></div>`;
   }
   function resourceCard(item){
     const done=state.completedLessons.includes(`document:${item.id}`);
@@ -831,7 +831,7 @@
     const icon=item.icon||'file-text';
     const date=item.updatedAt||item.createdAt||'';
     const author=item.author||'Ban quản trị';
-    return `<button class="resource-card" type="button" onclick="openAdminDocumentScreen(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
+    return `<button class="resource-card" type="button" onclick="openAdminDocumentPage(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
       <span class="resource-art cat-${escapeHtml(item.category||'chuyen-de')}">${drawLessonArt(icon)}</span>
       <span class="resource-content">
         <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã đọc':'Chưa đọc'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
@@ -841,67 +841,37 @@
       </span><span class="resource-chevron"><i data-lucide="chevron-right"></i></span>
     </button>`;
   }
+  let documentReaderReturnScrollY=0;
   function markDocumentReadState(id){
     const key=`document:${id}`;
     if(!state.completedLessons.includes(key)){state.completedLessons.push(key);saveState();}
   }
-  let documentReaderReturnScrollY=0;
-  let documentReaderPreviousBodyOverflow='';
-  function ensureDocumentReaderScreen(){
-    let screen=document.getElementById('documentReaderScreen');
-    if(screen)return screen;
-    screen=document.createElement('section');
-    screen.id='documentReaderScreen';
-    screen.className='document-reader-screen';
-    screen.hidden=true;
-    screen.setAttribute('aria-hidden','true');
-    screen.setAttribute('role','dialog');
-    screen.setAttribute('aria-modal','true');
-    screen.setAttribute('aria-label','Trình đọc tài liệu');
-    screen.innerHTML=`<header class="document-screen-head">
-      <button id="documentScreenBack" class="document-screen-back" type="button" onclick="closeAdminDocument()" aria-label="Quay lại danh sách"><i data-lucide="arrow-left"></i><span>Quay lại</span></button>
-      <div class="document-screen-heading"><p class="document-screen-kicker">Đang xem tài liệu</p><h1 id="documentScreenTitle" class="document-screen-title">Tài liệu</h1></div>
-      <a id="documentScreenDownload" class="document-screen-download" href="#" download><i data-lucide="download"></i><span>Tải file</span></a>
-    </header><div id="documentScreenContent" class="document-screen-content"></div>`;
-    document.body.appendChild(screen);
-    return screen;
-  }
-  function finalizeOpenAdminDocument(options={}){
+  function finalizeOpenAdminDocument(){
     if(openAdminDocumentId===null||openAdminDocumentId===undefined)return;
     const id=openAdminDocumentId;
     openAdminDocumentId=null;
-    const screen=document.getElementById('documentReaderScreen');
-    if(screen){screen.hidden=true;screen.setAttribute('aria-hidden','true');}
-    document.body.style.overflow=documentReaderPreviousBodyOverflow;
     markDocumentReadState(id);
-    if(options.render!==false&&typeof renderLessons==='function')renderLessons();
-    if(options.restoreScroll!==false)window.scrollTo({top:documentReaderReturnScrollY,behavior:'auto'});
-    if(options.toast)showToast('Đã tự động cập nhật trạng thái đã đọc.');
+    const viewer=document.getElementById('documentPageViewer');
+    if(viewer)viewer.innerHTML='';
   }
-  function openAdminDocumentScreen(id){
+  function openAdminDocumentPage(id){
     const item=lessons.find(l=>l.isAdminDocument&&String(l.id)===String(id));
     if(!item)return;
-    if(openAdminDocumentId!==null&&String(openAdminDocumentId)!==String(id))finalizeOpenAdminDocument({render:false,restoreScroll:false});
+    if(openAdminDocumentId!==null&&String(openAdminDocumentId)!==String(id))finalizeOpenAdminDocument();
     documentReaderReturnScrollY=window.scrollY;
-    documentReaderPreviousBodyOverflow=document.body.style.overflow||'';
     openAdminDocumentId=String(id);
-    const screen=ensureDocumentReaderScreen();
-    const title=document.getElementById('documentScreenTitle');
-    const content=document.getElementById('documentScreenContent');
-    const download=document.getElementById('documentScreenDownload');
-    title.textContent=item.title||'Tài liệu';
-    content.innerHTML=renderDocumentViewer(item);
-    if(item.fileUrl){download.href=item.fileUrl;download.download=item.fileName||item.title||'tai-lieu';download.hidden=false;download.setAttribute('aria-label','Tải '+(item.fileName||item.title||'tài liệu'));}
-    else{download.hidden=true;download.removeAttribute('href');}
-    screen.hidden=false;
-    screen.setAttribute('aria-hidden','false');
-    document.body.style.overflow='hidden';
+    document.getElementById('documentPageTitle').textContent=item.title||'Tài liệu';
+    document.getElementById('documentPageDescription').textContent=item.description||`Tài liệu do ${item.author||'Ban quản trị'} cập nhật.`;
+    document.getElementById('documentPageViewer').innerHTML=renderDocumentViewer(item);
+    switchView('document-reader');
     icons();
-    document.getElementById('documentScreenBack')?.focus({preventScroll:true});
   }
   function closeAdminDocument(){
     if(openAdminDocumentId===null||openAdminDocumentId===undefined)return;
-    finalizeOpenAdminDocument({render:true,restoreScroll:true,toast:true});
+    finalizeOpenAdminDocument();
+    switchView('home',{keepScroll:true});
+    window.scrollTo({top:documentReaderReturnScrollY,behavior:'auto'});
+    showToast('Đã tự động cập nhật trạng thái đã đọc.');
   }
   document.addEventListener('keydown',event=>{
     if(event.key==='Escape'&&openAdminDocumentId!==null&&openAdminDocumentId!==undefined){event.preventDefault();closeAdminDocument();}
@@ -936,7 +906,7 @@
     if(!lesson)return;
     document.getElementById('lessonHeading').textContent=lesson.title;
     document.getElementById('lessonSubheading').textContent=lesson.description||'Thông tin tài liệu';
-    if(lesson.isAdminDocument){openAdminDocumentScreen(lesson.id);return;}
+    if(lesson.isAdminDocument){openAdminDocumentPage(lesson.id);return;}
     let question=questionBank.find(q=>norm(q.topic)===norm(lesson.title))||questionBank.find(q=>norm(q.topic).includes(norm(lesson.title.split(' ')[0])))||questionBank[0];
     document.getElementById('lessonList').className='lesson-list';
     document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showAllResources()">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
