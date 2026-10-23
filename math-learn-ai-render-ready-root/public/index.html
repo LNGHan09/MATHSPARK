@@ -398,6 +398,56 @@
   }
 </style>
 
+
+<style id="mathspark-home-countdown-resource-filters">
+  /* Homepage countdown uses the same live four-unit counter as the schedule page. */
+  .home-countdown-card{width:min(100%,510px);max-width:100%;margin:13px 0 0;padding:12px 14px;gap:11px;align-items:center;border-radius:15px;box-sizing:border-box}
+  .home-countdown-card .countdown-icon{width:38px;height:38px;flex:0 0 38px;font-size:20px}
+  .home-countdown-card .countdown-content{flex:1;min-width:0}
+  .home-countdown-card .countdown-content>small{margin-bottom:6px;font-size:9px;letter-spacing:1px}
+  .home-countdown-card .countdown-units{width:100%;max-width:360px;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .home-countdown-card .countdown-unit{padding:7px 3px 6px;border-radius:9px}
+  .home-countdown-card .countdown-unit strong{font-size:clamp(17px,2vw,22px)}
+  .home-countdown-card .countdown-unit small{margin-top:4px;font-size:8px;letter-spacing:.02em}
+  .home-countdown-card .countdown-meta{margin-top:6px;font-size:10px}
+
+  .resource-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 13px;min-width:0}
+  .resource-filter-btn{min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:#626b7c;font:inherit;font-size:12px;font-weight:700;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+  .resource-filter-btn svg{width:15px;height:15px;flex:0 0 15px}
+  .resource-filter-btn.active{background:#202e55;border-color:#202e55;color:#fff;box-shadow:0 3px 8px rgba(32,46,85,.12)}
+  .resource-filter-count{min-width:19px;height:19px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:rgba(125,132,145,.12);font-size:10px;font-variant-numeric:tabular-nums}
+  .resource-filter-btn.active .resource-filter-count{background:rgba(255,255,255,.16);color:#fff}
+  .resource-card{cursor:default}
+  .resource-open{display:flex;align-items:center;gap:13px;flex:1 1 auto;width:100%;min-width:0;margin:0;padding:0;border:0;border-radius:12px;background:transparent;color:inherit;text-align:left;font:inherit;box-shadow:none;transform:none;cursor:pointer}
+  .resource-open:hover,.resource-open:focus-visible{background:transparent;box-shadow:none;transform:none}
+  .resource-open:focus-visible{outline:2px solid #6677a5;outline-offset:3px}
+  .resource-favorite{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;margin-left:2px;padding:0;border:1px solid #e5ddd2;border-radius:12px;background:#fffdf8;color:#969eae;cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .15s}
+  .resource-favorite svg{width:19px;height:19px;stroke-width:1.9}
+  .resource-favorite:hover{border-color:#dfc27b;color:#b18420;transform:translateY(-1px)}
+  .resource-favorite.active{border-color:#e4c779;background:#fff4d5;color:#ad7b10}
+  .resource-favorite.active svg{fill:#f2cf65}
+  .resource-card.is-favorite{border-color:#ebd6a1}
+  .resource-card.is-favorite .resource-favorite{box-shadow:0 0 0 2px rgba(228,199,121,.12)}
+  @media(max-width:540px){
+    .home-countdown-card{width:100%;gap:7px;padding:9px;margin:11px 0 0}
+    .home-countdown-card .countdown-icon{width:31px;height:31px;flex-basis:31px;font-size:17px;border-radius:9px}
+    .home-countdown-card .countdown-content>small{font-size:8px;margin-bottom:5px;letter-spacing:.6px}
+    .home-countdown-card .countdown-units{gap:3px}
+    .home-countdown-card .countdown-unit{padding:6px 1px 5px;border-radius:7px}
+    .home-countdown-card .countdown-unit strong{font-size:clamp(15px,4.2vw,19px)}
+    .home-countdown-card .countdown-unit small{font-size:7px;letter-spacing:0}
+    .home-countdown-card .countdown-meta{font-size:9px;margin-top:5px}
+    .resource-filters{gap:6px;margin-bottom:10px}
+    .resource-filter-btn{min-height:36px;padding:7px 9px;gap:5px;font-size:11px}
+    .resource-filter-btn svg{width:13px;height:13px;flex-basis:13px}
+    .resource-card{gap:8px}
+    .resource-open{gap:9px}
+    .resource-favorite{width:32px;height:32px;flex-basis:32px;border-radius:10px}
+    .resource-favorite svg{width:17px;height:17px}
+  }
+  @media(max-width:370px){.resource-filter-btn{padding:7px;gap:4px;font-size:10px}.resource-filter-count{min-width:17px;height:17px;padding:0 4px}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -422,11 +472,22 @@
       <!-- HOME -->
       <section id="view-home" class="view active">
         <div class="hero">
-          <div class="hero-copy"><p class="eyebrow">Lộ trình của riêng bạn</p><h1 id="heroGreeting">Chào bạn! ✦</h1><p>Mỗi bài toán là một bước tiến. Cùng xây nền tảng vững chắc và tự tin chinh phục kỳ thi vào lớp 10 nhé.</p><div id="homeCountdown" class="countdown-chip" aria-live="polite">Chọn ngày thi để bật đếm ngược.</div><div class="hero-actions"><button class="btn btn-primary" onclick="switchView('practice');startQuiz('diagnostic')"><i data-lucide="play"></i> Test năng lực</button><button class="btn btn-light" onclick="switchView('schedule')"><i data-lucide="calendar-check"></i> Lập lịch học</button></div></div>
+          <div class="hero-copy"><p class="eyebrow">Lộ trình của riêng bạn</p><h1 id="heroGreeting">Chào bạn! ✦</h1><p>Mỗi bài toán là một bước tiến. Cùng xây nền tảng vững chắc và tự tin chinh phục kỳ thi vào lớp 10 nhé.</p><div id="homeCountdown" class="countdown-card home-countdown-card" aria-label="Đếm ngược kỳ thi">
+            <span class="countdown-icon" aria-hidden="true">⏳</span>
+            <div class="countdown-content"><small>ĐẾM NGƯỢC KỲ THI</small>
+              <div id="homeCountdownUnits" class="countdown-units" role="timer" aria-live="off" aria-label="Thời gian còn lại đến kỳ thi"><span class="countdown-unit"><strong>--</strong><small>NGÀY</small></span><span class="countdown-unit"><strong>--</strong><small>GIỜ</small></span><span class="countdown-unit"><strong>--</strong><small>PHÚT</small></span><span class="countdown-unit"><strong>--</strong><small>GIÂY</small></span></div>
+              <div id="homeCountdownMeta" class="countdown-meta"></div>
+            </div>
+          </div><div class="hero-actions"><button class="btn btn-primary" onclick="switchView('practice');startQuiz('diagnostic')"><i data-lucide="play"></i> Test năng lực</button><button class="btn btn-light" onclick="switchView('schedule')"><i data-lucide="calendar-check"></i> Lập lịch học</button></div></div>
           <div class="hero-art" aria-hidden="true"><img class="hero-stairs-image" src="/mathspark-stairs.png" alt="" width="122" height="122"></div>
         </div>
         <div class="stats"><div class="stat"><label>Tiến độ học tập</label><strong id="homeProgress">0%</strong><small>Hoàn thành bài học</small></div><div class="stat"><label>Điểm năng lực</label><strong id="homeScore">—</strong><small id="homeScoreSub">Chưa làm bài test</small></div><div class="stat"><label>Mục tiêu điểm</label><strong id="homeTarget">8.0</strong><small>Điểm Toán vào 10</small></div></div>
         <div class="section-head"><div><h2 id="lessonHeading">Đề và tài liệu</h2><p id="lessonSubheading">Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.</p></div></div>
+        <div id="resourceFilterBar" class="resource-filters" role="group" aria-label="Lọc đề và tài liệu">
+          <button type="button" class="resource-filter-btn active" data-resource-filter="all" aria-pressed="true" onclick="setResourceFilter('all')"><i data-lucide="files"></i><span>Tất cả</span><span class="resource-filter-count" data-filter-count="all">0</span></button>
+          <button type="button" class="resource-filter-btn" data-resource-filter="read" aria-pressed="false" onclick="setResourceFilter('read')"><i data-lucide="book-check"></i><span>Đã đọc</span><span class="resource-filter-count" data-filter-count="read">0</span></button>
+          <button type="button" class="resource-filter-btn" data-resource-filter="favorites" aria-pressed="false" onclick="setResourceFilter('favorites')"><i data-lucide="star"></i><span>Đánh dấu sao</span><span class="resource-filter-count" data-filter-count="favorites">0</span></button>
+        </div>
         <div id="lessonList" class="lesson-list resource-list"></div>
         <p class="footer-note">Tài liệu mới sẽ tự xuất hiện khi quản trị viên đăng hoặc cập nhật trên website.</p>
       </section>
@@ -582,6 +643,8 @@
   let state = loadState();
   let activeCategory = 'all';
   let homeResourceMode = true;
+  let activeResourceFilter = 'all';
+  let currentLessonQuery = '';
   // The selected Admin resource opens inline in the document list (never jumps to the top).
   let openAdminDocumentId = null;
   let activeQuiz = null;
@@ -598,12 +661,12 @@
   }
 
   function loadState(){
-    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
+    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
   function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
 
-  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
+  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
   function scheduleCloudStateSave(){
     if(!supabaseClient||!currentStudent||applyingCloudState)return;
     clearTimeout(cloudSaveTimer);
@@ -809,11 +872,12 @@
     }
   });
   function switchView(name,options={}){if(name!=='document-reader')finalizeOpenAdminDocument();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));const navName=name==='document-reader'?'home':name;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===navName));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}if(!options.keepScroll)window.scrollTo({top:0,behavior:'smooth'});icons()}
-  function returnHome(){finalizeOpenAdminDocument();activeCategory='all';homeResourceMode=true;document.getElementById('lessonHeading').textContent='Đề và tài liệu';document.getElementById('lessonSubheading').textContent='Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';switchView('home')}
+  function returnHome(){finalizeOpenAdminDocument();activeCategory='all';homeResourceMode=true;activeResourceFilter='all';currentLessonQuery='';document.getElementById('lessonHeading').textContent='Đề và tài liệu';document.getElementById('lessonSubheading').textContent='Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';switchView('home')}
   function norm(s){return String(s||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
   function showLessons(cat){
     // Khu vực này chỉ hiển thị đề/tài liệu được Admin đăng; không quay về các thẻ chuyên đề mẫu.
     if(cat==='all'){showAllResources();return;}
+    activeResourceFilter='all';currentLessonQuery='';
     activeCategory=cat;
     homeResourceMode=true;
     document.getElementById('lessonHeading').textContent=cat==='chuyen-de'?'Tài liệu chuyên đề':cat==='de-vao-10'?'Đề thi vào lớp 10':cat==='de-giua-ky'?'Đề thi giữa kỳ':'Đề thi cuối kỳ';
@@ -821,7 +885,7 @@
     switchView('home');renderLessons();
   }
   function showAllResources(){
-    activeCategory='all';homeResourceMode=true;
+    activeCategory='all';homeResourceMode=true;activeResourceFilter='all';currentLessonQuery='';
     document.getElementById('lessonHeading').textContent='Đề và tài liệu';
     document.getElementById('lessonSubheading').textContent='Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';
     switchView('home');renderLessons();
@@ -856,21 +920,59 @@
     }
     return `<div class="document-reader">${toolbar('Tài liệu đính kèm')}<div class="document-reader-empty">Định dạng này chưa hỗ trợ xem trước trực tiếp trong trang. Tải file về để đọc định dạng này.</div></div>`;
   }
+  function isDocumentRead(id){
+    return Array.isArray(state.completedLessons) && state.completedLessons.some(value=>String(value)===`document:${id}`);
+  }
+  function isDocumentFavorite(id){
+    return Array.isArray(state.favoriteDocuments) && state.favoriteDocuments.some(value=>String(value)===String(id));
+  }
+  function updateResourceFilterControls(){
+    const docs=lessons.filter(item=>item.isAdminDocument);
+    const counts={all:docs.length,read:docs.filter(item=>isDocumentRead(item.id)).length,favorites:docs.filter(item=>isDocumentFavorite(item.id)).length};
+    document.querySelectorAll('[data-resource-filter]').forEach(button=>{
+      const selected=button.dataset.resourceFilter===activeResourceFilter;
+      button.classList.toggle('active',selected);
+      button.setAttribute('aria-pressed',String(selected));
+      const badge=button.querySelector('[data-filter-count]');
+      if(badge)badge.textContent=String(counts[button.dataset.resourceFilter]??0);
+    });
+  }
+  function setResourceFilter(filter){
+    const allowed=['all','read','favorites'];
+    activeResourceFilter=allowed.includes(filter)?filter:'all';
+    activeCategory='all';homeResourceMode=true;
+    const heading=document.getElementById('lessonHeading'),subheading=document.getElementById('lessonSubheading');
+    if(heading)heading.textContent=activeResourceFilter==='read'?'Tài liệu đã đọc':activeResourceFilter==='favorites'?'Tài liệu đã đánh dấu sao':'Đề và tài liệu';
+    if(subheading)subheading.textContent=activeResourceFilter==='read'?'Các tài liệu bạn đã mở và đọc trước đây.':activeResourceFilter==='favorites'?'Các tài liệu bạn đã đánh dấu sao để xem lại.':'Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';
+    renderLessons(currentLessonQuery);
+  }
+  function toggleFavoriteDocument(id,event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    if(!Array.isArray(state.favoriteDocuments))state.favoriteDocuments=[];
+    const key=String(id),exists=state.favoriteDocuments.some(value=>String(value)===key);
+    state.favoriteDocuments=exists?state.favoriteDocuments.filter(value=>String(value)!==key):[...state.favoriteDocuments,key];
+    saveState();renderLessons(currentLessonQuery);
+    showToast(exists?'Đã bỏ đánh dấu sao tài liệu.':'Đã lưu tài liệu vào mục Đánh dấu sao.');
+  }
   function resourceCard(item){
-    const done=state.completedLessons.includes(`document:${item.id}`);
+    const done=isDocumentRead(item.id),favorite=isDocumentFavorite(item.id);
     const categoryLabel=resourceCategoryLabels[item.category]||item.label||'Tài liệu';
     const icon=item.icon||'file-text';
     const date=item.updatedAt||item.createdAt||'';
     const author=item.author||'Ban quản trị';
-    return `<button class="resource-card" type="button" onclick="openAdminDocumentPage(${Number(item.id)})" aria-label="Mở ${escapeHtml(item.title)}">
-      <span class="resource-art cat-${escapeHtml(item.category||'chuyen-de')}">${drawLessonArt(icon)}</span>
-      <span class="resource-content">
-        <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã đọc':'Chưa đọc'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
-        <strong class="resource-title">${escapeHtml(item.title)}</strong>
-        <span class="resource-author">${escapeHtml(author)}</span>
-        <span class="resource-date"><i data-lucide="clock-3"></i>${escapeHtml(formatResourceDate(date))}</span>
-      </span><span class="resource-chevron"><i data-lucide="chevron-right"></i></span>
-    </button>`;
+    const itemId=Number(item.id);
+    return `<article class="resource-card ${favorite?'is-favorite':''}">
+      <button class="resource-open" type="button" onclick="openAdminDocumentPage(${itemId})" aria-label="Mở ${escapeHtml(item.title)}">
+        <span class="resource-art cat-${escapeHtml(item.category||'chuyen-de')}">${drawLessonArt(icon)}</span>
+        <span class="resource-content">
+          <span class="resource-meta"><span class="resource-status ${done?'done':''}"><span class="resource-status-dot"></span>${done?'Đã đọc':'Chưa đọc'}</span><span class="resource-meta-separator">•</span><span class="pill resource-category">${escapeHtml(categoryLabel)}</span></span>
+          <strong class="resource-title">${escapeHtml(item.title)}</strong>
+          <span class="resource-author">${escapeHtml(author)}</span>
+          <span class="resource-date"><i data-lucide="clock-3"></i>${escapeHtml(formatResourceDate(date))}</span>
+        </span><span class="resource-chevron"><i data-lucide="chevron-right"></i></span>
+      </button>
+      <button class="resource-favorite ${favorite?'active':''}" type="button" onclick="toggleFavoriteDocument(${itemId},event)" aria-pressed="${favorite}" aria-label="${favorite?'Bỏ đánh dấu sao':'Đánh dấu sao'}: ${escapeHtml(item.title)}" title="${favorite?'Đã đánh dấu sao':'Đánh dấu sao để lưu tài liệu'}"><i data-lucide="star"></i></button>
+    </article>`;
   }
   let documentReaderReturnScrollY=0;
   function markDocumentReadState(id){
@@ -915,17 +1017,25 @@
   function renderLessons(query=''){
     const list=document.getElementById('lessonList');
     const q=norm(query);
+    currentLessonQuery=String(query||'');
     const resourceMode=homeResourceMode;
     list.classList.toggle('resource-list',resourceMode);
     let source=resourceMode?lessons.filter(l=>l.isAdminDocument):lessons;
     let data=source.filter(l=>(activeCategory==='all'||l.category===activeCategory)&&(!q||norm(`${l.title} ${l.description} ${l.tags} ${l.label} ${l.author||''} ${l.fileName||''}`).includes(q)));
     if(q&&!data.length){const expanded=smartLocalSearch(q).filter(l=>!resourceMode||l.isAdminDocument);data=expanded.filter(l=>(activeCategory==='all'||l.category===activeCategory))}
+    if(resourceMode){
+      if(activeResourceFilter==='read')data=data.filter(item=>isDocumentRead(item.id));
+      else if(activeResourceFilter==='favorites')data=data.filter(item=>isDocumentFavorite(item.id));
+    }
     if(openAdminDocumentId!==null&&!data.some(l=>l.isAdminDocument&&String(l.id)===String(openAdminDocumentId))){finalizeOpenAdminDocument({render:false,restoreScroll:false});}
     latestFilteredLessons=data;
     if(!data.length){
-      if(resourceMode){list.innerHTML='<div class="resource-empty"><strong>Chưa có đề hoặc tài liệu nào</strong><p>Khi bạn đăng tài liệu trong trang Admin, nội dung sẽ tự động xuất hiện tại đây mà không cần người học tải lại trang.</p></div>';}
-      else{list.innerHTML='<div class="empty" style="grid-column:1/-1">Chưa tìm thấy nội dung phù hợp. Thử tên chủ đề như “parabol”, “hệ phương trình” hoặc “chứng minh đường tròn”.</div>';}
+      if(resourceMode&&activeResourceFilter==='read')list.innerHTML='<div class="resource-empty"><strong>Chưa có tài liệu đã đọc</strong><p>Khi bạn mở tài liệu và quay lại danh sách, tài liệu sẽ tự động xuất hiện ở đây.</p></div>';
+      else if(resourceMode&&activeResourceFilter==='favorites')list.innerHTML='<div class="resource-empty"><strong>Chưa có tài liệu được đánh dấu sao</strong><p>Nhấn biểu tượng ngôi sao trên một tài liệu để lưu tài liệu đó vào danh sách này.</p></div>';
+      else if(resourceMode)list.innerHTML='<div class="resource-empty"><strong>Chưa có đề hoặc tài liệu nào</strong><p>Khi bạn đăng tài liệu trong trang Admin, nội dung sẽ tự động xuất hiện tại đây mà không cần người học tải lại trang.</p></div>';
+      else list.innerHTML='<div class="empty" style="grid-column:1/-1">Chưa tìm thấy nội dung phù hợp. Thử tên chủ đề như “parabol”, “hệ phương trình” hoặc “chứng minh đường tròn”.</div>';
     }else list.innerHTML=data.map(lessonCard).join('');
+    updateResourceFilterControls();
     icons();
   }
   function smartLocalSearch(query){const q=norm(query);const synonyms=[[/parabol|do thi|ham so|dinh/i,['hàm số bậc hai','đồ thị']],[/phuong trinh|he pt|lap he/i,['phương trình','hệ phương trình']],[/hinh|chung minh|tiep tuyen|noi tiep/i,['hình học','đường tròn']],[/can thuc|rut gon/i,['căn thức','biểu thức']],[/de thi|thi vao 10|tuyen sinh/i,['đề thi vào lớp 10']]];let extras=[];for(const [re,words] of synonyms){if(re.test(q))extras.push(...words)}return lessons.filter(l=>norm(`${l.title} ${l.description} ${l.tags}`).includes(q)||extras.some(w=>norm(`${l.title} ${l.tags}`).includes(norm(w))))}
@@ -1025,13 +1135,15 @@
   function parseExamDate(value){const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(year,month-1,day);if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return null;return {year,month,day}}
   function examDateAtEight(value){const parsed=parseExamDate(value);return parsed?new Date(parsed.year,parsed.month-1,parsed.day,8,0,0,0):null}
   function renderCountdowns(){
-    const dateValue=document.getElementById('examDate')?.value||state.examDate||'',examName=(document.getElementById('examName')?.value||state.examName||'').trim()||'Thi vào lớp 10',home=document.getElementById('homeCountdown'),schedule=document.getElementById('scheduleCountdown'),meta=document.getElementById('scheduleCountdownMeta'),target=examDateAtEight(dateValue);
-    if(!target){if(home)home.textContent='Chọn ngày thi để bật đếm ngược.';if(schedule)schedule.innerHTML='<div class="countdown-empty">Chọn ngày thi</div>';if(meta)meta.textContent='';return}
+    const dateValue=document.getElementById('examDate')?.value||state.examDate||'',examName=(document.getElementById('examName')?.value||state.examName||'').trim()||'Thi vào lớp 10',home=document.getElementById('homeCountdownUnits'),homeMeta=document.getElementById('homeCountdownMeta'),schedule=document.getElementById('scheduleCountdown'),meta=document.getElementById('scheduleCountdownMeta'),target=examDateAtEight(dateValue);
+    if(!target){if(home)home.innerHTML='<div class="countdown-empty">Chọn ngày thi</div>';if(homeMeta)homeMeta.textContent='';if(schedule)schedule.innerHTML='<div class="countdown-empty">Chọn ngày thi</div>';if(meta)meta.textContent='';return}
     const now=new Date(),dateLabel=`${String(target.getDate()).padStart(2,'0')}/${String(target.getMonth()+1).padStart(2,'0')}/${target.getFullYear()}`,remaining=target.getTime()-now.getTime();
-    if(remaining<=0){if(home)home.textContent=`Kỳ thi ${examName} (${dateLabel}) đã bắt đầu.`;if(schedule)schedule.innerHTML='<div class="countdown-finished">Đã đến ngày thi</div>';if(meta)meta.textContent=`${examName} · ${dateLabel}`;return}
+    if(remaining<=0){if(home)home.innerHTML='<div class="countdown-finished">Đã đến ngày thi</div>';if(homeMeta)homeMeta.textContent=`${examName} · ${dateLabel}`;if(schedule)schedule.innerHTML='<div class="countdown-finished">Đã đến ngày thi</div>';if(meta)meta.textContent=`${examName} · ${dateLabel}`;return}
     const totalSeconds=Math.floor(remaining/1000),days=Math.floor(totalSeconds/86400),hours=Math.floor((totalSeconds%86400)/3600),minutes=Math.floor((totalSeconds%3600)/60),seconds=totalSeconds%60;
-    if(home)home.textContent=`⏳ Còn ${days} ngày ${hours} giờ đến ${examName} (${dateLabel})`;
-    if(schedule)schedule.innerHTML=`<span class="countdown-unit"><strong>${days}</strong><small>NGÀY</small></span><span class="countdown-unit"><strong>${String(hours).padStart(2,'0')}</strong><small>GIỜ</small></span><span class="countdown-unit"><strong>${String(minutes).padStart(2,'0')}</strong><small>PHÚT</small></span><span class="countdown-unit"><strong>${String(seconds).padStart(2,'0')}</strong><small>GIÂY</small></span>`;
+    const units=`<span class="countdown-unit"><strong>${days}</strong><small>NGÀY</small></span><span class="countdown-unit"><strong>${String(hours).padStart(2,'0')}</strong><small>GIỜ</small></span><span class="countdown-unit"><strong>${String(minutes).padStart(2,'0')}</strong><small>PHÚT</small></span><span class="countdown-unit"><strong>${String(seconds).padStart(2,'0')}</strong><small>GIÂY</small></span>`;
+    if(home)home.innerHTML=units;
+    if(homeMeta)homeMeta.textContent=`${examName} · ${dateLabel}`;
+    if(schedule)schedule.innerHTML=units;
     if(meta)meta.textContent=`${examName} · ${dateLabel}`;
   }
   function examDaysLeft(){const parsed=parseExamDate(document.getElementById('examDate')?.value||state.examDate||'');if(!parsed)return null;const now=new Date(),todayUtc=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()),examUtc=Date.UTC(parsed.year,parsed.month-1,parsed.day);return Math.max(0,Math.round((examUtc-todayUtc)/86400000))}
