@@ -511,7 +511,8 @@
         <div class="panel"><div class="section-head" style="margin:0 0 8px"><div><h2>Lịch rảnh trong tuần</h2></div><span class="pill neutral" id="weekRange">Tuần này</span></div>
           <div class="calendar-wrap" aria-label="Lịch chọn thời gian trong tuần"><div id="calendarGrid" class="calendar"></div></div>
           <div class="form-row schedule-form-row" style="margin-top:18px"><div class="field"><label for="targetScore">Mục tiêu điểm số (0–10)</label><input id="targetScore" type="number" min="0" max="10" step="0.25" inputmode="decimal" value="8" /></div><div class="field"><label for="examName">Tên kỳ thi</label><input id="examName" type="text" maxlength="80" placeholder="Thi vào lớp 10" /></div></div><div class="field schedule-date-field" style="margin-top:13px"><label for="examDate">Ngày thi dự kiến</label><input type="date" id="examDate" /></div>
-          <div class="button-row" style="margin-top:15px"><button class="btn btn-primary" id="generatePlanBtn" onclick="generateStudyPlan()"><i data-lucide="sparkles"></i> Tạo lịch tự học</button><button class="btn btn-light" onclick="clearBusySlots()">Xóa đánh dấu lịch</button></div>
+          <div class="field schedule-date-field" style="margin-top:13px"><label for="studyIntensity">Cường độ học Toán</label><select id="studyIntensity"><option value="light">Nhẹ nhàng · 3 buổi/tuần · khoảng 60 phút/buổi</option><option value="balanced" selected>Cân bằng · 4 buổi/tuần · khoảng 60 phút/buổi</option><option value="intensive">Tăng tốc · 5 buổi/tuần · khoảng 90 phút/buổi</option><option value="gifted">Học sinh giỏi · 6 buổi/tuần · khoảng 90 phút/buổi</option></select><small id="studyIntensityHelp">AI cân đối lịch rảnh, mục tiêu điểm, kết quả làm bài và phần kiến thức cần củng cố.</small></div>
+          <div class="button-row" style="margin-top:15px"><button class="btn btn-primary" id="generatePlanBtn" onclick="generateStudyPlan()"><i data-lucide="sparkles"></i> AI lập lịch học cá nhân</button><button class="btn btn-light" onclick="clearBusySlots()">Xóa đánh dấu lịch</button></div>
           <div id="planStatus" class="status-line"></div>
         </div>
         <div class="panel"><div class="section-head" style="margin:0 0 13px"><div><h2>Lộ trình đề xuất</h2><p id="planSubtitle"></p></div><span id="planBadge" class="pill neutral">Chưa tạo</span></div><div id="studyPlan" class="empty">Chưa có lộ trình.</div></div>
@@ -661,12 +662,12 @@
   }
 
   function loadState(){
-    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
+    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
   function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
 
-  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
+  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
   function scheduleCloudStateSave(){
     if(!supabaseClient||!currentStudent||applyingCloudState)return;
     clearTimeout(cloudSaveTimer);
@@ -683,7 +684,7 @@
   }
   function refreshAfterStudentStateLoad(){
     const target=document.getElementById('targetScore'),settings=document.getElementById('settingsTarget'),exam=document.getElementById('examDate'),examName=document.getElementById('examName');
-    if(target)target.value=state.targetScore||'8';if(settings)settings.value=state.targetScore||'8';if(exam)exam.value=state.examDate||'';if(examName)examName.value=state.examName||'';
+    if(target)target.value=state.targetScore||'8';if(settings)settings.value=state.targetScore||'8';if(exam)exam.value=state.examDate||'';if(examName)examName.value=state.examName||'';const intensity=document.getElementById('studyIntensity');if(intensity)intensity.value=state.studyIntensity||'balanced';
     if(typeof renderCalendar==='function')renderCalendar();if(typeof updateStats==='function')updateStats();if(typeof renderLessons==='function')renderLessons();if(typeof renderPlan==='function')renderPlan();if(typeof renderCountdowns==='function')renderCountdowns();if(typeof icons==='function')icons();
   }
   async function activateStudent(user){
@@ -1111,7 +1112,7 @@
     });
     markup+='<div class="calendar-end-time"><strong>24:00</strong></div>'+days.map(()=>'<div class="calendar-end-fill" aria-hidden="true"></div>').join('');
     document.getElementById('calendarGrid').innerHTML=markup;
-    document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('examName').value=state.examName||'';
+    document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('examName').value=state.examName||'';const intensityInput=document.getElementById('studyIntensity');if(intensityInput)intensityInput.value=state.studyIntensity||'balanced';
     if(state.examDate)document.getElementById('examDate').value=state.examDate;else if(!document.getElementById('examDate').value){const e=new Date();e.setMonth(e.getMonth()+7);document.getElementById('examDate').value=dateKey(e)}
     renderPlan();renderCountdowns();
   }
@@ -1149,32 +1150,101 @@
   function examDaysLeft(){const parsed=parseExamDate(document.getElementById('examDate')?.value||state.examDate||'');if(!parsed)return null;const now=new Date(),todayUtc=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()),examUtc=Date.UTC(parsed.year,parsed.month-1,parsed.day);return Math.max(0,Math.round((examUtc-todayUtc)/86400000))}
   function weakTopicList(){const stored=Array.isArray(state.weakTopics)?state.weakTopics:[];const normalized=stored.map(item=>typeof item==='string'?{topic:item,misses:1}:item).filter(item=>item&&item.topic&&Number(item.misses)>0).sort((a,b)=>Number(b.misses)-Number(a.misses)||Number(b.updatedAt||0)-Number(a.updatedAt||0));return normalized.map(item=>String(item.topic))}
   function currentScore(){if(Number.isFinite(Number(state.latestPracticeScore))&&state.latestPracticeScore!==null)return Number(state.latestPracticeScore)/10;if(Number.isFinite(Number(state.diagnosticPercent))&&state.diagnosticPercent!==null)return Number(state.diagnosticPercent)/10;return 6}
+  const STUDY_INTENSITIES={
+    light:{label:'Nhẹ nhàng',sessions:3,minutes:60,questionsPerHour:4,preferredDays:[1,3,5],level:'Cơ bản đến vận dụng',purpose:'giữ nhịp học đều, ưu tiên nền tảng và ôn lặp lại'},
+    balanced:{label:'Cân bằng',sessions:4,minutes:60,questionsPerHour:5,preferredDays:[0,2,4,6],level:'Cơ bản đến vận dụng',purpose:'cân bằng kiến thức mới, luyện tập và sửa lỗi sai'},
+    intensive:{label:'Tăng tốc',sessions:5,minutes:90,questionsPerHour:7,preferredDays:[0,1,3,4,6],level:'Vận dụng đến nâng cao',purpose:'tăng thời lượng luyện tập, xen kẽ đề và sửa lỗi'},
+    gifted:{label:'Học sinh giỏi',sessions:6,minutes:90,questionsPerHour:9,preferredDays:[0,1,2,4,5,6],level:'Nâng cao',purpose:'tăng cường bài nhiều bước, chứng minh, tư duy chiến lược và bài vận dụng khó'}
+  };
+  function currentStudyIntensity(){return STUDY_INTENSITIES[state.studyIntensity]?state.studyIntensity:'balanced'}
+  function studyWindowScore(dayIndex,startMinute,endMinute,targetDuration){
+    if(startMinute<360||endMinute>1320)return -Infinity; // mặc định bảo vệ giờ ngủ: chỉ lên lịch 06:00–22:00
+    const midpoint=(startMinute+endMinute)/2;let score=0;
+    if(dayIndex<5){
+      if(startMinute>=960&&endMinute<=1200)score=34-Math.abs(midpoint-1080)/70;
+      else if(startMinute>=840&&endMinute<=960)score=20-Math.abs(midpoint-900)/80;
+      else if(startMinute>=360&&endMinute<=480)score=10-Math.abs(midpoint-420)/80;
+      else if(startMinute>=1200&&endMinute<=1320)score=7-Math.abs(midpoint-1260)/60;
+      else score=2;
+    }else{
+      if(startMinute>=480&&endMinute<=690)score=32-Math.abs(midpoint-570)/55;
+      else if(startMinute>=840&&endMinute<=1080)score=23-Math.abs(midpoint-960)/75;
+      else if(startMinute>=1020&&endMinute<=1200)score=16-Math.abs(midpoint-1110)/75;
+      else if(startMinute>=360&&endMinute<=480)score=10-Math.abs(midpoint-420)/80;
+      else score=2;
+    }
+    score+=endMinute-startMinute===targetDuration?10:-Math.ceil((targetDuration-(endMinute-startMinute))/30)*4;
+    return score;
+  }
+  function chooseWindowForDay(day,date,slotsByKey,profile){
+    const durations=[...new Set([profile.minutes,60,30])].filter(n=>n<=profile.minutes).sort((a,b)=>b-a);let best=null;
+    for(const duration of durations){
+      for(let start=360;start+duration<=1320;start+=30){
+        const slotIds=[];let valid=true;
+        for(let minute=start;minute<start+duration;minute+=30){
+          const hour=Math.floor(minute/60),part=minute%60,id=`h${String(hour).padStart(2,'0')}m${String(part).padStart(2,'0')}`,key=`${date}_${id}`;
+          if(!slotsByKey.has(key)){valid=false;break}slotIds.push(id);
+        }
+        if(!valid)continue;
+        const score=studyWindowScore(day,start,start+duration,profile.minutes);
+        if(!best||score>best.score)best={date,day,startMinute:start,endMinute:start+duration,slotIds,score};
+      }
+      // Prefer the intended session duration whenever at least one slot window of that length exists.
+      if(best&&duration===profile.minutes)break;
+    }
+    return best;
+  }
+  function selectStudyRanges(slots){
+    const profile=STUDY_INTENSITIES[currentStudyIntensity()],monday=mondayOf(new Date()),slotsByKey=new Map();
+    slots.forEach(slot=>slotsByKey.set(`${dateKey(slot.date)}_${slot.session.id}`,slot));
+    const bestByDay=[];
+    for(let day=0;day<7;day++){const dateObj=new Date(monday);dateObj.setDate(monday.getDate()+day);const date=dateKey(dateObj),candidate=chooseWindowForDay(day,date,slotsByKey,profile);if(candidate)bestByDay.push(candidate)}
+    const byDay=new Map(bestByDay.map(item=>[item.day,item])),chosen=[],chosenDays=new Set();
+    profile.preferredDays.forEach(day=>{const item=byDay.get(day);if(item&&chosen.length<profile.sessions){chosen.push(item);chosenDays.add(day)}});
+    if(chosen.length<profile.sessions){
+      const remaining=bestByDay.filter(item=>!chosenDays.has(item.day)).sort((a,b)=>b.score-a.score||a.day-b.day);
+      for(const item of remaining){if(chosen.length>=profile.sessions)break;chosen.push(item);chosenDays.add(item.day)}
+    }
+    const grouped=new Map();chosen.sort((a,b)=>a.day-b.day).forEach(item=>{const list=grouped.get(item.date)||[];list.push({...item,date:new Date(`${item.date}T12:00:00`)});grouped.set(item.date,list)});
+    return grouped;
+  }
   function buildLocalPlan(slots){
-    const monday=mondayOf(new Date()),rangesByDate=groupFreeRanges(slots),score=currentScore(),target=Number(state.targetScore||8),gap=Math.max(0,target-score),daysLeft=examDaysLeft(),weak=weakTopicList(),rotation=weak.length?weak:defaultTopics;let globalIndex=0;
-    return Array.from({length:7},(_,dayIndex)=>{const date=new Date(monday);date.setDate(monday.getDate()+dayIndex);const dateString=dateKey(date),ranges=rangesByDate.get(dateString)||[],blocks=ranges.map(range=>{const index=globalIndex++,firstId=range.slotIds[0],id=blockIdFor(dateString,firstId,range.endMinute),duration=range.endMinute-range.startMinute;let topic=rotation[index%rotation.length],kind='topic',level=gap>=2?'Nâng cao':gap>=1?'Vận dụng':'Cơ bản',baseQuestions=gap>=2?8:gap>=1?6:4,questionCount=Math.max(3,Math.min(24,Math.ceil(duration/60*baseQuestions)));
+    const monday=mondayOf(new Date()),rangesByDate=selectStudyRanges(slots),score=currentScore(),target=Number(state.targetScore||8),gap=Math.max(0,target-score),daysLeft=examDaysLeft(),weak=weakTopicList(),rotation=weak.length?weak:defaultTopics,profile=STUDY_INTENSITIES[currentStudyIntensity()];let globalIndex=0;
+    return Array.from({length:7},(_,dayIndex)=>{const date=new Date(monday);date.setDate(monday.getDate()+dayIndex);const dateString=dateKey(date),ranges=rangesByDate.get(dateString)||[],blocks=ranges.map(range=>{const index=globalIndex++,firstId=range.slotIds[0],id=blockIdFor(dateString,firstId,range.endMinute),duration=range.endMinute-range.startMinute;let topic=rotation[index%rotation.length],kind='topic',level=currentStudyIntensity()==='gifted'?'Nâng cao':gap>=2?'Nâng cao':gap>=1?'Vận dụng':'Cơ bản',baseQuestions=profile.questionsPerHour,questionCount=Math.max(3,Math.min(24,Math.ceil(duration/60*baseQuestions)));
         if(index<Math.min(weak.length,4)&&!(daysLeft!==null&&daysLeft<=30&&index%2===0)){kind='support';topic=weak[index%weak.length]}
-        else if(daysLeft!==null&&daysLeft<=14&&index%3===0){kind='exam';topic='Luyện đề tổng hợp';level='Nâng cao';questionCount=Math.max(6,Math.min(24,Math.ceil(duration/60*10)))}
-        else if(daysLeft!==null&&daysLeft<=30&&index%3===1){kind='review';topic=`Sửa bẫy lỗi sai: ${rotation[index%rotation.length]}`;level='Vận dụng'}
+        else if(daysLeft!==null&&daysLeft<=14&&index%3===0){kind='exam';topic='Luyện đề tổng hợp';level=currentStudyIntensity()==='gifted'?'Nâng cao':'Vận dụng đến nâng cao';questionCount=Math.max(4,Math.min(24,Math.ceil(duration/60*(baseQuestions+1))))}
+        else if(daysLeft!==null&&daysLeft<=30&&index%3===1){kind='review';topic=`Sửa bẫy lỗi sai: ${rotation[index%rotation.length]}`;level=currentStudyIntensity()==='gifted'?'Nâng cao':'Vận dụng'}
         else if(index%3===2){kind='spaced';topic=`Ôn lặp lại cách quãng: ${rotation[Math.floor(index/2)%rotation.length]}`}
-        const task=kind==='support'?`Buổi củng cố lỗi sai: xem lại ${topic}, tự trình bày cách giải rồi làm ${questionCount} câu tương tự.`:kind==='exam'?`Luyện đề tổng hợp trong khung giờ này; tự chấm, phân loại lỗi và ghi lại câu cần xem.`:kind==='review'?`Sửa bẫy ở ${topic}; giải lại câu sai rồi làm câu tương tự không nhìn lời giải.`:kind==='spaced'?`Ôn lặp lại ${topic}; tự nhớ công thức trước rồi giải bài mới để củng cố trí nhớ.`:`Ôn ${topic}, làm ${questionCount} câu mức ${level.toLowerCase()} và ghi lại lỗi sai.`;
+        const task=kind==='support'?`Củng cố ${topic}: tự nhắc lại quy tắc, giải thích vì sao đúng rồi làm ${questionCount} câu tương tự.`:kind==='exam'?`Luyện một phần đề phù hợp thời lượng; tự chấm, phân loại lỗi và ghi lại câu cần xem.`:kind==='review'?`Sửa các lỗi ở ${topic}; giải lại câu cũ rồi làm câu tương tự không nhìn lời giải.`:kind==='spaced'?`Ôn cách quãng ${topic}; thử nhớ lại công thức trước khi xem vở rồi giải bài mới.`:currentStudyIntensity()==='gifted'?`Giải ${questionCount} bài nâng cao về ${topic}; ưu tiên lời giải nhiều bước, chứng minh và so sánh cách giải.`:`Ôn ${topic}, làm ${questionCount} câu mức ${level.toLowerCase()} và ghi lại lỗi sai.`;
         return {id,sessionId:firstId,date:dateString,day:weekdayNames[dayIndex],start:minuteLabel(range.startMinute),end:minuteLabel(range.endMinute),session:`${minuteLabel(range.startMinute)}–${minuteLabel(range.endMinute)}`,time:`${minuteLabel(range.startMinute)}–${minuteLabel(range.endMinute)}`,duration,slotIds:range.slotIds,topic,task,level,questionCount,kind};
       });return {id:`day_${dateString}`,date:dateString,day:weekdayNames[dayIndex],blocks}});
   }
-  function refreshPlanAfterAssessment(){const slots=availableSlots();state.plan=buildLocalPlan(slots);state.planSource='adaptive';document.getElementById('planStatus').innerHTML=slots.length?'<span class="dot live"></span> Lộ trình đã tự cập nhật từ điểm mới và chuyên đề cần củng cố.':'<span class="dot"></span> Tuần này không còn khoảng Rảnh để xếp lịch.';return slots.length>0}
+  function refreshPlanAfterAssessment(){const slots=availableSlots();state.plan=buildLocalPlan(slots);state.planSource='adaptive';const count=state.plan.reduce((sum,day)=>sum+day.blocks.length,0);document.getElementById('planStatus').innerHTML=count?'<span class="dot live"></span> Đã cập nhật theo kết quả làm bài và cường độ học.':'<span class="dot"></span> Hãy kiểm tra lịch rảnh trong khoảng 06:00–22:00.';return count>0}
+  function studyIntensityChanged(){const requested=document.getElementById('studyIntensity')?.value||'balanced';state.studyIntensity=STUDY_INTENSITIES[requested]?requested:'balanced';if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan()}saveState();const profile=STUDY_INTENSITIES[state.studyIntensity];document.getElementById('planStatus').innerHTML=`<span class="dot live"></span> Đã chọn ${profile.sessions} buổi/tuần; nhấn “AI lập lịch học cá nhân” để tạo nội dung phù hợp.`}
   async function generateStudyPlan(options={}){
     const btn=document.getElementById('generatePlanBtn'),silent=!!options.silent,localOnly=!!options.localOnly;
-    if(!silent){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();document.getElementById('targetScore').value=state.targetScore;saveState()}
-    const slots=availableSlots(),localPlan=buildLocalPlan(slots);if(!slots.length){state.plan=localPlan;state.planSource='adaptive';document.getElementById('planStatus').innerHTML='<span class="dot"></span> Tuần này không còn khoảng Rảnh để xếp lịch.';renderPlan();saveState();if(!silent)showToast('Tất cả các mốc giờ đang được đánh dấu Bận.');return false}
-    if(!silent){btn.disabled=true;btn.innerHTML='<span class="loading"></span> Đang lập lịch…'}
+    if(!silent){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();state.studyIntensity=currentStudyIntensity();document.getElementById('targetScore').value=state.targetScore;saveState()}
+    const slots=availableSlots(),localPlan=buildLocalPlan(slots),baseBlocks=localPlan.flatMap(day=>day.blocks);if(!baseBlocks.length){state.plan=localPlan;state.planSource='adaptive';document.getElementById('planStatus').innerHTML='<span class="dot"></span> Không tìm thấy khung Rảnh phù hợp trong 06:00–22:00. Hãy bỏ đánh dấu Bận ở các giờ bạn có thể học.';renderPlan();saveState();if(!silent)showToast('Chưa có khung giờ học phù hợp.');return false}
+    if(!silent){btn.disabled=true;btn.innerHTML='<span class="loading"></span> AI đang lập lịch…'}
+    let aiFailureReason='';
     try{
-      if(!localOnly){try{const topics=weakTopicList(),baseBlocks=localPlan.flatMap(day=>day.blocks),response=await fetch('/api/ai/study-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetScore:Number(state.targetScore),examName:state.examName,examDate:state.examDate,diagnosticScore:state.diagnosticPercent,practiceScore:state.latestPracticeScore,scoreGap:Math.max(0,Number(state.targetScore)-currentScore()),daysLeft:examDaysLeft(),availableSlots:baseBlocks.map(block=>({date:block.date,day:block.day,session:block.session,time:block.time,duration:block.duration,topic:block.topic})),weakTopics:topics.length?topics:defaultTopics})});if(response.ok){const data=await response.json();if(Array.isArray(data.plan)&&data.plan.length){let index=0;state.plan=localPlan.map(day=>({...day,blocks:day.blocks.map(base=>{const candidate=data.plan[index++],item=candidate&&typeof candidate==='object'?candidate:{};return {...base,topic:item.topic||base.topic,task:item.task||base.task,level:item.level||base.level,questionCount:Number(item.questionCount||base.questionCount),duration:base.duration}})}));state.planSource='ai';document.getElementById('planStatus').innerHTML='<span class="dot live"></span> AI gợi ý chuyên đề; lịch vẫn giữ nguyên các khoảng Rảnh đã chọn.';renderPlan();saveState();if(!silent)showToast('Đã tạo lộ trình theo các khoảng Rảnh trong tuần.');return true}}}catch(error){/* The local adaptive roadmap remains available when AI is offline. */}}
-      state.plan=localPlan;state.planSource=options.silent?'adaptive':'rule';document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lộ trình đã gom các khoảng Rảnh liên tiếp theo từng ngày.';renderPlan();saveState();if(!silent)showToast('Đã tạo lịch tự học cho các khoảng Rảnh trong tuần.');return true;
-    }finally{if(!silent){btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Tạo lịch tự học';icons()}}
+      if(!localOnly){
+        try{
+          const topics=weakTopicList(),profile=STUDY_INTENSITIES[currentStudyIntensity()];
+          const response=await fetch('/api/ai/study-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetScore:Number(state.targetScore),examName:state.examName,examDate:state.examDate,studyIntensity:currentStudyIntensity(),diagnosticScore:state.diagnosticPercent,practiceScore:state.latestPracticeScore,scoreGap:Math.max(0,Number(state.targetScore)-currentScore()),daysLeft:examDaysLeft(),weeklyTargetSessions:profile.sessions,targetMinutesPerSession:profile.minutes,availableSlots:baseBlocks.map(block=>({date:block.date,day:block.day,session:block.session,time:block.time,duration:block.duration,topic:block.topic})),weakTopics:topics.length?topics:defaultTopics})});
+          if(response.ok){const data=await response.json();if(Array.isArray(data.plan)&&data.plan.length){let index=0;state.plan=localPlan.map(day=>({...day,blocks:day.blocks.map(base=>{const candidate=data.plan[index++],item=candidate&&typeof candidate==='object'?candidate:{};return {...base,topic:item.topic||base.topic,task:item.task||base.task,level:item.level||base.level,questionCount:Number(item.questionCount||base.questionCount),duration:base.duration}})}));state.planSource='ai';document.getElementById('planStatus').innerHTML=`<span class="dot live"></span> AI đã cá nhân hóa ${baseBlocks.length} buổi theo mục tiêu, kết quả và mức ${escapeHtml(profile.label)}; giờ học vẫn tuân thủ lịch Rảnh.`;renderPlan();saveState();if(!silent)showToast('AI đã lập lộ trình học cá nhân cho tuần này.');return true}else aiFailureReason='AI không trả về danh sách buổi học hợp lệ.'}
+          else {const errData=await response.json().catch(()=>({}));aiFailureReason=errData.error||`Máy chủ AI phản hồi HTTP ${response.status}.`}
+        }catch(error){aiFailureReason=error?.message||'Không kết nối được AI.'}
+      }
+      state.plan=localPlan;state.planSource=options.silent?'adaptive':'rule';
+      document.getElementById('planStatus').innerHTML=aiFailureReason?`<span class="dot"></span> AI chưa lập được lịch (${escapeHtml(aiFailureReason)}). Đang hiển thị lịch dự phòng theo cường độ đã chọn.`:'<span class="dot live"></span> Đã lập lịch theo cường độ, thời gian rảnh và mức điểm mục tiêu.';
+      renderPlan();saveState();if(!silent)showToast(aiFailureReason?'Đang dùng lịch học dự phòng.':'Đã tạo lịch tự học.');return true;
+    }finally{if(!silent){btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> AI lập lịch học cá nhân';icons()}}
   }
   function renderPlan(){
     const el=document.getElementById('studyPlan'),subtitle=document.getElementById('planSubtitle'),badge=document.getElementById('planBadge'),plan=Array.isArray(state.plan)?state.plan:[],blocks=plan.flatMap(day=>Array.isArray(day.blocks)?day.blocks:[]),doneIds=Array.isArray(state.completedPlanIds)?state.completedPlanIds:[];
     if(!plan.length){el.className='empty';el.textContent='Chưa có lộ trình.';subtitle.textContent='';badge.className='pill neutral';badge.textContent='Chưa tạo';return}
-    el.className='plan-list';badge.className='pill '+(state.planSource==='ai'?'green':state.planSource==='adaptive'?'green':'gold');badge.textContent=state.planSource==='ai'?'AI cá nhân hóa':state.planSource==='adaptive'?'Đã thích ứng':'Lịch gợi ý';const daysLeft=examDaysLeft(),gap=Math.max(0,Number(state.targetScore||8)-currentScore());subtitle.textContent=`${blocks.length} khoảng học · mục tiêu ${formatScore(state.targetScore)}/10 · cách ${gap.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')} điểm${daysLeft===null?'':` · còn ${daysLeft} ngày đến thi`}`;
+    el.className='plan-list';badge.className='pill '+(state.planSource==='ai'?'green':state.planSource==='adaptive'?'green':'gold');badge.textContent=state.planSource==='ai'?'AI cá nhân hóa':state.planSource==='adaptive'?'Đã thích ứng':'Lịch gợi ý';const daysLeft=examDaysLeft(),gap=Math.max(0,Number(state.targetScore||8)-currentScore());subtitle.textContent=`${blocks.length} buổi/tuần · ${STUDY_INTENSITIES[currentStudyIntensity()].label} · mục tiêu ${formatScore(state.targetScore)}/10 · cách ${gap.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')} điểm${daysLeft===null?'':` · còn ${daysLeft} ngày đến thi`}`;
     el.innerHTML=plan.map(day=>`<article class="plan-item day-plan"><div class="day-plan-head"><div class="day-plan-title"><strong>${escapeHtml(day.day||'')}</strong><span>${escapeHtml(day.date||'')}</span></div><span class="pill ${day.blocks.length?'green':'neutral'}">${day.blocks.length?`${day.blocks.length} khoảng học`:'Không có giờ Rảnh'}</span></div>${day.blocks.length?`<div class="day-timeline">${day.blocks.map(block=>{const done=doneIds.includes(block.id),questionCount=Number(block.questionCount||4);return `<div class="timeline-row ${done?'is-done':''}"><div class="timeline-time"><strong>${escapeHtml(block.time)}</strong><small>${Number(block.duration||30)} phút</small></div><div class="timeline-content"><strong>${escapeHtml(block.topic||'Ôn tập Toán')}</strong><div class="plan-meta"><span class="pill neutral">${escapeHtml(block.level||'Cơ bản')}</span><span>${questionCount} câu gợi ý</span></div><small>${escapeHtml(block.task||'Ôn kiến thức và luyện tập.')}</small></div><label class="plan-check"><input type="checkbox" data-plan-done="${escapeHtml(block.id)}" ${done?'checked':''} aria-label="Đánh dấu ${escapeHtml(block.topic||'buổi học')} đã hoàn thành"><span>Đã hoàn thành</span></label></div>`}).join('')}</div>`:'<p class="day-no-free">Không có khoảng Rảnh trong ngày này; hãy bỏ đánh dấu Bận nếu muốn thêm thời gian học.</p>'}</article>`).join('');
     el.querySelectorAll('[data-plan-done]').forEach(input=>input.addEventListener('change',()=>togglePlanDone(input.dataset.planDone,input.checked)));
   }
@@ -1389,9 +1459,9 @@
   function connectSharedDocumentUpdates(){if(!('EventSource' in window))return;try{const es=new EventSource('/api/documents/events');es.addEventListener('documents',e=>{try{mergeServerDocuments(JSON.parse(e.data))}catch(err){console.warn('Invalid document update',err)}})}catch(e){}}
 
 // Initialization and safe local defaults.
-  function scheduleInputsChanged(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lộ trình đã cập nhật theo mục tiêu và thời gian còn lại.'}saveState();renderCountdowns()}
-  ['targetScore','examDate','examName'].forEach(id=>document.getElementById(id).addEventListener('change',scheduleInputsChanged));document.getElementById('examDate').addEventListener('input',renderCountdowns);document.getElementById('examName').addEventListener('input',renderCountdowns);document.getElementById('targetScore').addEventListener('input',()=>{document.getElementById('homeTarget').textContent=formatScore(document.getElementById('targetScore').value||8)});
-  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();icons();renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();initializeSupabaseAuth();syncAccountButton();
+  function scheduleInputsChanged(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();state.studyIntensity=currentStudyIntensity();document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lịch đã cập nhật theo mục tiêu, kỳ thi và cường độ học.'}saveState();renderCountdowns()}
+  ['targetScore','examDate','examName'].forEach(id=>document.getElementById(id).addEventListener('change',scheduleInputsChanged));document.getElementById('studyIntensity').addEventListener('change',studyIntensityChanged);document.getElementById('examDate').addEventListener('input',renderCountdowns);document.getElementById('examName').addEventListener('input',renderCountdowns);document.getElementById('targetScore').addEventListener('input',()=>{document.getElementById('homeTarget').textContent=formatScore(document.getElementById('targetScore').value||8)});
+  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('studyIntensity').value=state.studyIntensity||'balanced';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();icons();renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();initializeSupabaseAuth();syncAccountButton();
 </script>
 </body>
 </html>

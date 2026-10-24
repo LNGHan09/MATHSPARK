@@ -300,12 +300,22 @@ app.post('/api/ai/:task', aiRateLimit(24, 60 * 1000), ensureOpenAI, async (req, 
     }
     if (task === 'study-plan') {
       const body = req.body || {};
-      const availableSlots = Array.isArray(body.availableSlots) ? body.availableSlots.slice(0, 80) : [];
+      const availableSlots = Array.isArray(body.availableSlots) ? body.availableSlots.slice(0, 12) : [];
       const topics = Array.isArray(body.weakTopics) ? body.weakTopics.slice(0, 30) : [];
+      const intensityKey = ['light','balanced','intensive','gifted'].includes(String(body.studyIntensity)) ? String(body.studyIntensity) : 'balanced';
+      const intensityProfiles = {
+        light: { label:'Nhẹ nhàng', sessions:3, minutes:60, approach:'3 buổi/tuần, khoảng 60 phút/buổi; củng cố nền tảng, số bài vừa phải, nghỉ xen kẽ.' },
+        balanced: { label:'Cân bằng', sessions:4, minutes:60, approach:'4 buổi/tuần, khoảng 60 phút/buổi; cân bằng kiến thức, luyện tập, chữa lỗi và ôn lặp lại.' },
+        intensive: { label:'Tăng tốc', sessions:5, minutes:90, approach:'5 buổi/tuần, khoảng 90 phút/buổi; tăng bài vận dụng, luyện đề theo phần và dành thời gian phân tích lỗi.' },
+        gifted: { label:'Học sinh giỏi', sessions:6, minutes:90, approach:'6 buổi/tuần, khoảng 90 phút/buổi; tăng bài nhiều bước, chứng minh, câu vận dụng cao và so sánh nhiều hướng giải; vẫn cần thời gian nghỉ.' }
+      };
+      const intensity = intensityProfiles[intensityKey];
       const text = await callOpenAI({
-        instructions: 'Bạn là chuyên gia lập lộ trình ôn thi Toán 9 vào lớp 10. Chỉ dùng các khoảng thời gian đã cung cấp, không tự tạo thêm buổi hoặc đổi giờ. Ưu tiên chủ đề yếu, ôn xen kẽ và tăng độ khó dần. Trả JSON duy nhất dạng {"plan":[{"topic":"...","task":"...","level":"...","questionCount":5}]}. Mỗi phần tử tương ứng cùng thứ tự một block đầu vào.',
-        input: JSON.stringify({ targetScore: body.targetScore, examName: safeText(body.examName, 120), examDate: safeText(body.examDate, 30), diagnosticScore: body.diagnosticScore, practiceScore: body.practiceScore, scoreGap: body.scoreGap, daysLeft: body.daysLeft, availableSlots, weakTopics: topics }),
-        maxOutputTokens: 2200,
+        instructions: `Bạn là chuyên gia thiết kế lịch học Toán 9 dựa trên khoa học học tập. Hãy cá nhân hóa nội dung của từng buổi theo hồ sơ đầu vào. Cường độ đã chọn: ${intensity.label}. ${intensity.approach}
+Dùng phương pháp truy hồi chủ động (tự nhớ trước khi xem lời giải), ôn lặp lại cách quãng, xen kẽ các dạng bài và tăng độ khó từng bước. Không xếp thêm buổi, không đổi ngày/giờ/thời lượng và không yêu cầu học trong giờ ngủ; danh sách availableSlots đã được thuật toán kiểm tra theo lịch rảnh. Ưu tiên weakTopics và các lỗi có dữ liệu; nếu thiếu dữ liệu lỗi thì xây nền tảng trước. Dùng điểm hiện tại, mục tiêu điểm, khoảng cách điểm và ngày thi để cân chỉnh độ khó, không hứa chắc điểm thi. Với mức Học sinh giỏi, tăng bài chứng minh, bài nhiều bước và tư duy chiến lược chứ không chỉ tăng số lượng máy móc.
+Trả JSON duy nhất dạng {"plan":[{"topic":"...","task":"...","level":"...","questionCount":5}]}. Mỗi phần tử phải tương ứng cùng thứ tự với một block trong availableSlots; trả đúng ${availableSlots.length} phần tử, không tạo giờ mới. Mỗi task cần nêu rõ việc học trong khung giờ cho trước, phù hợp thời lượng. questionCount phải thực tế: buổi 60 phút thường 3–6 câu tự luận ngắn/vừa; buổi 90 phút thường 4–8 câu, ít hơn nếu bài khó. Không thêm Markdown ngoài JSON.`,
+        input: JSON.stringify({ targetScore: body.targetScore, examName: safeText(body.examName, 120), examDate: safeText(body.examDate, 30), studyIntensity: intensityKey, intensityLabel: intensity.label, targetWeeklySessions: intensity.sessions, targetMinutesPerSession: intensity.minutes, diagnosticScore: body.diagnosticScore, practiceScore: body.practiceScore, scoreGap: body.scoreGap, daysLeft: body.daysLeft, availableSlots, weakTopics: topics }),
+        maxOutputTokens: 3000,
         reasoningEffort: 'medium'
       });
       const parsed = parseModelJson(text);
