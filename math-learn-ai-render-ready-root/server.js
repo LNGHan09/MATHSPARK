@@ -273,7 +273,7 @@ app.post('/api/ai/grade-solution', aiRateLimit(5, 10 * 60 * 1000), ensureOpenAI,
     res.json({ ok: true, model: OPENAI_MODEL, feedback });
   } catch (err) { aiEndpointError(res, err); }
 });
-app.post('/api/ai/:task', aiLimit(24, 60 * 1000), ensureOpenAI, async (req, res) => {
+app.post('/api/ai/:task', aiRateLimit(24, 60 * 1000), ensureOpenAI, async (req, res) => {
   const task = req.params.task;
   try {
     if (task === 'chat') {
