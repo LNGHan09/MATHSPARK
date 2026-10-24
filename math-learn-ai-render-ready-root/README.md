@@ -57,4 +57,4 @@ The app now stores new Admin files in Supabase Storage rather than Render's temp
 
 ## Scope note
 
-The account setup saves the current client-side learning state for each signed-in student. AI question generation and AI handwriting grading still require their own functioning Gemini backend endpoints and are not activated by adding Supabase alone.
+The account setup saves the current client-side learning state for each signed-in student. OpenAI-backed AI chat, question generation, semantic search, study-plan suggestions, and image-based solution grading use OPENAI_API_KEY (default model: gpt-6-luna). Keep the key in Render Environment; never put it in HTML or GitHub.
