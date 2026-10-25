@@ -1891,29 +1891,49 @@
   // anonymous users keep it in this browser. Original image bytes are intentionally not stored.
   function gradingHistoryScore(feedback, scale) {
     const raw = String(feedback || '').replace(/\r\n?/g, '\n');
-    // Strip Markdown emphasis and TeX delimiters before searching; the model often emits
-    // **Điểm đề xuất:** 9,5/10, which the old parser failed to match and misread as 5/10.
+    // Normalize Markdown wrappers and common LaTeX forms, while preserving the score label.
     const normalized = raw
-      .replace(/\\\[|\\\]|\\\(|\\\)/g, ' ')
-      .replace(/\*{1,3}|_{1,3}|`{1,3}|~~/g, '')
+      .replace(/\\\\([()[\]])/g, (_, ch) => '\\' + ch)
+      .replace(/\\\(|\\\)|\\\[|\\\]/g, ' ')
       .replace(/\\(?:text|mathrm|operatorname)\s*\{([^{}]*)\}/g, '$1')
+      .replace(/\\frac\s*\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}\s*\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}/g, '$1/$2')
+      .replace(/\*{1,3}|_{1,3}|`{1,3}|~~/g, '')
       .replace(/[ \t]+/g, ' ');
-    const resultSection = normalized.match(/(?:^|\n)\s{0,3}#{1,4}\s*結果?\s*Kết quả\b([\s\S]*?)(?=\n\s{0,3}#{1,4}\s|$)/i)
-      || normalized.match(/(?:^|\n)\s{0,3}#{1,4}\s*Kết quả\b([\s\S]*?)(?=\n\s{0,3}#{1,4}\s|$)/i);
-    const candidates = [];
-    if (resultSection) candidates.push(resultSection[1]);
-    candidates.push(normalized);
-    const labelledPattern = /(?:điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị|tổng\s+điểm)|tổng\s+điểm)\s*(?:là\s*)?[:：-]?\s*(\d{1,2}(?:[.,]\d+)?)\s*\/\s*(10|4|1)(?!\d)/i;
-    for (const candidate of candidates) {
-      const match = candidate.match(labelledPattern);
-      if (match) return `${match[1].replace(',', '.')}/${match[2]}`;
+
+    // Prefer the dedicated result section. Never take an arbitrary fraction like 1/1
+    // from a worked solution, rubric row, or follow-up exercise.
+    let section = normalized;
+    const headingMatch = normalized.match(/(?:^|\n)\s{0,3}#{1,6}\s*Kết quả\s*(?:\n|$)/i);
+    if (headingMatch) {
+      const start = headingMatch.index + headingMatch[0].length;
+      const rest = normalized.slice(start);
+      const nextHeading = rest.search(/\n\s{0,3}#{1,6}\s+/);
+      section = nextHeading >= 0 ? rest.slice(0, nextHeading) : rest.slice(0, 1800);
+    } else {
+      section = normalized.slice(0, 2200);
     }
-    // Only use an unlabelled ratio as a fallback near the beginning, not anywhere in
-    // the report (later examples and exercises can contain unrelated fractions/scores).
-    const opening = normalized.slice(0, 1400);
-    const fallback = opening.match(/(?:^|[\s:：])([0-9]{1,2}(?:[.,][0-9]+)?)\s*\/\s*(10|4|1)(?!\d)/);
-    return fallback ? `${fallback[1].replace(',', '.')}/${fallback[2]}` : `Chưa trích được/${scale}`;
+
+    // Accept scores in forms such as 9,5/10, (9.5/10), \(9,5/10\), or \frac{9,5}{10},
+    // but only when attached to a label that explicitly means the proposed/total score.
+    const labelPattern = /(?:Điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị)|Tổng\s+điểm)\s*(?:là\s*)?[:：=–—-]?\s*[([{\s$]*\s*(\d{1,2}(?:[.,]\d+)?)\s*\/\s*(\d{1,2}(?:[.,]\d+)?)(?!\d)/i;
+    let match = section.match(labelPattern);
+    if (!match) match = normalized.slice(0, 2200).match(labelPattern);
+
+    // Also accept natural language score formats like "9,5 điểm trên 10".
+    if (!match) {
+      const wordsPattern = /(?:Điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị)|Tổng\s+điểm)[^\d\n]{0,35}(\d{1,2}(?:[.,]\d+)?)\s*điểm\s+trên\s+(\d{1,2}(?:[.,]\d+)?)(?!\d)/i;
+      match = section.match(wordsPattern) || normalized.slice(0, 2200).match(wordsPattern);
+    }
+
+    if (!match) return `Chưa trích được/${scale}`;
+    const score = Number(match[1].replace(',', '.'));
+    const max = Number(match[2].replace(',', '.'));
+    if (!Number.isFinite(score) || !Number.isFinite(max) || max <= 0 || score < 0 || score > max) {
+      return `Chưa trích được/${scale}`;
+    }
+    return `${match[1].replace(',', '.')}/${match[2].replace(',', '.')}`;
   }
+  
   function gradingHistoryDate(value) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? 'Không rõ thời gian' : date.toLocaleString('vi-VN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -1950,7 +1970,7 @@
     records.forEach(item => {
       if (!item || !item.feedback) return;
       const corrected = gradingHistoryScore(item.feedback, item.scoreScale || '10');
-      if (!corrected.startsWith('Chưa trích được/') && item.score !== corrected) {
+      if (item.score !== corrected) {
         item.score = corrected;
         repairedScores = true;
       }
@@ -1976,7 +1996,7 @@
     const item = (Array.isArray(state.gradingHistory) ? state.gradingHistory : []).find(entry => entry.id === id);
     if (!item) return showToast('Không tìm thấy kết quả chấm trong lịch sử.');
     const correctedScore = gradingHistoryScore(item.feedback, item.scoreScale || '10');
-    if (!correctedScore.startsWith('Chưa trích được/') && item.score !== correctedScore) {
+    if (item.score !== correctedScore) {
       item.score = correctedScore;
       saveState();
     }
