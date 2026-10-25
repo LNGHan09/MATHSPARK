@@ -1402,6 +1402,100 @@
     renderQuizMath();
   }
 
+  // Repair raw/un-delimited LaTeX in quiz questions and answer options before KaTeX auto-render.
+  // AI-generated question text often contains `(...\frac{...}{...})` without `\(...\)`;
+  // auto-render won't recognize that. Reuse the robust grading-answer parser, then restore
+  // real math delimiters so the quiz and the written-answer view share the same math pipeline.
+  function looksLikeQuizMathGroup(inner) {
+    const value = String(inner || '').trim();
+    if (!value || value.length > 420) return false;
+    if (value.length > 2 && value[0] === '(' && value[value.length - 1] === ')' && looksLikeQuizMathGroup(value.slice(1, -1))) return true;
+    if (/\\(?:[A-Za-z]+|[{}|])/.test(value)) return true;
+    const allowed = /^[A-Za-z0-9\s.,;:()+\-*/=<>≤≥≠×÷±∓∈∉∪∩∥⊥∞παβγθΔ|{}\[\]^_]+$/;
+    if (!allowed.test(value)) return false;
+    const hasOperator = /[=^_<>≤≥≠×÷±∓+*/]/.test(value);
+    const coordinatePair = /^[A-Za-z][A-Za-z0-9]*(?:\s*[,;]\s*[A-Za-z0-9+\-]+)+$/.test(value);
+    const numericTuple = /^[-+]?\d+(?:\s*[,;]\s*[-+]?\d+)+$/.test(value);
+    const simpleVariable = /^[A-Za-z]{1,4}(?:[_^]\{?[A-Za-z0-9+\-]+\}?)?$/.test(value);
+    return hasOperator || coordinatePair || numericTuple || simpleVariable;
+  }
+
+  function wrapBareQuizMathGroups(rawText) {
+    let text = String(rawText || '');
+    let out = '';
+    let cursor = 0;
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] !== '(' || (i > 0 && text[i - 1] === '\\')) continue;
+      let depth = 0;
+      let end = -1;
+      for (let j = i; j < text.length; j++) {
+        if (text[j] === '(' && (j === 0 || text[j - 1] !== '\\')) depth++;
+        else if (text[j] === ')' && (j === 0 || text[j - 1] !== '\\')) {
+          depth--;
+          if (depth === 0) { end = j; break; }
+        }
+      }
+      if (end <= i || end - i > 422) continue;
+      const inner = text.slice(i + 1, end);
+      if (!looksLikeQuizMathGroup(inner)) continue;
+      // Don't wrap a group that is already a delimiter, or one already within a math delimiter.
+      if ((i > 0 && text[i - 1] === '\\') || text.slice(Math.max(0, i - 2), i) === '\\[') continue;
+      out += text.slice(cursor, i) + `\\(${inner}\\)`;
+      cursor = end + 1;
+      i = end;
+    }
+    return out + text.slice(cursor);
+  }
+
+  function wrapBareQuizEquations(rawText) {
+    let source = String(rawText || '');
+    const protectedParts = [];
+    const protectedPattern = /\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\\\(([\s\S]*?)\\\)|\\begin\{([A-Za-z*]+)\}[\s\S]*?\\end\{\4\}|(?<!\\)\$([^\n$]+?)\$(?!\$)/g;
+    source = source.replace(protectedPattern, whole => {
+      const id = protectedParts.length;
+      protectedParts.push(whole);
+      return `QUIZEXISTINGMATH${id}TOKEN`;
+    });
+    const atom = String.raw`(?:\d+[A-Za-z]?(?:\^\{[^{}]+\}|_\{[^{}]+\}|\^[A-Za-z0-9]+|_[A-Za-z0-9]+)?|[A-Za-z][A-Za-z0-9]*(?:\^\{[^{}]+\}|_\{[^{}]+\}|\^[A-Za-z0-9]+|_[A-Za-z0-9]+)?)`;
+    const expression = `${atom}(?:\\s*[+\\-*/]\\s*${atom})*`;
+    const relation = String.raw`(?:=|<=|>=|<|>|≤|≥|≠)`;
+    const equationPattern = new RegExp(`(?<![A-Za-z0-9\\\\])(${expression}\\s*${relation}\\s*${expression})(?![A-Za-z0-9])`, 'g');
+    source = source.replace(equationPattern, (_whole, equation) => `\\(${equation}\\)`);
+    return source.replace(/QUIZEXISTINGMATH(\d+)TOKEN/g, (whole, index) => protectedParts[Number(index)] ?? whole);
+  }
+
+  function normalizeQuizMathText(rawText) {
+    let source = String(rawText || '').replace(/\\\\([()[\]])/g, (_whole, ch) => '\\' + ch);
+    source = wrapBareQuizEquations(source);
+    source = normalizeMathDelimiters(source);
+    source = wrapBareQuizMathGroups(source);
+    const extracted = extractMathForTypesetting(source);
+    return extracted.protectedMarkdown.replace(/MATHSPARKMATHPLACEHOLDER(\d+)END/g, (whole, index) => {
+      const item = extracted.expressions[Number(index)];
+      if (!item) return whole;
+      const tex = String(item.tex || '').trim();
+      if (!tex) return whole;
+      // Cases/aligned environments are accepted by KaTeX in inline context as well;
+      // keeping them inline avoids forcing an entire question into a separate block.
+      return item.display ? `\\[${tex}\\]` : `\\(${tex}\\)`;
+    });
+  }
+
+  function normalizeQuizMathNodes(root) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      const parent = node.parentElement;
+      if (!parent || parent.closest('script,style,textarea,pre,code,.katex,.katex-display')) return;
+      const original = node.nodeValue || '';
+      if (!original.trim() || !/(\\\\|\\[A-Za-z]+|\\[{}|]|\^|_|[=<>≤≥≠×÷+*/-]|[,;])/.test(original)) return;
+      const normalized = normalizeQuizMathText(original);
+      if (normalized !== original) node.nodeValue = normalized;
+    });
+  }
+
   async function renderQuizMath() {
     const area = document.getElementById('quizArea');
     if (!area || !area.querySelector('.quiz-question')) return;
@@ -1416,6 +1510,7 @@
         loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js', 'katex'),
         loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js', 'renderMathInElement')
       ]);
+      normalizeQuizMathNodes(area);
       window.renderMathInElement(area, {
         delimiters: [
           { left: '$$', right: '$$', display: true },
