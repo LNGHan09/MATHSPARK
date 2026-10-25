@@ -209,18 +209,41 @@ function examStudentView(row) {
     createdAt: row.created_at
   };
 }
+function normalizeExamMathText(value) {
+  let text = String(value ?? '').replace(/\r\n?/g, '\n');
+  // Repair commands that were double-escaped or lost their backslash/braces during extraction.
+  text = text.replace(/\\+(?=(?:begin|end|frac|dfrac|tfrac|sqrt|text|cdot|times|leq|geq|neq|triangle|angle|boxed|overline|perp|parallel|approx|sin|cos|tan|left|right)\b)/gi, '\\');
+  text = text.replace(/(^|[^A-Za-z\\])\\{0,2}(begin|end)\s*\{?\s*(cases|aligned|array|matrix|pmatrix|bmatrix|vmatrix|Vmatrix)\s*\}?/gi,
+    (_whole, prefix, command, env) => `${prefix}\\${command.toLowerCase()}{${env.toLowerCase()}}`);
+
+  // In a cases block a malformed \( after a row break is usually a row separator followed by a parenthesis.
+  const envPattern = /\\begin\{(cases|aligned|array|matrix|pmatrix|bmatrix|vmatrix|Vmatrix)\}([\s\S]*?)\\end\{\1\}/gi;
+  text = text.replace(envPattern, (whole, env, body, offset, source) => {
+    const repairedBody = body.replace(/\\+\s*\(/g, '\\\\ (');
+    const prefix = source.slice(0, offset);
+    const lastOpen = Math.max(prefix.lastIndexOf('\\('), prefix.lastIndexOf('\\['), prefix.lastIndexOf('$$'));
+    const lastClose = Math.max(prefix.lastIndexOf('\\)'), prefix.lastIndexOf('\\]'), prefix.lastIndexOf('$$'));
+    const alreadyInsideMath = lastOpen > lastClose;
+    const environment = `\\begin{${env}}${repairedBody}\\end{${env}}`;
+    return alreadyInsideMath ? environment : `\\[${environment}\\]`;
+  });
+
+  // Avoid mangled commands like `begincases...endcases` remaining as literal text.
+  return text;
+}
+
 function normalizeExamQuestions(input) {
   if (!Array.isArray(input)) throw new Error('Danh sách câu hỏi phải là một mảng.');
   if (input.length > 100) throw new Error('Một đề tối đa 100 câu trong bản hiện tại.');
   const usedQuestionIds = new Set();
   return input.map((raw, index) => {
     const q = raw && typeof raw === 'object' ? raw : {};
-    const number = Math.max(1, Math.min(100, Number(q.number) || index + 1));
+    const number = index + 1; // The parsed JSON array is the authoritative PDF reading order.
     const qType = String(q.type || '').toLowerCase();
     const type = qType === 'mcq' || qType === 'multiple_choice' || qType === 'multiple-choice' || qType === 'trắc nghiệm' || (Array.isArray(q.options) && q.options.length === 4) ? 'mcq' : 'essay';
     let options = Array.isArray(q.options) ? q.options.slice(0, 4).map((op, j) => {
-      if (typeof op === 'string') return { label: ['A','B','C','D'][j], text: safeText(op, 1600) };
-      return { label: String(op?.label || ['A','B','C','D'][j]).toUpperCase(), text: safeText(op?.text, 1600) };
+      if (typeof op === 'string') return { label: ['A','B','C','D'][j], text: normalizeExamMathText(safeText(op, 1600)) };
+      return { label: String(op?.label || ['A','B','C','D'][j]).toUpperCase(), text: normalizeExamMathText(safeText(op?.text, 1600)) };
     }) : [];
     if (type === 'mcq') options = ['A','B','C','D'].map(label => options.find(o => o.label === label) || { label, text: '' });
     const rawBox = Array.isArray(q.diagramBbox) ? q.diagramBbox : null;
@@ -238,15 +261,15 @@ function normalizeExamQuestions(input) {
     usedQuestionIds.add(uniqueId);
     return {
       id: uniqueId,
-      number, type, prompt: safeText(q.prompt, 9000), options,
+      number, type, prompt: normalizeExamMathText(safeText(q.prompt, 9000)), options,
       correctAnswer: type === 'mcq' ? correctAnswer : '',
       answerSource, needsReview: q.needsReview !== false,
-      solution: safeText(q.solution, 4000), rubric: safeText(q.rubric, 3000),
+      solution: normalizeExamMathText(safeText(q.solution, 4000)), rubric: normalizeExamMathText(safeText(q.rubric, 3000)),
       points: Math.max(0, Math.min(100, Number(q.points) || (type === 'mcq' ? 1 : 2))),
       sourcePage, hasDiagram: Boolean(q.hasDiagram || diagramBbox), diagramBbox,
       diagramDescription: safeText(q.diagramDescription, 1000)
     };
-  }).sort((a,b) => a.number - b.number);
+  });
 }
 async function getExamRow(id, { publishedOnly = false } = {}) {
   if (!supabaseAdmin) throw new Error('Supabase chưa được cấu hình.');
@@ -307,8 +330,8 @@ app.post('/api/admin/exams/:id/analyze', requireAdmin, requireSupabase, aiRateLi
     const prompt = `Bạn đang phân tích một đề Toán Việt Nam để đưa vào kho thi thử trực tuyến MathSpark. Hãy đọc PDF theo đúng thứ tự trang và tách thành từng câu độc lập, kể cả câu có các ý nhỏ a), b), c) thì giữ ý nhỏ bên trong câu chính. Trả duy nhất một JSON object có trường questions là mảng; không thêm Markdown bên ngoài JSON.
 Mỗi câu có cấu trúc: {"number":1,"type":"mcq hoặc essay","prompt":"nội dung câu hỏi, bảo toàn dữ kiện và ý nhỏ","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải hoặc giải thích đáp án","rubric":"thang điểm từng ý cho câu tự luận","points":1,"sourcePage":1,"hasDiagram":false,"diagramBbox":[100,200,800,900] hoặc null,"diagramDescription":"mô tả hình nếu có"}.
 QUY TẮC QUAN TRỌNG:
-1) Giữ chính xác dữ kiện, ký hiệu, số liệu, đơn vị, cấu trúc và thứ tự câu. Không tự thêm đề hoặc bỏ ý.
-2) Trường type là mcq khi đề có các lựa chọn A/B/C/D; nếu không thì essay.
+1) Giữ chính xác dữ kiện, ký hiệu, số liệu, đơn vị, cấu trúc và thứ tự câu. Mảng questions phải theo đúng thứ tự đọc PDF từ trang đầu đến trang cuối, trên xuống dưới. Không sắp xếp lại theo số câu AI tự nhận diện; number là thứ tự 1,2,3,... theo vị trí trong mảng. Không tự thêm đề hoặc bỏ ý.
+2) Trường type là mcq khi đề có các lựa chọn A/B/C/D; nếu không thì essay. Với hệ phương trình, dùng đúng môi trường LaTeX \begin{cases}...\\...\end{cases}; mọi dấu gạch chéo ngược phải được escape đúng trong JSON. Không được bỏ dấu \ hoặc dấu ngoặc nhọn của begin/end.
 3) Với mọi công thức trong prompt và options, dùng LaTeX hợp lệ và luôn bọc công thức inline bằng \\( ... \\), công thức riêng dòng bằng \\[ ... \\]. Trong JSON, escape dấu gạch chéo ngược đúng. Viết số mũ x^{2}, m^{2}; phân số \\frac{a}{b}; căn \\sqrt{...}; đơn vị trong toán dùng \\text{...}. Không để mã LaTeX thô ngoài dấu phân cách.
 4) correctAnswer chỉ được lấy từ đáp án chính thức/đáp án cuối của đề nếu thấy rõ. Nếu đề không có đáp án, hãy tự giải để đề xuất A/B/C/D và đặt answerSource="ai_solved", needsReview=true để admin xác minh. Nếu không chắc, để correctAnswer="", answerSource="unknown", needsReview=true. Không đoán mơ hồ.
 5) Với câu tự luận, tạo rubric theo các bước hợp lý và giải thích tham khảo. needsReview=true để admin duyệt trước khi đăng.
