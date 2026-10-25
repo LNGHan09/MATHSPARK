@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
+const { PDFDocument } = require('pdf-lib');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -184,6 +185,342 @@ app.delete('/api/admin/documents/:id', requireAdmin, requireSupabase, async (req
   }
 });
 
+
+// ---------- Admin-managed exam bank and one-question-at-a-time exams ----------
+function examPublicFileUrl(filePath) {
+  if (!filePath || !supabaseAdmin) return '';
+  return supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(filePath).data.publicUrl;
+}
+function examAdminView(row) {
+  return {
+    id: String(row.id), title: row.title, description: row.description || '',
+    durationMinutes: Number(row.duration_minutes || 120), status: row.status || 'draft',
+    sourceFileName: row.source_file_name || '', sourceFileUrl: examPublicFileUrl(row.source_file_path),
+    questionCount: Array.isArray(row.questions) ? row.questions.length : 0,
+    questions: Array.isArray(row.questions) ? row.questions : [],
+    createdAt: row.created_at, updatedAt: row.updated_at
+  };
+}
+function examStudentView(row) {
+  return {
+    id: String(row.id), title: row.title, description: row.description || '',
+    durationMinutes: Number(row.duration_minutes || 120), questionCount: Array.isArray(row.questions) ? row.questions.length : 0,
+    questionTypes: [...new Set((row.questions || []).map(q => q.type === 'mcq' ? 'Trắc nghiệm' : 'Tự luận'))],
+    createdAt: row.created_at
+  };
+}
+function normalizeExamQuestions(input) {
+  if (!Array.isArray(input)) throw new Error('Danh sách câu hỏi phải là một mảng.');
+  if (input.length > 100) throw new Error('Một đề tối đa 100 câu trong bản hiện tại.');
+  const usedQuestionIds = new Set();
+  return input.map((raw, index) => {
+    const q = raw && typeof raw === 'object' ? raw : {};
+    const number = Math.max(1, Math.min(100, Number(q.number) || index + 1));
+    const qType = String(q.type || '').toLowerCase();
+    const type = qType === 'mcq' || qType === 'multiple_choice' || qType === 'multiple-choice' || qType === 'trắc nghiệm' || (Array.isArray(q.options) && q.options.length === 4) ? 'mcq' : 'essay';
+    let options = Array.isArray(q.options) ? q.options.slice(0, 4).map((op, j) => {
+      if (typeof op === 'string') return { label: ['A','B','C','D'][j], text: safeText(op, 1600) };
+      return { label: String(op?.label || ['A','B','C','D'][j]).toUpperCase(), text: safeText(op?.text, 1600) };
+    }) : [];
+    if (type === 'mcq') options = ['A','B','C','D'].map(label => options.find(o => o.label === label) || { label, text: '' });
+    const rawBox = Array.isArray(q.diagramBbox) ? q.diagramBbox : null;
+    const diagramBbox = rawBox && rawBox.length === 4 && rawBox.every(v => Number.isFinite(Number(v)))
+      ? rawBox.map(v => Math.max(0, Math.min(1000, Math.round(Number(v))))) : null;
+    const sourcePage = Math.max(0, Math.min(500, Number(q.sourcePage) || 0));
+    const rawAnswer = String(q.correctAnswer ?? '').trim().toUpperCase();
+    const answerMap = { '0':'A', '1':'B', '2':'C', '3':'D' };
+    const normalizedAnswer = answerMap[rawAnswer] || rawAnswer;
+    const correctAnswer = ['A','B','C','D'].includes(normalizedAnswer) ? normalizedAnswer : '';
+    const answerSource = ['answer_key','ai_solved','unknown','admin_verified'].includes(q.answerSource) ? q.answerSource : (correctAnswer ? 'ai_solved' : 'unknown');
+    const baseId = safeText(q.id || `q${number}`, 50).replace(/[^A-Za-z0-9_-]/g, '') || `q${number}`;
+    let uniqueId = baseId, suffix = 2;
+    while (usedQuestionIds.has(uniqueId)) uniqueId = `${baseId}_${suffix++}`;
+    usedQuestionIds.add(uniqueId);
+    return {
+      id: uniqueId,
+      number, type, prompt: safeText(q.prompt, 9000), options,
+      correctAnswer: type === 'mcq' ? correctAnswer : '',
+      answerSource, needsReview: q.needsReview !== false,
+      solution: safeText(q.solution, 4000), rubric: safeText(q.rubric, 3000),
+      points: Math.max(0, Math.min(100, Number(q.points) || (type === 'mcq' ? 1 : 2))),
+      sourcePage, hasDiagram: Boolean(q.hasDiagram || diagramBbox), diagramBbox,
+      diagramDescription: safeText(q.diagramDescription, 1000)
+    };
+  }).sort((a,b) => a.number - b.number);
+}
+async function getExamRow(id, { publishedOnly = false } = {}) {
+  if (!supabaseAdmin) throw new Error('Supabase chưa được cấu hình.');
+  let query = supabaseAdmin.from('learning_exams').select('*').eq('id', String(id)).maybeSingle();
+  const { data, error } = await query;
+  if (error) throw error;
+  if (!data || (publishedOnly && data.status !== 'published')) return null;
+  return data;
+}
+app.get('/api/admin/exams', requireAdmin, requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from('learning_exams').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    res.set('Cache-Control','no-store').json((data || []).map(examAdminView));
+  } catch (err) {
+    console.error('Admin exam list failed:', err.message);
+    res.status(503).json({ error: 'Không tải được kho đề. Hãy chạy supabase/exam-bank.sql trong Supabase SQL Editor.', details: err.message });
+  }
+});
+app.post('/api/admin/exams', requireAdmin, requireSupabase, upload.single('file'), async (req, res) => {
+  let uploadedPath = null;
+  try {
+    const file = req.file;
+    if (!file || !/\.pdf$/i.test(file.originalname) || (file.mimetype && !['application/pdf','application/octet-stream'].includes(file.mimetype))) {
+      return res.status(400).json({ error: 'Kho đề hiện nhận tệp PDF. Hãy xuất Word/ảnh thành PDF rồi tải lên.' });
+    }
+    const title = safeText(req.body.title || path.basename(file.originalname, path.extname(file.originalname)), 180);
+    if (!title) return res.status(400).json({ error: 'Vui lòng nhập tên đề thi.' });
+    const objectPath = `exams/${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${cleanFileName(file.originalname)}`;
+    const { error: uploadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(objectPath, file.buffer, { contentType: 'application/pdf', cacheControl: '3600', upsert: false });
+    if (uploadError) throw uploadError;
+    uploadedPath = objectPath;
+    const row = {
+      title, description: safeText(req.body.description || '', 1500),
+      duration_minutes: Math.max(10, Math.min(360, Number(req.body.durationMinutes) || 120)),
+      status: 'draft', source_file_name: file.originalname, source_file_path: uploadedPath,
+      questions: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    };
+    const { data, error } = await supabaseAdmin.from('learning_exams').insert(row).select('*').single();
+    if (error) throw error;
+    res.json({ ok: true, exam: examAdminView(data), message: 'Đã tải đề lên. Tiếp theo hãy dùng AI phân tích rồi kiểm tra đáp án trước khi đăng.' });
+  } catch (err) {
+    if (uploadedPath) await removeSupabaseFile(uploadedPath);
+    console.error('Exam upload failed:', err.message);
+    res.status(500).json({ error: `Không lưu được đề thi: ${err.message}` });
+  }
+});
+app.post('/api/admin/exams/:id/analyze', requireAdmin, requireSupabase, aiRateLimit(3, 10 * 60 * 1000), ensureOpenAI, async (req, res) => {
+  try {
+    const row = await getExamRow(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    if (!row.source_file_path) return res.status(400).json({ error: 'Đề chưa có tệp PDF gốc.' });
+    const { data: blob, error: downloadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
+    if (downloadError) throw downloadError;
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    if (!buffer.length) return res.status(400).json({ error: 'Tệp PDF rỗng.' });
+    const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
+    const prompt = `Bạn đang phân tích một đề Toán Việt Nam để đưa vào kho thi thử trực tuyến MathSpark. Hãy đọc PDF theo đúng thứ tự trang và tách thành từng câu độc lập, kể cả câu có các ý nhỏ a), b), c) thì giữ ý nhỏ bên trong câu chính. Trả duy nhất một JSON object có trường questions là mảng; không thêm Markdown bên ngoài JSON.
+Mỗi câu có cấu trúc: {"number":1,"type":"mcq hoặc essay","prompt":"nội dung câu hỏi, bảo toàn dữ kiện và ý nhỏ","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải hoặc giải thích đáp án","rubric":"thang điểm từng ý cho câu tự luận","points":1,"sourcePage":1,"hasDiagram":false,"diagramBbox":[100,200,800,900] hoặc null,"diagramDescription":"mô tả hình nếu có"}.
+QUY TẮC QUAN TRỌNG:
+1) Giữ chính xác dữ kiện, ký hiệu, số liệu, đơn vị, cấu trúc và thứ tự câu. Không tự thêm đề hoặc bỏ ý.
+2) Trường type là mcq khi đề có các lựa chọn A/B/C/D; nếu không thì essay.
+3) Với mọi công thức trong prompt và options, dùng LaTeX hợp lệ và luôn bọc công thức inline bằng \\( ... \\), công thức riêng dòng bằng \\[ ... \\]. Trong JSON, escape dấu gạch chéo ngược đúng. Viết số mũ x^{2}, m^{2}; phân số \\frac{a}{b}; căn \\sqrt{...}; đơn vị trong toán dùng \\text{...}. Không để mã LaTeX thô ngoài dấu phân cách.
+4) correctAnswer chỉ được lấy từ đáp án chính thức/đáp án cuối của đề nếu thấy rõ. Nếu đề không có đáp án, hãy tự giải để đề xuất A/B/C/D và đặt answerSource="ai_solved", needsReview=true để admin xác minh. Nếu không chắc, để correctAnswer="", answerSource="unknown", needsReview=true. Không đoán mơ hồ.
+5) Với câu tự luận, tạo rubric theo các bước hợp lý và giải thích tham khảo. needsReview=true để admin duyệt trước khi đăng.
+6) sourcePage là số trang PDF, bắt đầu từ 1. Nếu câu có hình, đặt hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] là hình chữ nhật CHỈ BAO QUANH HÌNH vẽ trên trang, tọa độ nguyên từ 0 đến 1000 theo [trái,trên,phải,dưới]; nếu không có hình thì null. Nếu không chắc bbox, để null và mô tả hình.
+7) Mỗi câu trắc nghiệm có đúng 4 options theo thứ tự A,B,C,D. Không đưa correctAnswer/solution vào prompt hiển thị cho học sinh sau này; các trường đó là dữ liệu chấm kín.
+8) Không quá 100 câu. Nếu PDF có đáp án ở cuối, đối chiếu theo đúng số câu. Không suy diễn nếu ký hiệu/hình không đọc rõ.
+Đề: ${row.title}. Thời gian: ${row.duration_minutes} phút. Nếu có thể, dựa vào đề để suy ra môn/lớp/chuyên đề nhưng đừng thay nội dung gốc.`;
+    const output = await callOpenAI({
+      instructions: 'Bạn là chuyên viên số hóa đề thi Toán. Ưu tiên trung thực với nguồn, chính xác toán học, không bịa chữ/hình. Chỉ trả JSON hợp lệ.',
+      input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, { type: 'input_file', filename: row.source_file_name || 'exam.pdf', file_data: dataUrl, detail: 'high' }] }],
+      maxOutputTokens: 14000,
+      reasoningEffort: 'high'
+    });
+    const parsed = parseModelJson(output);
+    if (!Array.isArray(parsed.questions) || !parsed.questions.length) throw new Error('AI chưa tách được câu hỏi. Thử PDF rõ nét hơn hoặc chia đề dài thành các tệp nhỏ hơn.');
+    const questions = normalizeExamQuestions(parsed.questions);
+    if (questions.some(q => !q.prompt)) throw new Error('Có câu được trích xuất nhưng nội dung bị rỗng. Hãy thử lại hoặc sửa trong phần duyệt đề.');
+    const { data, error } = await supabaseAdmin.from('learning_exams').update({ questions, status: 'draft', updated_at: new Date().toISOString() }).eq('id', String(req.params.id)).select('*').single();
+    if (error) throw error;
+    res.json({ ok: true, exam: examAdminView(data), reviewRequired: questions.filter(q => q.needsReview).length, message: `AI tách được ${questions.length} câu. Hãy kiểm tra câu hỏi, công thức, đáp án và thang điểm trước khi đăng.` });
+  } catch (err) {
+    console.error('Exam analysis failed:', { message: String(err?.message || err).slice(0, 500), status: err?.status || 0 });
+    if (err?.status) return aiEndpointError(res, err);
+    res.status(502).json({ error: `Chưa phân tích được đề: ${err.message || 'lỗi không xác định'}` });
+  }
+});
+app.put('/api/admin/exams/:id', requireAdmin, requireSupabase, async (req, res) => {
+  try {
+    const existing = await getExamRow(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    const questions = normalizeExamQuestions(req.body.questions);
+    if (questions.some(q => !q.prompt)) return res.status(400).json({ error: 'Mỗi câu cần có nội dung câu hỏi.' });
+    const changes = {
+      questions, title: safeText(req.body.title || existing.title, 180),
+      description: safeText(req.body.description ?? existing.description ?? '', 1500),
+      duration_minutes: Math.max(10, Math.min(360, Number(req.body.durationMinutes) || Number(existing.duration_minutes) || 120)),
+      updated_at: new Date().toISOString(), status: 'draft'
+    };
+    const { data, error } = await supabaseAdmin.from('learning_exams').update(changes).eq('id', String(req.params.id)).select('*').single();
+    if (error) throw error;
+    res.json({ ok: true, exam: examAdminView(data) });
+  } catch (err) { res.status(400).json({ error: `Không lưu được phần duyệt đề: ${err.message}` }); }
+});
+app.post('/api/admin/exams/:id/publish', requireAdmin, requireSupabase, async (req, res) => {
+  try {
+    const row = await getExamRow(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    const questions = normalizeExamQuestions(row.questions);
+    if (!questions.length) return res.status(400).json({ error: 'Đề chưa có câu hỏi. Hãy chạy phân tích AI trước.' });
+    for (const q of questions) {
+      if (!q.prompt) return res.status(400).json({ error: `Câu ${q.number} chưa có nội dung.` });
+      if (q.needsReview) return res.status(400).json({ error: `Câu ${q.number} còn cần duyệt. Hãy kiểm tra lại đáp án/hình/LaTeX rồi bỏ chọn “Cần duyệt” trước khi đăng.` });
+      if (q.type === 'mcq' && (!['A','B','C','D'].includes(q.correctAnswer) || q.options.some(o => !o.text))) return res.status(400).json({ error: `Câu ${q.number} cần đủ 4 lựa chọn và đáp án đúng A/B/C/D.` });
+    }
+    const { data, error } = await supabaseAdmin.from('learning_exams').update({ status: 'published', questions, updated_at: new Date().toISOString() }).eq('id', String(req.params.id)).select('*').single();
+    if (error) throw error;
+    res.json({ ok: true, exam: examAdminView(data), message: 'Đã đăng đề lên kho luyện thi.' });
+  } catch (err) { res.status(400).json({ error: err.message || 'Không đăng được đề.' }); }
+});
+app.delete('/api/admin/exams/:id', requireAdmin, requireSupabase, async (req, res) => {
+  try {
+    const row = await getExamRow(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    const { error } = await supabaseAdmin.from('learning_exams').delete().eq('id', String(req.params.id));
+    if (error) throw error;
+    await removeSupabaseFile(row.source_file_path);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: `Không xóa được đề thi: ${err.message}` }); }
+});
+app.get('/api/exams', requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from('learning_exams').select('id,title,description,duration_minutes,status,questions,created_at').eq('status','published').order('created_at',{ascending:false});
+    if (error) throw error;
+    res.set('Cache-Control','no-store').json((data || []).map(examStudentView));
+  } catch (err) {
+    console.error('Published exam list failed:', err.message);
+    res.status(503).json({ error: 'Chưa tải được kho đề. Quản trị viên cần chạy supabase/exam-bank.sql trước.', details: err.message });
+  }
+});
+app.get('/api/exams/:id', requireSupabase, async (req, res) => {
+  try {
+    const row = await getExamRow(req.params.id, { publishedOnly: true });
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề hoặc đề chưa được đăng.' });
+    const questions = normalizeExamQuestions(row.questions).map(q => ({
+      id:q.id, number:q.number, type:q.type, prompt:q.prompt, options:q.options,
+      points:q.points, sourcePage:q.sourcePage, hasDiagram:q.hasDiagram,
+      diagramBbox:q.diagramBbox, diagramDescription:q.diagramDescription
+    }));
+    res.set('Cache-Control','no-store').json({ ...examStudentView(row), sourceUrl:`/api/exams/${encodeURIComponent(row.id)}/source`, questions });
+  } catch (err) { res.status(503).json({ error: `Không tải được đề thi: ${err.message}` }); }
+});
+// The full source PDF is admin-only so an answer key at the end of the paper is never exposed during a student exam.
+app.get('/api/admin/exams/:id/source', requireAdmin, requireSupabase, async (req, res) => {
+  try {
+    const row = await getExamRow(req.params.id);
+    if (!row || !row.source_file_path) return res.status(404).json({ error: 'Không tìm thấy PDF gốc.' });
+    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
+    if (error) throw error;
+    const buffer = Buffer.from(await data.arrayBuffer());
+    res.set({ 'Content-Type':'application/pdf', 'Content-Length':String(buffer.length), 'Content-Disposition':`inline; filename="${cleanFileName(row.source_file_name || 'exam.pdf')}"`, 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff' });
+    res.end(buffer);
+  } catch (err) { res.status(500).json({ error: `Không tải được PDF gốc: ${err.message}` }); }
+});
+app.get('/api/exams/:id/diagram/:questionId', requireSupabase, async (req,res) => {
+  try {
+    const row = await getExamRow(req.params.id, { publishedOnly:true });
+    if (!row || !row.source_file_path) return res.status(404).json({ error:'Không tìm thấy hình câu hỏi.' });
+    const q = normalizeExamQuestions(row.questions).find(item => String(item.id) === String(req.params.questionId));
+    if (!q || !q.sourcePage || !q.diagramBbox) return res.status(404).json({ error:'Câu này chưa có vùng hình được duyệt.' });
+    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
+    if (error) throw error;
+    const sourceBytes = Buffer.from(await data.arrayBuffer());
+    const sourceDoc = await PDFDocument.load(sourceBytes);
+    const pageIndex = q.sourcePage - 1;
+    if (pageIndex < 0 || pageIndex >= sourceDoc.getPageCount()) return res.status(400).json({ error:'Số trang hình không hợp lệ.' });
+    const sourcePage = sourceDoc.getPage(pageIndex);
+    const { width, height } = sourcePage.getSize();
+    const [x0,y0,x1,y1] = q.diagramBbox.map(Number);
+    const left = Math.max(0,Math.min(width,x0/1000*width));
+    const bottom = Math.max(0,Math.min(height,(1000-y1)/1000*height));
+    const cropWidth = Math.max(1,Math.min(width-left,(x1-x0)/1000*width));
+    const cropHeight = Math.max(1,Math.min(height-bottom,(y1-y0)/1000*height));
+    if (cropWidth < width*.04 || cropHeight < height*.04) return res.status(400).json({ error:'Vùng hình quá nhỏ; hãy chỉnh diagramBbox trong Admin.' });
+    const outDoc = await PDFDocument.create();
+    const [page] = await outDoc.copyPages(sourceDoc,[pageIndex]);
+    outDoc.addPage(page);
+    page.setCropBox(left,bottom,cropWidth,cropHeight);
+    const bytes = await outDoc.save();
+    res.set({ 'Content-Type':'application/pdf', 'Content-Length':String(bytes.length), 'Content-Disposition':'inline; filename="mathspark-diagram.pdf"', 'Cache-Control':'public, max-age=300', 'X-Content-Type-Options':'nosniff' });
+    res.end(Buffer.from(bytes));
+  } catch (err) { console.error('Diagram crop failed:',err.message); res.status(500).json({ error:'Không tách được hình từ PDF. Hãy kiểm tra vùng hình trong Admin.' }); }
+});
+const examEssayUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 7 * 1024 * 1024, files: 20 },
+  fileFilter: (req,file,cb) => { const ok = /^image\/(png|jpeg|webp)$/.test(file.mimetype || ''); cb(ok ? null : new Error('Ảnh lời giải tự luận phải là PNG, JPG hoặc WEBP.'), ok); }
+}).any();
+app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000), ensureOpenAI, examEssayUpload, async (req, res) => {
+  try {
+    const row = await getExamRow(req.params.id, { publishedOnly: true });
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề hoặc đề chưa được đăng.' });
+    const questions = normalizeExamQuestions(row.questions);
+    let answers = {};
+    try { answers = JSON.parse(String(req.body.answers || '{}')); } catch { return res.status(400).json({ error: 'Dữ liệu đáp án không hợp lệ.' }); }
+    const files = Array.isArray(req.files) ? req.files : [];
+    const byQuestionFile = new Map(files.map(f => [String(f.fieldname || '').replace(/^essay_/, ''), f]));
+    const results = [];
+    const essayInputs = [];
+    for (const q of questions) {
+      if (q.type === 'mcq') {
+        const picked = String(answers[q.id] || '').trim().toUpperCase();
+        const correct = Boolean(picked && q.correctAnswer && picked === q.correctAnswer);
+        results.push({ questionId:q.id, number:q.number, type:'mcq', answer:picked, correctAnswer:q.correctAnswer, correct, score:correct?q.points:0, maxScore:q.points, feedback:correct?'Chính xác.':`Đáp án đúng: ${q.correctAnswer || 'Cần giáo viên xác minh'}.`, solution:q.solution || '' });
+      } else {
+        const file = byQuestionFile.get(String(q.id));
+        if (file) essayInputs.push({ q, file });
+        else results.push({ questionId:q.id, number:q.number, type:'essay', score:0, maxScore:q.points, feedback:'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '' });
+      }
+    }
+    if (essayInputs.length) {
+      const dataUrl = f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
+      const content = [{ type:'input_text', text:`Chấm độc lập từng ảnh bài tự luận Toán dưới đây theo câu hỏi, lời giải tham khảo và rubric của từng câu. Thang điểm phải từ 0 đến maxScore tương ứng. Không gộp điểm giữa các câu. Đọc ảnh cẩn thận; nếu chữ không rõ, hạ độ chắc chắn và nói rõ. Công thức trong phản hồi dùng LaTeX hợp lệ, có dấu \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"..."}]}.` }];
+      for (const {q,file} of essayInputs) {
+        content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points})\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh bài làm tiếp theo thuộc riêng câu này.` });
+        content.push({ type:'input_image', image_url:dataUrl(file), detail:'high' });
+      }
+      const raw = await callOpenAI({
+        instructions:'Bạn là giáo viên chấm tự luận Toán 9. Chấm theo rubric, không chỉ so đáp số, không cho điểm vượt điểm tối đa. Kết quả là gợi ý AI; tránh khẳng định quá mức nếu ảnh mờ.',
+        input:[{ role:'user', content }], maxOutputTokens:10000, reasoningEffort:'medium'
+      });
+      const parsed = parseModelJson(raw);
+      const modelResults = new Map((Array.isArray(parsed.results) ? parsed.results : []).map(item => [String(item.questionId), item]));
+      for (const {q} of essayInputs) {
+        const item = modelResults.get(String(q.id));
+        const score = item ? Math.max(0, Math.min(q.points, Number(item.score) || 0)) : 0;
+        results.push({ questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points, confidence:item?.confidence || 'low', feedback:safeText(item?.feedback || 'AI chưa trả về nhận xét riêng cho câu này.', 6000), mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,400)):[], correctedApproach:safeText(item?.correctedApproach || '',3000), needsTeacherReview:!item || item?.confidence === 'low', solution:q.solution || '' });
+      }
+    }
+    results.sort((a,b)=>a.number-b.number);
+    const maxScore = results.reduce((sum,item)=>sum+Number(item.maxScore||0),0);
+    const score = Math.round(results.reduce((sum,item)=>sum+Number(item.score||0),0)*100)/100;
+    const resultJson = { examId:String(row.id), examTitle:row.title, score, maxScore, results, submittedAt:new Date().toISOString() };
+    let saved = false;
+    const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+    if (bearer && supabaseAdmin) {
+      try {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearer);
+        if (!authError && authData?.user?.id) {
+          const { error: insertError } = await supabaseAdmin.from('exam_attempts').insert({ user_id:authData.user.id, exam_id:row.id, exam_title:row.title, score, max_score:maxScore, result_json:resultJson, submitted_at:new Date().toISOString() });
+          if (!insertError) saved = true; else console.warn('Exam attempt not saved:', insertError.message);
+        }
+      } catch (saveErr) { console.warn('Exam attempt save failed:', saveErr.message); }
+    }
+    res.json({ ok:true, ...resultJson, savedToAccount:saved });
+  } catch (err) {
+    console.error('Exam submit failed:', { message:String(err?.message||err).slice(0,500), status:err?.status||0 });
+    if (err?.status) return aiEndpointError(res, err);
+    res.status(502).json({ error: `Chưa chấm/nộp được bài thi: ${err.message || 'lỗi không xác định'}` });
+  }
+});
+app.get('/api/exam-attempts', requireSupabase, async (req,res) => {
+  const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!bearer) return res.status(401).json({ error:'Đăng nhập để xem lịch sử thi.' });
+  try {
+    const { data:authData, error:authError } = await supabaseAdmin.auth.getUser(bearer);
+    if (authError || !authData?.user?.id) return res.status(401).json({ error:'Phiên đăng nhập không hợp lệ.' });
+    const { data, error } = await supabaseAdmin.from('exam_attempts').select('id,exam_id,exam_title,score,max_score,submitted_at,result_json').eq('user_id',authData.user.id).order('submitted_at',{ascending:false}).limit(50);
+    if (error) throw error;
+    res.set('Cache-Control','no-store').json(data || []);
+  } catch (err) { res.status(500).json({ error:`Không tải được lịch sử thi: ${err.message}` }); }
+});
+
 // OpenAI-backed learning features. Keep OPENAI_API_KEY on the server only.
 const aiUpload = multer({
   storage: multer.memoryStorage(),
@@ -267,7 +604,7 @@ app.post('/api/ai/grade-solution', aiRateLimit(5, 10 * 60 * 1000), ensureOpenAI,
         { type: 'input_text', text: 'Ảnh 2: Bài làm tự luận của học sinh.' },
         { type: 'input_image', image_url: dataUrl(solution), detail: 'high' }
       ] }],
-      maxOutputTokens: 10000,
+      maxOutputTokens: 3000,
       reasoningEffort: 'medium'
     });
     res.json({ ok: true, model: OPENAI_MODEL, feedback });
