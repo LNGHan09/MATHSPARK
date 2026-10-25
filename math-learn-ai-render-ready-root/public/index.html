@@ -448,6 +448,45 @@
   @media(max-width:370px){.resource-filter-btn{padding:7px;gap:4px;font-size:10px}.resource-filter-count{min-width:17px;height:17px;padding:0 4px}}
 </style>
 
+  <style id="mathspark-ai-answer-styles">
+    :is(.grading-result,.mathspark-formatted-answer){display:block;max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:normal;font-size:15px;line-height:1.72;color:#30384b}
+    :is(.grading-result,.mathspark-formatted-answer) h1,:is(.grading-result,.mathspark-formatted-answer) h2,:is(.grading-result,.mathspark-formatted-answer) h3,:is(.grading-result,.mathspark-formatted-answer) h4{color:#1d2b50;line-height:1.3;margin:1.25em 0 .55em;overflow-wrap:anywhere}
+    :is(.grading-result,.mathspark-formatted-answer) h2{font-size:1.28rem;border-bottom:1px solid #e7e0d6;padding-bottom:7px}
+    :is(.grading-result,.mathspark-formatted-answer) h3{font-size:1.08rem}
+    :is(.grading-result,.mathspark-formatted-answer) p{margin:.65em 0;line-height:1.72}
+    :is(.grading-result,.mathspark-formatted-answer) ul,:is(.grading-result,.mathspark-formatted-answer) ol{padding-left:1.45em;margin:.65em 0}
+    :is(.grading-result,.mathspark-formatted-answer) li{padding-left:.16em;margin:.35em 0}
+    :is(.grading-result,.mathspark-formatted-answer) blockquote{border-left:3px solid #c8a65f;margin:1em 0;padding:.5em .9em;background:#f8f3e8;border-radius:0 10px 10px 0;color:#4e5668}
+    :is(.grading-result,.mathspark-formatted-answer) hr{border:0;border-top:1px solid #e7e0d6;margin:1.25em 0}
+    :is(.grading-result,.mathspark-formatted-answer) code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em;background:#f1eee8;padding:.1em .3em;border-radius:5px;overflow-wrap:anywhere}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll{max-width:100%;width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;margin:1em 0;border:1px solid #e7e0d6;border-radius:12px;background:#fffdf9}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll table{border-collapse:separate;border-spacing:0;min-width:650px;width:100%;font-size:13px;line-height:1.55;white-space:normal;margin:0}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll th{background:#f1eee7;color:#1d2b50;font-weight:700;text-align:left}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll th,:is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll td{padding:10px 11px;border-right:1px solid #e7e0d6;border-bottom:1px solid #e7e0d6;vertical-align:top}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll tr:last-child td{border-bottom:0}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll th:last-child,:is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll td:last-child{border-right:0}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-cards{display:none}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-card{border:1px solid #e4ddd2;background:#fffdf9;border-radius:13px;padding:13px;min-width:0;box-shadow:0 2px 7px rgba(29,43,80,.035)}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-card-title{font-weight:700;color:#1d2b50;padding-bottom:9px;margin-bottom:8px;border-bottom:1px solid #eee8df;overflow-wrap:anywhere}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-card-field{padding:7px 0;min-width:0}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-card-label{display:block;color:#778094;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+    :is(.grading-result,.mathspark-formatted-answer) .grading-table-card-value{min-width:0;overflow-wrap:anywhere;line-height:1.6}
+    :is(.grading-result,.mathspark-formatted-answer) .math-inline-slot{display:inline;white-space:normal}
+    :is(.grading-result,.mathspark-formatted-answer) .math-display-slot{display:block;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:7px 0;text-align:center;-webkit-overflow-scrolling:touch}
+    :is(.grading-result,.mathspark-formatted-answer) .katex-display{max-width:100%;overflow-x:auto;overflow-y:hidden;padding:4px 0;margin:.35em 0}
+    :is(.grading-result,.mathspark-formatted-answer) .katex{font-size:1.02em}
+    :is(.grading-result,.mathspark-formatted-answer) .katex-display>.katex{white-space:nowrap}
+    @media(max-width:680px){
+      :is(.grading-result,.mathspark-formatted-answer){font-size:14px;line-height:1.68}
+      :is(.grading-result,.mathspark-formatted-answer) h2{font-size:1.15rem}
+      :is(.grading-result,.mathspark-formatted-answer) h3{font-size:1.02rem}
+      :is(.grading-result,.mathspark-formatted-answer) .grading-table-scroll{display:none}
+      :is(.grading-result,.mathspark-formatted-answer) .grading-table-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:12px 0}
+      :is(.grading-result,.mathspark-formatted-answer) .grading-table-card{font-size:13px;padding:12px}
+      :is(.grading-result,.mathspark-formatted-answer) .math-display-slot{text-align:left}
+    }
+  </style>
+
 </head>
 <body>
 <div class="app">
@@ -1316,6 +1355,36 @@
         </div>
       </div>`;
     icons();
+    renderQuizMath();
+  }
+
+  async function renderQuizMath() {
+    const area = document.getElementById('quizArea');
+    if (!area || !area.querySelector('.quiz-question')) return;
+    try {
+      if (!document.getElementById('gradingKatexStyles')) {
+        const link = document.createElement('link');
+        link.id = 'gradingKatexStyles'; link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css';
+        document.head.appendChild(link);
+      }
+      await Promise.all([
+        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js', 'katex'),
+        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js', 'renderMathInElement')
+      ]);
+      window.renderMathInElement(area, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '$', right: '$', display: false }
+        ],
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        throwOnError: false
+      });
+    } catch (error) {
+      console.warn('MathSpark quiz math rendering unavailable:', error?.message || error);
+    }
   }
   
   // Update state without fully re-rendering to prevent scroll jump
@@ -1361,7 +1430,126 @@
     }
     return gradingScripts[globalName];
   }
+  function normalizeMathDelimiters(markdown) {
+    let source = String(markdown || '').replace(/\r\n?/g, '\n');
+    // A few model replies wrap display equations in bare [ ... ] lines instead of \[ ... \].
+    // Upgrade only multiline bracket blocks that clearly contain mathematical notation.
+    source = source.replace(/(^|\n)[\t ]*\[[\t ]*\n([\s\S]*?)\n[\t ]*\](?=\n|$)/g, (whole, prefix, body) => {
+      const looksMath = /\\(?:cdot|boxed|frac|sqrt|text|times|leq|geq|sum|prod|left|right|begin|end|alpha|beta|pi)\b|=|[_^]/.test(body);
+      return looksMath ? `${prefix}\\[\n${body.trim()}\n\\]` : whole;
+    });
+    // Normalize delimiters escaped twice by some model outputs.
+    source = source.replace(/\\\\([()[\]])/g, '\\$1');
+    // If the model outputs a standalone parenthesized equation with TeX commands but omits delimiters,
+    // wrap that equation so it can be typeset without converting surrounding prose to math.
+    source = source.replace(/\(([^()\n]{1,240})\)/g, (whole, inner) => {
+      const containsLatex = /\\(?:cdot|boxed|frac|sqrt|text|times|leq|geq|pi|angle|triangle|mathrm|overline)\b/.test(inner);
+      const hasEquation = /=|\^|_/.test(inner);
+      return containsLatex && hasEquation ? `\\(${inner}\\)` : whole;
+    });
+    return source;
+  }
+
+  function extractMathForTypesetting(markdown) {
+    const expressions = [];
+    const source = normalizeMathDelimiters(markdown);
+    // Protect LaTeX before Markdown parses it. Markdown treats backslashes before
+    // punctuation as escapes, which can otherwise break \( ... \) and \[ ... \].
+    const mathPattern = /\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$|\\\(([\s\S]+?)\\\)|(?<!\\)\$([^\n$]+?)\$(?!\$)/g;
+    const protectedMarkdown = source.replace(mathPattern, (whole, displayBracket, displayDollar, inlineParen, inlineDollar) => {
+      const tex = displayBracket ?? displayDollar ?? inlineParen ?? inlineDollar;
+      if (tex == null || !String(tex).trim()) return whole;
+      const index = expressions.length;
+      expressions.push({ tex: String(tex).trim(), display: displayBracket != null || displayDollar != null });
+      return `MATHSPARKMATHPLACEHOLDER${index}END`;
+    });
+    return { protectedMarkdown, expressions };
+  }
+
+  function addResponsiveCardsForWideTables(target) {
+    target.querySelectorAll('table').forEach(table => {
+      if (table.closest('.grading-table-scroll')) return;
+      const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      const columnCount = Math.max(headers.length, ...rows.map(row => row.querySelectorAll('th,td').length), 0);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'grading-table-scroll';
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+      if (columnCount < 3 || !rows.length) return;
+
+      const cards = document.createElement('div');
+      cards.className = 'grading-table-cards';
+      rows.forEach((row, rowIndex) => {
+        const cells = Array.from(row.querySelectorAll('th,td'));
+        if (!cells.length) return;
+        const card = document.createElement('article');
+        card.className = 'grading-table-card';
+        const title = document.createElement('div');
+        title.className = 'grading-table-card-title';
+        title.innerHTML = cells[0].innerHTML;
+        card.appendChild(title);
+        cells.slice(1).forEach((cell, offset) => {
+          const field = document.createElement('div');
+          field.className = 'grading-table-card-field';
+          const label = document.createElement('span');
+          label.className = 'grading-table-card-label';
+          label.textContent = headers[offset + 1] || `Thông tin ${offset + 1}`;
+          const value = document.createElement('div');
+          value.className = 'grading-table-card-value';
+          value.innerHTML = cell.innerHTML;
+          field.append(label, value);
+          card.appendChild(field);
+        });
+        cards.appendChild(card);
+      });
+      wrapper.after(cards);
+    });
+  }
+
+  function replaceMathPlaceholders(target, expressions) {
+    if (!expressions.length) return;
+    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    const tokenPattern = /MATHSPARKMATHPLACEHOLDER(\d+)END/g;
+    textNodes.forEach(node => {
+      const value = node.nodeValue || '';
+      tokenPattern.lastIndex = 0;
+      if (!tokenPattern.test(value)) return;
+      tokenPattern.lastIndex = 0;
+      const fragment = document.createDocumentFragment();
+      let cursor = 0;
+      let match;
+      while ((match = tokenPattern.exec(value))) {
+        if (match.index > cursor) fragment.appendChild(document.createTextNode(value.slice(cursor, match.index)));
+        const expression = expressions[Number(match[1])];
+        if (expression) {
+          const rendered = document.createElement('span');
+          rendered.className = expression.display ? 'math-display-slot' : 'math-inline-slot';
+          try {
+            rendered.innerHTML = window.katex.renderToString(expression.tex, {
+              displayMode: expression.display,
+              throwOnError: false,
+              strict: 'ignore',
+              trust: false
+            });
+          } catch {
+            rendered.textContent = expression.tex;
+          }
+          fragment.appendChild(rendered);
+        } else {
+          fragment.appendChild(document.createTextNode(match[0]));
+        }
+        cursor = match.index + match[0].length;
+      }
+      if (cursor < value.length) fragment.appendChild(document.createTextNode(value.slice(cursor)));
+      node.parentNode?.replaceChild(fragment, node);
+    });
+  }
+
   async function renderGradingMarkdown(markdown, target) {
+    const mathSource = extractMathForTypesetting(markdown);
     try {
       if (!document.getElementById('gradingKatexStyles')) {
         const link = document.createElement('link');
@@ -1373,21 +1561,27 @@
       await Promise.all([
         loadGradingScript('https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js', 'marked'),
         loadGradingScript('https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js', 'DOMPurify'),
-        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js', 'katex'),
-        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js', 'renderMathInElement')
+        loadGradingScript('https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js', 'katex')
       ]);
-      target.innerHTML = window.DOMPurify.sanitize(window.marked.parse(markdown));
-      window.renderMathInElement(target, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '\\[', right: '\\]', display: true },
-          { left: '\\(', right: '\\)', display: false },
-          { left: '$', right: '$', display: false }
-        ],
-        throwOnError: false
-      });
-    } catch {
-      target.textContent = markdown;
+      const renderedMarkdown = window.marked.parse(mathSource.protectedMarkdown, { breaks: true, gfm: true });
+      target.innerHTML = window.DOMPurify.sanitize(renderedMarkdown);
+      addResponsiveCardsForWideTables(target);
+      replaceMathPlaceholders(target, mathSource.expressions);
+      target.classList.add('mathspark-formatted-answer');
+    } catch (error) {
+      // Keep readable Markdown even if the math library/CDN is temporarily unavailable.
+      try {
+        await Promise.all([
+          loadGradingScript('https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js', 'marked'),
+          loadGradingScript('https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js', 'DOMPurify')
+        ]);
+        target.innerHTML = window.DOMPurify.sanitize(window.marked.parse(mathSource.protectedMarkdown, { breaks: true, gfm: true }));
+        addResponsiveCardsForWideTables(target);
+        target.classList.add('mathspark-formatted-answer', 'mathspark-math-fallback');
+      } catch {
+        target.textContent = String(markdown || '');
+      }
+      console.warn('MathSpark answer formatting fallback:', error?.message || error);
     }
   }
 
