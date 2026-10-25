@@ -931,7 +931,31 @@
       input.focus({preventScroll:true});
     }
   });
-  function switchView(name,options={}){if(name!=='document-reader')finalizeOpenAdminDocument();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));const navName=name==='document-reader'?'home':name;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===navName));if(name==='schedule')renderCalendar();if(name==='home')renderLessons();if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}if(!options.keepScroll)window.scrollTo({top:0,behavior:'smooth'});icons()}
+  function switchView(name,options={}){
+    if(name!=='document-reader')finalizeOpenAdminDocument();
+    // Entering the AI grading page starts clean. Old reports are shown only after the user
+    // explicitly clicks "Xem kết quả" in the history list.
+    if(name==='grade'){
+      const resultPanel=document.getElementById('gradingResultPanel');
+      if(resultPanel)resultPanel.classList.add('hidden');
+      const result=document.getElementById('gradingResult');
+      if(result)result.replaceChildren();
+      const origin=document.getElementById('gradingResultOrigin');
+      if(origin)origin.classList.add('hidden');
+      const heading=document.getElementById('gradingResultHeading');
+      if(heading)heading.textContent='Kết quả phân tích';
+      const description=document.getElementById('gradingResultDescription');
+      if(description)description.textContent='Đọc lại từng nhận xét và đối chiếu với lời giải của bạn.';
+    }
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));
+    const navName=name==='document-reader'?'home':name;
+    document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===navName));
+    if(name==='schedule')renderCalendar();
+    if(name==='home')renderLessons();
+    if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}
+    if(!options.keepScroll)window.scrollTo({top:0,behavior:'smooth'});
+    icons();
+  }
   function returnHome(){finalizeOpenAdminDocument();activeCategory='all';homeResourceMode=true;activeResourceFilter='all';currentLessonQuery='';document.getElementById('lessonHeading').textContent='Đề và tài liệu';document.getElementById('lessonSubheading').textContent='Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.';switchView('home')}
   function norm(s){return String(s||'').toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
   function showLessons(cat){
@@ -1890,50 +1914,38 @@
   // Grading history is part of the student's state. Signed-in users sync it to Supabase;
   // anonymous users keep it in this browser. Original image bytes are intentionally not stored.
   function gradingHistoryScore(feedback, scale) {
-    const raw = String(feedback || '').replace(/\r\n?/g, '\n');
-    // Normalize Markdown wrappers and common LaTeX forms, while preserving the score label.
-    const normalized = raw
+    // Use only an explicitly labelled AI score; never take a random fraction like 2/2 from a rubric.
+    let text = String(feedback || '').replace(/\r\n?/g, '\n')
       .replace(/\\\\([()[\]])/g, (_, ch) => '\\' + ch)
       .replace(/\\\(|\\\)|\\\[|\\\]/g, ' ')
-      .replace(/\\(?:text|mathrm|operatorname)\s*\{([^{}]*)\}/g, '$1')
-      .replace(/\\frac\s*\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}\s*\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}/g, '$1/$2')
-      .replace(/\*{1,3}|_{1,3}|`{1,3}|~~/g, '')
-      .replace(/[ \t]+/g, ' ');
+      .replace(/\{\s*,\s*\}/g, ',')
+      .replace(/\*{1,3}|_{1,3}|`{1,3}|~~/g, '');
 
-    // Prefer the dedicated result section. Never take an arbitrary fraction like 1/1
-    // from a worked solution, rubric row, or follow-up exercise.
-    let section = normalized;
-    const headingMatch = normalized.match(/(?:^|\n)\s{0,3}#{1,6}\s*Kết quả\s*(?:\n|$)/i);
-    if (headingMatch) {
-      const start = headingMatch.index + headingMatch[0].length;
-      const rest = normalized.slice(start);
-      const nextHeading = rest.search(/\n\s{0,3}#{1,6}\s+/);
-      section = nextHeading >= 0 ? rest.slice(0, nextHeading) : rest.slice(0, 1800);
-    } else {
-      section = normalized.slice(0, 2200);
+    // Normalize nested TeX, for example \\boxed{\\frac{9{,}5}{10}}.
+    // Convert numeric fractions before unwrapping outer commands so nested braces survive.
+    for (let i = 0; i < 8; i++) {
+      const before = text;
+      text = text
+        .replace(/\\(?:dfrac|tfrac|frac)\s*\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}\s*\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}/g, '$1/$2')
+        .replace(/\\(?:boxed|text|mathrm|operatorname|ensuremath)\s*\{([^{}]*)\}/g, '$1')
+        .replace(/\{\s*(\d{1,2}(?:[.,]\d+)?)\s*\}/g, '$1');
+      if (text === before) break;
     }
+    text = text.replace(/\\(?:left|right|displaystyle)\b/g, '').replace(/[{}]/g, ' ').replace(/[ \t]+/g, ' ');
 
-    // Accept scores in forms such as 9,5/10, (9.5/10), \(9,5/10\), or \frac{9,5}{10},
-    // but only when attached to a label that explicitly means the proposed/total score.
-    const labelPattern = /(?:Điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị)|Tổng\s+điểm)\s*(?:là\s*)?[:：=–—-]?\s*[([{\s$]*\s*(\d{1,2}(?:[.,]\d+)?)\s*\/\s*(\d{1,2}(?:[.,]\d+)?)(?!\d)/i;
-    let match = section.match(labelPattern);
-    if (!match) match = normalized.slice(0, 2200).match(labelPattern);
-
-    // Also accept natural language score formats like "9,5 điểm trên 10".
+    // The value must immediately follow an explicit score label. There is no arbitrary ratio fallback.
+    const scorePattern = /(?:điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị)|tổng\s+điểm)\s*(?:là\s*)?[:：=–—-]?\s*(?:\s|[([{<$])*([0-9]{1,2}(?:[.,][0-9]+)?)\s*\/\s*([0-9]{1,2}(?:[.,][0-9]+)?)(?!\d)/i;
+    let match = text.match(scorePattern);
     if (!match) {
-      const wordsPattern = /(?:Điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị)|Tổng\s+điểm)[^\d\n]{0,35}(\d{1,2}(?:[.,]\d+)?)\s*điểm\s+trên\s+(\d{1,2}(?:[.,]\d+)?)(?!\d)/i;
-      match = section.match(wordsPattern) || normalized.slice(0, 2200).match(wordsPattern);
+      const wordsPattern = /(?:điểm\s+(?:đề\s+xuất|ước\s+lượng|đề\s+nghị)|tổng\s+điểm)\s*(?:là\s*)?[:：=–—-]?\s*([0-9]{1,2}(?:[.,][0-9]+)?)\s*điểm\s+trên\s+([0-9]{1,2}(?:[.,][0-9]+)?)/i;
+      match = text.match(wordsPattern);
     }
-
     if (!match) return `Chưa trích được/${scale}`;
     const score = Number(match[1].replace(',', '.'));
     const max = Number(match[2].replace(',', '.'));
-    if (!Number.isFinite(score) || !Number.isFinite(max) || max <= 0 || score < 0 || score > max) {
-      return `Chưa trích được/${scale}`;
-    }
+    if (!Number.isFinite(score) || !Number.isFinite(max) || max <= 0 || score < 0 || score > max) return `Chưa trích được/${scale}`;
     return `${match[1].replace(',', '.')}/${match[2].replace(',', '.')}`;
   }
-  
   function gradingHistoryDate(value) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? 'Không rõ thời gian' : date.toLocaleString('vi-VN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -1986,7 +1998,8 @@
       return;
     }
     list.innerHTML = filtered.map(item => {
-      const summary = gradingHistoryPlainText(item.feedback).slice(0, 210);
+      const plainSummary = gradingHistoryPlainText(item.feedback).replace(/^\s*Kết quả\s*/i, '').replace(/Điểm đề xuất:\s*công thức toán/gi, '').trim();
+      const summary = (`AI đề xuất ${item.score || 'chưa trích được'}${plainSummary ? ' · ' + plainSummary : ''}`).slice(0, 210);
       const isGrade = item.score && !item.score.startsWith('Chưa trích được');
       return `<article class="grading-history-item"><div class="grading-history-item-top"><div class="grading-history-item-title"><span class="grading-history-topic">${escapeHtml(item.topic || 'Chưa xác định')}</span><small>${escapeHtml(gradingHistoryDate(item.createdAt))}</small></div><span class="grading-history-score ${isGrade ? 'has-score' : ''}">${escapeHtml(item.score || 'Chưa rõ điểm')}</span></div><p class="grading-history-files">${item.problemFileName ? `Đề: ${escapeHtml(item.problemFileName)}` : 'Đề: không lưu tên tệp'}${item.solutionFileName ? ` · Bài làm: ${escapeHtml(item.solutionFileName)}` : ''}</p><p class="grading-history-summary">${escapeHtml(summary || 'Không có phần tóm tắt.')}${summary.length >= 210 ? '…' : ''}</p><div class="grading-history-actions"><button type="button" class="btn btn-primary" onclick="openGradingHistory('${escapeHtml(item.id)}')"><i data-lucide="file-clock"></i> Xem kết quả</button><button type="button" class="btn btn-light" onclick="deleteGradingHistory('${escapeHtml(item.id)}')"><i data-lucide="trash-2"></i> Xóa</button></div></article>`;
     }).join('');
