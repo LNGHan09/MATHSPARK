@@ -603,7 +603,6 @@
         </form>
         <div id="gradingResultPanel" class="panel hidden"><div class="section-head" style="margin:0 0 12px"><div><h2 id="gradingResultHeading">Kết quả phân tích</h2><p id="gradingResultDescription">Đọc lại từng nhận xét và đối chiếu với lời giải của bạn.</p></div><span class="pill gold">AI hỗ trợ</span></div><p id="gradingResultOrigin" class="grading-history-origin hidden"></p><div id="gradingResult" class="grading-result"></div></div>
         <div id="gradingHistoryPanel" class="panel grading-history-panel"><div class="section-head grading-history-head"><div><h2>Lịch sử chấm bài</h2><p id="gradingHistorySubtitle">Các kết quả chấm thành công được lưu theo tài khoản hoặc trên thiết bị này.</p></div><button class="btn btn-light grading-history-clear" type="button" onclick="clearGradingHistory()"><i data-lucide="trash-2"></i> Xóa lịch sử</button></div><div class="field grading-history-search"><label for="gradingHistorySearch">Tìm trong lịch sử</label><input id="gradingHistorySearch" type="search" placeholder="Tìm theo chuyên đề hoặc tên ảnh…" oninput="renderGradingHistory()" /></div><div id="gradingHistoryList" class="grading-history-list"></div><p class="footer-note">Lịch sử lưu báo cáo, điểm, chuyên đề và tên tệp. Ảnh đề/bài làm gốc không được lưu trong lịch sử; hãy giữ ảnh gốc nếu muốn chấm lại.</p></div>
-        <p class="footer-note">Ảnh chỉ được gửi lên máy chủ để xử lý khi bạn bấm “Phân tích bài làm”. Không đặt API key trong HTML hoặc JavaScript chạy trên trình duyệt.</p>
       </section>
 
       <!-- SETTINGS -->
@@ -1474,17 +1473,90 @@
   function extractMathForTypesetting(markdown) {
     const expressions = [];
     const source = normalizeMathDelimiters(markdown);
-    // Protect LaTeX before Markdown parses it. Markdown treats backslashes before
-    // punctuation as escapes, which can otherwise break \( ... \) and \[ ... \].
+    const addExpression = (tex, display = false) => {
+      const index = expressions.length;
+      expressions.push({ tex: String(tex || '').trim(), display: !!display });
+      return `MATHSPARKMATHPLACEHOLDER${index}END`;
+    };
+    // Protect correctly delimited TeX before Markdown parses backslashes as escapes.
     const mathPattern = /\\\[([\s\S]+?)\\\]|\$\$([\s\S]+?)\$\$|\\\(([\s\S]+?)\\\)|(?<!\\)\$([^\n$]+?)\$(?!\$)/g;
-    const protectedMarkdown = source.replace(mathPattern, (whole, displayBracket, displayDollar, inlineParen, inlineDollar) => {
+    let protectedMarkdown = source.replace(mathPattern, (whole, displayBracket, displayDollar, inlineParen, inlineDollar) => {
       const tex = displayBracket ?? displayDollar ?? inlineParen ?? inlineDollar;
       if (tex == null || !String(tex).trim()) return whole;
-      const index = expressions.length;
-      expressions.push({ tex: String(tex).trim(), display: displayBracket != null || displayDollar != null });
-      return `MATHSPARKMATHPLACEHOLDER${index}END`;
+      return addExpression(tex, displayBracket != null || displayDollar != null);
     });
+
+    // Repair common un-delimited LaTeX fragments from model responses. Only run these
+    // rules on text left over after complete formulas have already been protected.
+    // Example: "40\\cdot 50=2000", "\\frac{3000}{2000}=1{,}5", "\\text{m}^2".
+    const protectMatches = (pattern, transform) => {
+      protectedMarkdown = protectedMarkdown.replace(pattern, (...args) => {
+        const whole = args[0];
+        const value = transform ? transform(whole, ...args.slice(1, -2)) : whole;
+        return addExpression(value || whole, false);
+      });
+    };
+
+    // Common unit typo produced by AI: "40 - 8x con\\text{m}^2" means fish per m².
+    // Turn the whole expression into math and display the unit as con/m².
+    protectMatches(/(?<![\w\\])((?:\d+(?:\{,\}\d+)?)(?:\s*[+\-]\s*\d+(?:[A-Za-z])?)+)\s*con\s*\\text\{m\}\s*\^\s*2/g,
+      whole => {
+        const m = whole.match(/^((?:\d+(?:\{,\}\d+)?)(?:\s*[+\-]\s*\d+(?:[A-Za-z])?)+)/);
+        return `${(m ? m[1] : whole).replace(/\s+/g, ' ')}\\,\\text{con}/\\text{m}^{2}`;
+      });
+
+    // Fractions (including decimal comma and an immediately following equality).
+    protectMatches(/\\frac\{(?:[^{}\n]|\{[^{}\n]*\})+\}\{(?:[^{}\n]|\{[^{}\n]*\})+\}(?:\s*=\s*(?:[-+]?\d+(?:\{,\}\d+)?|[A-Za-z]+))?/g);
+    // Boxed results and text/unit commands with powers.
+    protectMatches(/\\boxed\{(?:[^{}\n]|\{[^{}\n]*\})+\}/g);
+    protectMatches(/\\(?:text|mathrm|mathbf|mathit)\{[^{}\n]*\}(?:\s*\^\{?[A-Za-z0-9]+\}?)?/g);
+    // Multiplication/equations commonly returned without math delimiters.
+    protectMatches(/(?:\d+(?:\{,\}\d+)?|[A-Za-z])\s*\\(?:cdot|times)\s*(?:\d+(?:\{,\}\d+)?|[A-Za-z])(?:\s*=\s*(?:[-+]?\d+(?:\{,\}\d+)?|[A-Za-z]+))?/g);
+    // Parenthesized decimal-comma expressions, such as (1{,}5+0{,}5x).
+    protectMatches(/\((?=[^()\n]*\{,\})[^()\n]{1,160}[+\-*/=^_][^()\n]{0,100}\)/g);
+    // Bare powers/subscripts such as x^2 or a_1.
+    protectMatches(/(?<![A-Za-z0-9\\])(?:[A-Za-z][A-Za-z0-9]?)(?:\^\{?[A-Za-z0-9]+\}?|_\{?[A-Za-z0-9]+\}?)/g);
+    // Decimal commas are often emitted as the TeX spelling 1{,}5 outside delimiters.
+    protectedMarkdown = protectedMarkdown.replace(/(?<![\w\\])(\d+)\{,\}(\d+)(?![\w])/g, '$1,$2');
+
     return { protectedMarkdown, expressions };
+  }
+
+  function readableMathFallback(tex) {
+    return String(tex || '')
+      .replace(/\\(?:text|mathrm|mathbf|mathit)\{([^{}]*)\}/g, '$1')
+      .replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, '($1)/($2)')
+      .replace(/\\sqrt\{([^{}]*)\}/g, '√($1)')
+      .replace(/\\boxed\{([^{}]*)\}/g, '$1')
+      .replace(/\\cdot\b/g, '·').replace(/\\times\b/g, '×')
+      .replace(/\\leq\b/g, '≤').replace(/\\geq\b/g, '≥').replace(/\\neq\b/g, '≠')
+      .replace(/\\pi\b/g, 'π').replace(/\\angle\b/g, '∠').replace(/\\triangle\b/g, '△')
+      .replace(/\{,\}/g, ',').replace(/\\,/g, ' ').replace(/\\;/g, ' ')
+      .replace(/[{}]/g, '').replace(/\\left\b|\\right\b/g, '').trim();
+  }
+
+  function replaceMathPlaceholdersAsText(target, expressions) {
+    if (!expressions.length) return;
+    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const tokenPattern = /MATHSPARKMATHPLACEHOLDER(\d+)END/g;
+    nodes.forEach(node => {
+      const value = node.nodeValue || '';
+      tokenPattern.lastIndex = 0;
+      if (!tokenPattern.test(value)) return;
+      tokenPattern.lastIndex = 0;
+      const fragment = document.createDocumentFragment();
+      let cursor = 0, match;
+      while ((match = tokenPattern.exec(value))) {
+        if (match.index > cursor) fragment.appendChild(document.createTextNode(value.slice(cursor, match.index)));
+        const expression = expressions[Number(match[1])];
+        fragment.appendChild(document.createTextNode(expression ? readableMathFallback(expression.tex) : match[0]));
+        cursor = match.index + match[0].length;
+      }
+      if (cursor < value.length) fragment.appendChild(document.createTextNode(value.slice(cursor)));
+      node.parentNode?.replaceChild(fragment, node);
+    });
   }
 
   function addResponsiveCardsForWideTables(target) {
@@ -1598,6 +1670,7 @@
         ]);
         target.innerHTML = window.DOMPurify.sanitize(window.marked.parse(mathSource.protectedMarkdown, { breaks: true, gfm: true }));
         addResponsiveCardsForWideTables(target);
+        replaceMathPlaceholdersAsText(target, mathSource.expressions);
         target.classList.add('mathspark-formatted-answer', 'mathspark-math-fallback');
       } catch {
         target.textContent = String(markdown || '');
