@@ -267,7 +267,7 @@ app.post('/api/ai/grade-solution', aiRateLimit(5, 10 * 60 * 1000), ensureOpenAI,
         { type: 'input_text', text: 'Ảnh 2: Bài làm tự luận của học sinh.' },
         { type: 'input_image', image_url: dataUrl(solution), detail: 'high' }
       ] }],
-      maxOutputTokens: 3000,
+      maxOutputTokens: 10000,
       reasoningEffort: 'medium'
     });
     res.json({ ok: true, model: OPENAI_MODEL, feedback });
