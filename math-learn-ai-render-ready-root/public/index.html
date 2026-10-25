@@ -487,6 +487,26 @@
     }
   </style>
 
+<style id="grading-history-styles">
+  .grading-history-panel{margin-top:18px}
+  .grading-history-head{align-items:flex-start;gap:12px}
+  .grading-history-clear{white-space:nowrap;flex-shrink:0}
+  .grading-history-search{margin:10px 0 14px;max-width:460px}
+  .grading-history-list{display:grid;gap:12px}
+  .grading-history-item{min-width:0;border:1px solid var(--line);border-radius:15px;background:#fffdf9;padding:15px;box-shadow:0 3px 12px rgba(29,43,80,.035)}
+  .grading-history-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .grading-history-item-title{min-width:0;display:grid;gap:5px}
+  .grading-history-topic{color:var(--ink);font-size:15px;font-weight:700;overflow-wrap:anywhere}
+  .grading-history-item-title small,.grading-history-files{color:var(--muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+  .grading-history-score{flex-shrink:0;padding:6px 10px;border-radius:999px;background:#f1eee8;color:#596171;font-size:12px;font-weight:700}
+  .grading-history-score.has-score{background:#e6f3e9;color:#216944}
+  .grading-history-files{margin:9px 0 0}
+  .grading-history-summary{margin:8px 0 0;color:#596171;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+  .grading-history-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .grading-history-actions .btn{padding:9px 12px;font-size:13px}
+  .grading-history-origin{background:#f7f2e8;border:1px solid #e8ddc4;color:#675739;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:12px;line-height:1.5}
+  @media(max-width:600px){.grading-history-head{flex-wrap:wrap}.grading-history-clear{width:100%;justify-content:center}.grading-history-item{padding:12px}.grading-history-item-top{gap:8px}.grading-history-topic{font-size:14px}.grading-history-actions .btn{flex:1;justify-content:center}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -581,7 +601,8 @@
           <div class="button-row" style="margin-top:16px"><button class="btn btn-primary" id="gradeSubmitBtn" type="submit"><i data-lucide="sparkles"></i> Phân tích bài làm</button><button class="btn btn-light" type="reset" id="resetGradeBtn">Xóa ảnh và làm lại</button></div>
           <div class="status-line"><span class="dot" id="apiStatusDot"></span><span id="apiStatusText">Đang kiểm tra kết nối máy chủ AI…</span></div>
         </form>
-        <div id="gradingResultPanel" class="panel hidden"><div class="section-head" style="margin:0 0 12px"><div><h2>Kết quả phân tích</h2><p>Đọc lại từng nhận xét và đối chiếu với lời giải gốc.</p></div><span class="pill gold">AI hỗ trợ</span></div><div id="gradingResult" class="grading-result"></div></div>
+        <div id="gradingResultPanel" class="panel hidden"><div class="section-head" style="margin:0 0 12px"><div><h2 id="gradingResultHeading">Kết quả phân tích</h2><p id="gradingResultDescription">Đọc lại từng nhận xét và đối chiếu với lời giải của bạn.</p></div><span class="pill gold">AI hỗ trợ</span></div><p id="gradingResultOrigin" class="grading-history-origin hidden"></p><div id="gradingResult" class="grading-result"></div></div>
+        <div id="gradingHistoryPanel" class="panel grading-history-panel"><div class="section-head grading-history-head"><div><h2>Lịch sử chấm bài</h2><p id="gradingHistorySubtitle">Các kết quả chấm thành công được lưu theo tài khoản hoặc trên thiết bị này.</p></div><button class="btn btn-light grading-history-clear" type="button" onclick="clearGradingHistory()"><i data-lucide="trash-2"></i> Xóa lịch sử</button></div><div class="field grading-history-search"><label for="gradingHistorySearch">Tìm trong lịch sử</label><input id="gradingHistorySearch" type="search" placeholder="Tìm theo chuyên đề hoặc tên ảnh…" oninput="renderGradingHistory()" /></div><div id="gradingHistoryList" class="grading-history-list"></div><p class="footer-note">Lịch sử lưu báo cáo, điểm, chuyên đề và tên tệp. Ảnh đề/bài làm gốc không được lưu trong lịch sử; hãy giữ ảnh gốc nếu muốn chấm lại.</p></div>
         <p class="footer-note">Ảnh chỉ được gửi lên máy chủ để xử lý khi bạn bấm “Phân tích bài làm”. Không đặt API key trong HTML hoặc JavaScript chạy trên trình duyệt.</p>
       </section>
 
@@ -701,12 +722,12 @@
   }
 
   function loadState(){
-    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
+    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],gradingHistory:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
   function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
 
-  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
+  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],gradingHistory:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
   function scheduleCloudStateSave(){
     if(!supabaseClient||!currentStudent||applyingCloudState)return;
     clearTimeout(cloudSaveTimer);
@@ -724,7 +745,7 @@
   function refreshAfterStudentStateLoad(){
     const target=document.getElementById('targetScore'),settings=document.getElementById('settingsTarget'),exam=document.getElementById('examDate'),examName=document.getElementById('examName');
     if(target)target.value=state.targetScore||'8';if(settings)settings.value=state.targetScore||'8';if(exam)exam.value=state.examDate||'';if(examName)examName.value=state.examName||'';const intensity=document.getElementById('studyIntensity');if(intensity)intensity.value=state.studyIntensity||'balanced';
-    if(typeof renderCalendar==='function')renderCalendar();if(typeof updateStats==='function')updateStats();if(typeof renderLessons==='function')renderLessons();if(typeof renderPlan==='function')renderPlan();if(typeof renderCountdowns==='function')renderCountdowns();if(typeof icons==='function')icons();
+    if(typeof renderCalendar==='function')renderCalendar();if(typeof updateStats==='function')updateStats();if(typeof renderLessons==='function')renderLessons();if(typeof renderPlan==='function')renderPlan();if(typeof renderCountdowns==='function')renderCountdowns();if(typeof renderGradingHistory==='function')renderGradingHistory();if(typeof icons==='function')icons();
   }
   async function activateStudent(user){
     if(!supabaseClient||!user)return;
@@ -1585,6 +1606,92 @@
     }
   }
 
+  // Grading history is part of the student's state. Signed-in users sync it to Supabase;
+  // anonymous users keep it in this browser. Original image bytes are intentionally not stored.
+  function gradingHistoryScore(feedback, scale) {
+    const text = String(feedback || '');
+    const match = text.match(/(?:Điểm\s+(?:đề\s+xuất|ước\s+lượng)|Tổng\s+điểm)\s*:?\s*([0-9]+(?:[.,][0-9]+)?)\s*\/\s*([0-9]+(?:[.,][0-9]+)?)/i)
+      || text.match(/\b([0-9]+(?:[.,][0-9]+)?)\s*\/\s*(10|4|1)\b/);
+    return match ? `${match[1].replace(',', '.')}/${match[2].replace(',', '.')}` : `Chưa trích được/${scale}`;
+  }
+  function gradingHistoryDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Không rõ thời gian' : date.toLocaleString('vi-VN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  }
+  function gradingHistoryPlainText(value) {
+    return String(value || '').replace(/```[\s\S]*?```/g, ' ').replace(/\$\$?[\s\S]*?\$\$?/g, ' công thức toán ').replace(/\\\[[\s\S]*?\\\]/g, ' công thức toán ').replace(/\\\([\s\S]*?\\\)/g, ' công thức toán ').replace(/^\s{0,3}#{1,6}\s*/gm, '').replace(/[>*_`#|]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function addGradingHistory(record) {
+    if (!Array.isArray(state.gradingHistory)) state.gradingHistory = [];
+    const entry = {
+      id: `gh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      topic: String(record.topic || 'Chưa xác định').slice(0, 150),
+      scoreScale: String(record.scoreScale || '10'),
+      problemFileName: String(record.problemFileName || '').slice(0, 240),
+      solutionFileName: String(record.solutionFileName || '').slice(0, 240),
+      notes: String(record.notes || '').slice(0, 1000),
+      model: String(record.model || '').slice(0, 80),
+      score: gradingHistoryScore(record.feedback, record.scoreScale || '10'),
+      feedback: String(record.feedback || '').slice(0, 24000)
+    };
+    state.gradingHistory.unshift(entry);
+    state.gradingHistory = state.gradingHistory.slice(0, 30);
+    saveState();
+    renderGradingHistory();
+    return entry;
+  }
+  function renderGradingHistory() {
+    const list = document.getElementById('gradingHistoryList');
+    const subtitle = document.getElementById('gradingHistorySubtitle');
+    if (!list) return;
+    const records = Array.isArray(state.gradingHistory) ? state.gradingHistory : [];
+    const search = (document.getElementById('gradingHistorySearch')?.value || '').trim().toLocaleLowerCase('vi');
+    const filtered = records.filter(item => !search || [item.topic, item.problemFileName, item.solutionFileName, item.score, item.feedback].join(' ').toLocaleLowerCase('vi').includes(search));
+    if (subtitle) subtitle.textContent = `${records.length} lần chấm đã lưu · giữ tối đa 30 kết quả gần nhất.`;
+    const clearButton = document.querySelector('.grading-history-clear');
+    if (clearButton) clearButton.disabled = !records.length;
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty">${records.length ? 'Không tìm thấy kết quả phù hợp.' : 'Chưa có lịch sử chấm bài. Hãy chấm bài đầu tiên để lưu kết quả tại đây.'}</div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(item => {
+      const summary = gradingHistoryPlainText(item.feedback).slice(0, 210);
+      const isGrade = item.score && !item.score.startsWith('Chưa trích được');
+      return `<article class="grading-history-item"><div class="grading-history-item-top"><div class="grading-history-item-title"><span class="grading-history-topic">${escapeHtml(item.topic || 'Chưa xác định')}</span><small>${escapeHtml(gradingHistoryDate(item.createdAt))}</small></div><span class="grading-history-score ${isGrade ? 'has-score' : ''}">${escapeHtml(item.score || 'Chưa rõ điểm')}</span></div><p class="grading-history-files">${item.problemFileName ? `Đề: ${escapeHtml(item.problemFileName)}` : 'Đề: không lưu tên tệp'}${item.solutionFileName ? ` · Bài làm: ${escapeHtml(item.solutionFileName)}` : ''}</p><p class="grading-history-summary">${escapeHtml(summary || 'Không có phần tóm tắt.')}${summary.length >= 210 ? '…' : ''}</p><div class="grading-history-actions"><button type="button" class="btn btn-primary" onclick="openGradingHistory('${escapeHtml(item.id)}')"><i data-lucide="file-clock"></i> Xem kết quả</button><button type="button" class="btn btn-light" onclick="deleteGradingHistory('${escapeHtml(item.id)}')"><i data-lucide="trash-2"></i> Xóa</button></div></article>`;
+    }).join('');
+    icons();
+  }
+  async function openGradingHistory(id) {
+    const item = (Array.isArray(state.gradingHistory) ? state.gradingHistory : []).find(entry => entry.id === id);
+    if (!item) return showToast('Không tìm thấy kết quả chấm trong lịch sử.');
+    const panel = document.getElementById('gradingResultPanel');
+    const result = document.getElementById('gradingResult');
+    panel.classList.remove('hidden');
+    document.getElementById('gradingResultHeading').textContent = 'Kết quả chấm đã lưu';
+    document.getElementById('gradingResultDescription').textContent = `${gradingHistoryDate(item.createdAt)} · ${item.topic || 'Chưa xác định'} · Điểm đề xuất ${item.score || 'chưa trích được'}`;
+    const origin = document.getElementById('gradingResultOrigin');
+    origin.textContent = 'Bạn đang xem lại báo cáo đã lưu. Ảnh đề và ảnh bài làm gốc không được lưu trong lịch sử; phần dưới là nhận xét AI tại thời điểm chấm.';
+    origin.classList.remove('hidden');
+    result.textContent = 'Đang tải kết quả đã lưu…';
+    await renderGradingMarkdown(item.feedback || 'Không có nội dung nhận xét trong bản ghi này.', result);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function deleteGradingHistory(id) {
+    const item = (Array.isArray(state.gradingHistory) ? state.gradingHistory : []).find(entry => entry.id === id);
+    if (!item || !confirm(`Xóa kết quả chấm ngày ${gradingHistoryDate(item.createdAt)} khỏi lịch sử?`)) return;
+    state.gradingHistory = state.gradingHistory.filter(entry => entry.id !== id);
+    saveState(); renderGradingHistory(); showToast('Đã xóa kết quả khỏi lịch sử.');
+  }
+  function clearGradingHistory() {
+    if (!Array.isArray(state.gradingHistory) || !state.gradingHistory.length) return;
+    if (!confirm('Xóa toàn bộ lịch sử chấm bài đã lưu? Thao tác này không thể hoàn tác.')) return;
+    state.gradingHistory = [];
+    saveState(); renderGradingHistory();
+    document.getElementById('gradingResultPanel')?.classList.add('hidden');
+    showToast('Đã xóa lịch sử chấm bài.');
+  }
+
   document.getElementById('gradingForm').addEventListener('submit', async e => {
     e.preventDefault();
     const problem = document.getElementById('problemImage').files[0];
@@ -1599,6 +1706,9 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="loading"></span> Đang phân tích…';
     panel.classList.remove('hidden');
+    document.getElementById('gradingResultHeading').textContent = 'Kết quả phân tích';
+    document.getElementById('gradingResultDescription').textContent = 'Đọc lại từng nhận xét và đối chiếu với lời giải của bạn.';
+    document.getElementById('gradingResultOrigin').classList.add('hidden');
     result.textContent = 'Đang phân tích bài làm, vui lòng chờ trong giây lát...';
     try {
       const fd = new FormData();
@@ -1610,8 +1720,21 @@
       const response = await fetch('/api/ai/grade-solution', { method: 'POST', body: fd });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Máy chủ AI chưa sẵn sàng.');
-      await renderGradingMarkdown(data.feedback || data.text || 'AI chưa trả về nhận xét.', result);
-      showToast('Đã nhận kết quả phân tích từ OpenAI.');
+      const feedback = String(data.feedback || data.text || 'AI chưa trả về nhận xét.');
+      await renderGradingMarkdown(feedback, result);
+      document.getElementById('gradingResultHeading').textContent = 'Kết quả phân tích';
+      document.getElementById('gradingResultDescription').textContent = 'Đọc lại từng nhận xét và đối chiếu với lời giải của bạn.';
+      document.getElementById('gradingResultOrigin').classList.add('hidden');
+      addGradingHistory({
+        feedback,
+        topic: document.getElementById('gradingTopic').value,
+        scoreScale: document.getElementById('gradingScore').value,
+        problemFileName: problem.name,
+        solutionFileName: solution.name,
+        notes: document.getElementById('gradingNotes').value,
+        model: data.model || ''
+      });
+      showToast(currentStudent ? 'Đã chấm bài và lưu lịch sử vào tài khoản.' : 'Đã chấm bài và lưu lịch sử trên thiết bị này. Đăng nhập để đồng bộ giữa các thiết bị.');
     } catch (error) {
       result.textContent = 'CHƯA CHẤM ĐƯỢC BẰNG AI THẬT\n\n' +
         (error.message || 'Không kết nối được máy chủ.') +
@@ -1634,6 +1757,9 @@
       });
       document.getElementById('gradingResult').replaceChildren();
       document.getElementById('gradingResultPanel').classList.add('hidden');
+      document.getElementById('gradingResultHeading').textContent = 'Kết quả phân tích';
+      document.getElementById('gradingResultDescription').textContent = 'Đọc lại từng nhận xét và đối chiếu với lời giải của bạn.';
+      document.getElementById('gradingResultOrigin').classList.add('hidden');
     }, 0);
   });
   async function checkApiHealth(showMessage=false){try{const r=await fetch('/api/health');if(!r.ok)throw new Error('not ok');const d=await r.json();apiAvailable=!!d.aiConfigured;syncApiStatus();if(showMessage)showToast(d.aiConfigured?'Máy chủ và AI đã sẵn sàng.':'Máy chủ chạy nhưng chưa có OpenAI API key.')}catch{apiAvailable=false;syncApiStatus();if(showMessage)showToast('Không kết nối được máy chủ. Chạy npm start để bật backend.')}}
@@ -1655,7 +1781,7 @@
 // Initialization and safe local defaults.
   function scheduleInputsChanged(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();state.studyIntensity=currentStudyIntensity();document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lịch đã cập nhật theo mục tiêu, kỳ thi và cường độ học.'}saveState();renderCountdowns()}
   ['targetScore','examDate','examName'].forEach(id=>document.getElementById(id).addEventListener('change',scheduleInputsChanged));document.getElementById('studyIntensity').addEventListener('change',studyIntensityChanged);document.getElementById('examDate').addEventListener('input',renderCountdowns);document.getElementById('examName').addEventListener('input',renderCountdowns);document.getElementById('targetScore').addEventListener('input',()=>{document.getElementById('homeTarget').textContent=formatScore(document.getElementById('targetScore').value||8)});
-  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('studyIntensity').value=state.studyIntensity||'balanced';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();icons();renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();initializeSupabaseAuth();syncAccountButton();
+  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('studyIntensity').value=state.studyIntensity||'balanced';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();renderGradingHistory();icons();renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();initializeSupabaseAuth();syncAccountButton();
 </script>
 </body>
 </html>
