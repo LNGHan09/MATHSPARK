@@ -638,12 +638,25 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
         instructions:'Bạn là giáo viên chấm tự luận Toán 9. Chấm theo rubric, không chỉ so đáp số, không cho điểm vượt điểm tối đa. Kết quả là gợi ý AI; tránh khẳng định quá mức nếu ảnh mờ.',
         input:[{ role:'user', content }], maxOutputTokens:10000, reasoningEffort:'medium'
       });
-      const parsed = parseModelJson(raw);
+      let parsed = null;
+      let gradingJsonFallback = false;
+      try {
+        parsed = parseModelJson(raw);
+      } catch (parseErr) {
+        // Never block submission of a student's work solely because the model emitted malformed JSON.
+        // Save the objective answers and mark affected essays for review instead of making the student re-upload images.
+        gradingJsonFallback = true;
+        console.error('Essay grading JSON parse failed; preserving submission and flagging essays for review:', String(parseErr?.message || parseErr).slice(0, 300));
+        parsed = { results: [] };
+      }
       const modelResults = new Map((Array.isArray(parsed.results) ? parsed.results : []).map(item => [String(item.questionId), item]));
       for (const {q} of essayInputs) {
         const item = modelResults.get(String(q.id));
         const score = item ? Math.max(0, Math.min(q.points, Number(item.score) || 0)) : 0;
-        results.push({ questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points, confidence:item?.confidence || 'low', feedback:safeText(item?.feedback || 'AI chưa trả về nhận xét riêng cho câu này.', 6000), mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,400)):[], correctedApproach:safeText(item?.correctedApproach || '',3000), needsTeacherReview:!item || item?.confidence === 'low', solution:q.solution || '' });
+        const fallbackFeedback = gradingJsonFallback
+          ? 'Bài làm đã được nhận, nhưng AI trả kết quả không đúng định dạng nên câu này đang chờ chấm lại/giáo viên kiểm tra. Bạn không cần tải lại ảnh.'
+          : 'AI chưa trả về nhận xét riêng cho câu này.';
+        results.push({ questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points, confidence:item?.confidence || 'low', feedback:safeText(item?.feedback || fallbackFeedback, 6000), mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,400)):[], correctedApproach:safeText(item?.correctedApproach || '',3000), needsTeacherReview:!item || item?.confidence === 'low', solution:q.solution || '' });
       }
     }
     results.sort((a,b)=>a.number-b.number);
@@ -716,12 +729,51 @@ function responseText(response) {
   if (!text) throw new Error('AI không trả về nội dung. Hãy thử lại với yêu cầu ngắn hơn.');
   return text;
 }
+function repairJsonLatexEscapes(source) {
+  // Models sometimes emit LaTeX with single backslashes inside JSON strings (e.g. \( ... \), \frac, \sqrt).
+  // A single \( is invalid JSON; some other sequences such as \frac can parse as control characters and corrupt the formula.
+  const text = String(source || '');
+  const out = [];
+  let inString = false;
+  const latexCommand = /^(?:frac|dfrac|tfrac|sqrt|text|textbf|textit|texttt|begin|end|left|right|leftarrow|rightarrow|leftrightarrow|le|leq|ge|geq|neq|not|notin|nabla|newcommand|times|theta|therefore|tan|top|cdot|cases|boxed|underbrace|underline|uparrow|usepackage|mathrm|mathit|mathbb|mathbf|boldsymbol|infty|int|sum|prod|pi|alpha|beta|gamma|delta|epsilon|omega|lambda|mu|nu|sigma|phi|psi|angle|approx|equiv|pm|mp|binom|overline|lim|log|ln|sin|cos|cot|sec|csc|operatorname|quad|qquad|bigl|bigr|Bigl|Bigr|lVert|rVert|lbrace|rbrace|ldots|cdots|dots|ell|hspace|vspace)(?![A-Za-z])/i;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"' && (i === 0 || text[i - 1] !== '\\' || (() => { let n = 0; for (let j = i - 1; j >= 0 && text[j] === '\\'; j--) n++; return n % 2 === 0; })())) {
+      inString = !inString;
+      out.push(ch);
+      continue;
+    }
+    if (!inString || ch !== '\\') { out.push(ch); continue; }
+    const next = text[i + 1];
+    if (next === undefined) { out.push('\\\\'); continue; }
+    const following = text.slice(i + 1);
+    const isLatexCommand = latexCommand.test(following);
+    const validJsonEscape = '"\\/bfnrtu'.includes(next);
+    const validUnicodeEscape = next === 'u' && /^[0-9a-fA-F]{4}$/.test(text.slice(i + 2, i + 6));
+    if (isLatexCommand || !validJsonEscape || (next === 'u' && !validUnicodeEscape)) {
+      // Double only this backslash so JSON.parse retains the literal LaTeX slash.
+      out.push('\\\\');
+      continue;
+    }
+    out.push(ch, next);
+    i++;
+  }
+  return out.join('');
+}
 function parseModelJson(text) {
   const cleaned = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  try { return JSON.parse(cleaned); } catch {}
+  const candidates = [cleaned];
   const first = cleaned.indexOf('{'), last = cleaned.lastIndexOf('}');
-  if (first >= 0 && last > first) return JSON.parse(cleaned.slice(first, last + 1));
-  throw new Error('AI trả về dữ liệu chưa đúng định dạng. Vui lòng thử lại.');
+  if (first >= 0 && last > first) candidates.push(cleaned.slice(first, last + 1));
+  let lastError = null;
+  for (const candidate of candidates) {
+    for (const input of [repairJsonLatexEscapes(candidate), candidate]) {
+      try { return JSON.parse(input); } catch (err) { lastError = err; }
+    }
+  }
+  const error = new Error('AI trả về dữ liệu chưa đúng định dạng JSON. Hãy thử lại; bài làm sẽ không bị mất nếu phần tự luận chưa thể tự chấm.');
+  error.cause = lastError;
+  throw error;
 }
 function providerError(err) {
   const status = Number(err?.status || err?.statusCode || 0);
