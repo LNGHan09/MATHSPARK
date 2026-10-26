@@ -687,6 +687,115 @@
   }
 </style>
 
+
+<style id="mathspark-flipclock-smooth-v4">
+  /* Classic two-stage split-flap animation: old top flips away, then new bottom turns in. */
+  .countdown-card,.home-countdown-card,.schedule-countdown-card{
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;
+    gap:0!important;width:fit-content!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;
+    padding:12px 17px 10px!important;margin:0 0 15px 0!important;
+    border:1px solid #e7d8b7!important;border-radius:17px!important;
+    background:linear-gradient(145deg,#fbf3e1 0%,#fffdf8 58%,#fffaf0 100%)!important;
+    box-shadow:0 5px 18px rgba(77,61,30,.055)!important;color:#24345f!important;text-align:center!important;
+  }
+  .hero-copy .home-countdown-card{margin:13px 0 0 0!important;align-self:flex-start!important;}
+  .schedule-countdown-card{margin:0 0 16px 0!important;}
+  .countdown-card .countdown-content{
+    display:flex!important;flex:0 1 auto!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;
+    gap:8px!important;width:max-content!important;max-width:100%!important;min-width:0!important;
+  }
+  .countdown-title{
+    display:block!important;align-self:stretch!important;width:100%!important;max-width:100%!important;min-width:0!important;
+    margin:0!important;color:#24345f!important;font-size:clamp(21px,2.1vw,27px)!important;font-weight:900!important;
+    letter-spacing:-.025em!important;line-height:1.2!important;text-align:center!important;overflow-wrap:anywhere!important;
+  }
+  .home-countdown-card .countdown-title{font-size:clamp(19px,1.9vw,24px)!important;}
+  .countdown-units.countdown-flip-units{
+    display:flex!important;flex:0 0 auto!important;flex-wrap:nowrap!important;align-items:flex-start!important;justify-content:flex-start!important;
+    gap:clamp(5px,.85vw,10px)!important;width:max-content!important;max-width:100%!important;min-width:0!important;margin:0!important;padding:0!important;
+  }
+  .countdown-flip-units .countdown-unit{
+    display:flex!important;flex:0 0 auto!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;
+    gap:5px!important;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+    background:transparent!important;text-align:center!important;
+  }
+  .countdown-flip-units .flip-clock{
+    display:flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:center!important;gap:2px!important;
+    width:auto!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;perspective:900px!important;
+  }
+  .countdown-flip-units .flip-digit{
+    position:relative!important;display:inline-block!important;flex:0 0 clamp(18px,2.35vw,32px)!important;
+    width:clamp(18px,2.35vw,32px)!important;height:clamp(34px,3.45vw,46px)!important;min-width:0!important;overflow:hidden!important;
+    box-sizing:border-box!important;perspective:900px!important;transform-style:preserve-3d!important;isolation:isolate!important;
+    border:0!important;border-radius:6px!important;background:#182440!important;color:#fff!important;line-height:1!important;
+    font-variant-numeric:tabular-nums!important;box-shadow:0 3px 0 #0e1730,0 5px 10px rgba(23,33,61,.15)!important;
+  }
+  .countdown-flip-units .flip-half,.countdown-flip-units .flip-flap{
+    position:absolute!important;left:0!important;right:0!important;display:block!important;height:50%!important;overflow:hidden!important;
+    box-sizing:border-box!important;backface-visibility:hidden!important;transform-style:preserve-3d!important;
+  }
+  .countdown-flip-units .flip-half{z-index:1!important;background:linear-gradient(180deg,#2d3a5f 0%,#202c4c 100%)!important;}
+  .countdown-flip-units .flip-half-top{top:0!important;bottom:auto!important;border-radius:6px 6px 0 0!important;border-bottom:1px solid rgba(0,0,0,.38)!important;}
+  .countdown-flip-units .flip-half-bottom{top:auto!important;bottom:0!important;border-radius:0 0 6px 6px!important;background:linear-gradient(180deg,#202d50 0%,#17213c 100%)!important;}
+  .countdown-flip-units .flip-half>span,.countdown-flip-units .flip-flap>span{
+    position:absolute!important;left:0!important;right:0!important;display:flex!important;align-items:center!important;justify-content:center!important;
+    height:200%!important;margin:0!important;padding:0!important;color:#fff!important;font-size:clamp(20px,2.25vw,30px)!important;
+    font-family:inherit!important;font-weight:850!important;letter-spacing:-.04em!important;line-height:1!important;
+    font-variant-numeric:tabular-nums!important;text-shadow:0 1px 1px rgba(0,0,0,.15)!important;pointer-events:none!important;
+  }
+  .countdown-flip-units .flip-half-top>span,.countdown-flip-units .flip-flap-top>span{top:0!important;}
+  .countdown-flip-units .flip-half-bottom>span,.countdown-flip-units .flip-flap-bottom>span{top:-100%!important;}
+  .countdown-flip-units .flip-flap{z-index:3!important;top:0!important;bottom:auto!important;transform-style:preserve-3d!important;backface-visibility:hidden!important;}
+  .countdown-flip-units .flip-flap-top{
+    transform-origin:bottom center!important;border-radius:6px 6px 0 0!important;border-bottom:1px solid rgba(0,0,0,.42)!important;
+    background:linear-gradient(180deg,#354365 0%,#253251 100%)!important;
+  }
+  .countdown-flip-units .flip-flap-bottom{
+    top:auto!important;bottom:0!important;z-index:2!important;transform:rotateX(90deg);transform-origin:top center!important;
+    border-radius:0 0 6px 6px!important;background:linear-gradient(180deg,#202d50 0%,#17213c 100%)!important;
+  }
+  .countdown-flip-units .flip-seam{
+    position:absolute!important;left:0!important;right:0!important;top:50%!important;bottom:auto!important;z-index:5!important;height:1px!important;
+    margin:0!important;padding:0!important;transform:translateY(-.5px)!important;background:rgba(0,0,0,.48)!important;
+    box-shadow:0 1px 0 rgba(255,255,255,.08)!important;pointer-events:none!important;
+  }
+  .countdown-flip-units .flip-digit.is-flipping .flip-flap-top{animation:mathspark-flip-top .25s cubic-bezier(.37,.01,.35,1) forwards!important;}
+  .countdown-flip-units .flip-digit.is-flipping .flip-flap-bottom{animation:mathspark-flip-bottom .25s cubic-bezier(.2,.7,.25,1) .245s forwards!important;}
+  @keyframes mathspark-flip-top{0%{transform:rotateX(0deg);filter:brightness(1)}100%{transform:rotateX(-90deg);filter:brightness(.78)}}
+  @keyframes mathspark-flip-bottom{0%{transform:rotateX(90deg);filter:brightness(1.12)}100%{transform:rotateX(0deg);filter:brightness(1)}}
+  .countdown-flip-units .countdown-unit>small{
+    display:block!important;margin:0!important;color:#8b6b2b!important;font-size:clamp(8px,.72vw,10px)!important;
+    font-weight:850!important;letter-spacing:.045em!important;line-height:1.15!important;
+  }
+  .countdown-meta{align-self:stretch!important;max-width:100%!important;margin:0!important;color:#776744!important;font-size:10px!important;font-weight:600!important;line-height:1.35!important;text-align:center!important;overflow-wrap:anywhere!important;}
+  .countdown-empty,.countdown-finished{grid-column:1/-1!important;padding:4px 0!important;color:#24345f!important;font-size:14px!important;font-weight:800!important;line-height:1.4!important;text-align:center!important;}
+  @media(max-width:540px){
+    .countdown-card,.home-countdown-card,.schedule-countdown-card{max-width:100%!important;padding:10px 11px 8px!important;border-radius:14px!important;}
+    .hero-copy .home-countdown-card{margin-top:10px!important;}
+    .countdown-card .countdown-content{gap:7px!important;}
+    .countdown-units.countdown-flip-units{gap:clamp(4px,1.15vw,7px)!important;}
+    .countdown-flip-units .flip-clock{gap:1px!important;}
+    .countdown-flip-units .flip-digit{flex-basis:clamp(17px,4.7vw,24px)!important;width:clamp(17px,4.7vw,24px)!important;height:clamp(32px,8.6vw,38px)!important;border-radius:5px!important;}
+    .countdown-flip-units .flip-half-top,.countdown-flip-units .flip-flap-top{border-radius:5px 5px 0 0!important;}
+    .countdown-flip-units .flip-half-bottom,.countdown-flip-units .flip-flap-bottom{border-radius:0 0 5px 5px!important;}
+    .countdown-flip-units .flip-half>span,.countdown-flip-units .flip-flap>span{font-size:clamp(18px,5.4vw,24px)!important;}
+    .countdown-flip-units .countdown-unit>small{font-size:8px!important;letter-spacing:.02em!important;}
+    .countdown-title{font-size:clamp(19px,5vw,23px)!important;}
+    .home-countdown-card .countdown-title{font-size:clamp(18px,4.7vw,22px)!important;}
+  }
+  @media(max-width:360px){
+    .countdown-card,.home-countdown-card,.schedule-countdown-card{padding-left:8px!important;padding-right:8px!important;}
+    .countdown-units.countdown-flip-units{gap:4px!important;}
+    .countdown-flip-units .flip-digit{flex-basis:16px!important;width:16px!important;height:31px!important;}
+    .countdown-flip-units .flip-half>span,.countdown-flip-units .flip-flap>span{font-size:18px!important;}
+    .countdown-flip-units .countdown-unit>small{font-size:7px!important;letter-spacing:0!important;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .countdown-flip-units .flip-digit.is-flipping .flip-flap-top,
+    .countdown-flip-units .flip-digit.is-flipping .flip-flap-bottom{animation:none!important;}
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1403,8 +1512,8 @@
   function parseExamDate(value){const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(year,month-1,day);if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return null;return {year,month,day}}
   function examDateAtEight(value){const parsed=parseExamDate(value);return parsed?new Date(parsed.year,parsed.month-1,parsed.day,8,0,0,0):null}
   function countdownFlipDigitMarkup(digit){
-    /* One full-height face prevents duplicated/misaligned glyphs at the split seam. */
-    return `<span class="flip-digit" data-digit="${digit}" aria-hidden="true"><span class="flip-base-number">${digit}</span><span class="flip-flap"><span>${digit}</span></span><span class="flip-seam" aria-hidden="true"></span></span>`;
+    const value=String(digit);
+    return `<span class="flip-digit" data-digit="${value}" aria-hidden="true"><span class="flip-half flip-half-top"><span>${value}</span></span><span class="flip-half flip-half-bottom"><span>${value}</span></span><span class="flip-flap flip-flap-top"><span>${value}</span></span><span class="flip-flap flip-flap-bottom"><span>${value}</span></span><span class="flip-seam" aria-hidden="true"></span></span>`;
   }
   function countdownUnitsMarkup(values){
     const labels=['NGÀY','GIỜ','PHÚT','GIÂY'];
@@ -1416,41 +1525,64 @@
     const units=[...container.querySelectorAll('.countdown-unit')];
     const shouldRebuild=units.length!==4||values.some((value,index)=>{
       const clock=units[index]?.querySelector('.flip-clock');
-      return !clock||clock.querySelectorAll('.flip-digit').length!==String(value).length;
+      return !clock||clock.querySelectorAll('.flip-digit').length!==String(value).length||[...clock.querySelectorAll('.flip-digit')].some(card=>!card.querySelector('.flip-half-top > span')||!card.querySelector('.flip-half-bottom > span')||!card.querySelector('.flip-flap-top > span')||!card.querySelector('.flip-flap-bottom > span'));
     });
     if(shouldRebuild)container.innerHTML=countdownUnitsMarkup(values);
+    const reducedMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const renderedUnits=[...container.querySelectorAll('.countdown-unit')];
     renderedUnits.forEach((unit,index)=>{
       const clock=unit.querySelector('.flip-clock');
+      if(!clock)return;
       const next=String(values[index]);
       const digits=[...clock.querySelectorAll('.flip-digit')];
       next.split('').forEach((digit,digitIndex)=>{
         const card=digits[digitIndex];
         if(!card)return;
         const previous=card.dataset.digit||digit;
-        const face=card.querySelector('.flip-base-number');
-        const flap=card.querySelector('.flip-flap > span');
+        const topFace=card.querySelector('.flip-half-top > span');
+        const bottomFace=card.querySelector('.flip-half-bottom > span');
+        const topFlap=card.querySelector('.flip-flap-top > span');
+        const bottomFlap=card.querySelector('.flip-flap-bottom > span');
+        const topFlapCard=card.querySelector('.flip-flap-top');
+        const bottomFlapCard=card.querySelector('.flip-flap-bottom');
         if(previous===digit){
-          if(face)face.textContent=digit;
-          if(flap&&!card.classList.contains('is-flipping'))flap.textContent=digit;
+          if(!card.classList.contains('is-flipping')){
+            [topFace,bottomFace,topFlap,bottomFlap].forEach(node=>{if(node)node.textContent=digit});
+          }
           return;
         }
-        /* Show the new face underneath while the old top flap folds away. */
-        if(face)face.textContent=digit;
-        if(flap)flap.textContent=previous;
-        card.dataset.digit=digit;
+        if(card._flipFinishHandler&&bottomFlapCard){
+          bottomFlapCard.removeEventListener('animationend',card._flipFinishHandler);
+          card._flipFinishHandler=null;
+        }
         card.classList.remove('is-flipping');
-        void card.offsetWidth;
-        if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-          if(flap)flap.textContent=digit;
+        /* Normalize the last settled value before beginning another physical flip. */
+        [topFace,bottomFace,topFlap,bottomFlap].forEach(node=>{if(node)node.textContent=previous});
+        card.dataset.digit=digit;
+        if(reducedMotion){
+          [topFace,bottomFace,topFlap,bottomFlap].forEach(node=>{if(node)node.textContent=digit});
           return;
         }
-        card.classList.add('is-flipping');
-        card.addEventListener('animationend',event=>{
-          if(event.animationName!=='mathspark-flip-top')return;
-          if(card.dataset.digit===digit&&flap)flap.textContent=digit;
+        /* The new top is behind the old top flap; the new bottom rotates in after it. */
+        if(topFace)topFace.textContent=digit;
+        if(bottomFace)bottomFace.textContent=previous;
+        if(topFlap)topFlap.textContent=previous;
+        if(bottomFlap)bottomFlap.textContent=digit;
+        const finish=event=>{
+          if(event.animationName!=='mathspark-flip-bottom')return;
+          if(bottomFlapCard)bottomFlapCard.removeEventListener('animationend',finish);
+          if(card.dataset.digit!==digit){if(card._flipFinishHandler===finish)card._flipFinishHandler=null;return;}
+          [topFace,bottomFace,topFlap,bottomFlap].forEach(node=>{if(node)node.textContent=digit});
           card.classList.remove('is-flipping');
-        },{once:true});
+          card._flipFinishHandler=null;
+        };
+        card._flipFinishHandler=finish;
+        if(bottomFlapCard)bottomFlapCard.addEventListener('animationend',finish);
+        /* Force the browser to commit the pre-flip state before starting CSS keyframes. */
+        void card.offsetWidth;
+        requestAnimationFrame(()=>{
+          if(card.dataset.digit===digit)card.classList.add('is-flipping');
+        });
       });
       clock.dataset.value=next;
       unit.setAttribute('aria-label',`${next} ${labels[index].toLowerCase()}`);
