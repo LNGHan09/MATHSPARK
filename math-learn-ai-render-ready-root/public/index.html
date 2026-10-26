@@ -816,6 +816,39 @@
     margin-right:auto!important;
   }
 </style>
+<style id="mathspark-study-streak-progress-styles">
+  .hero-art.hero-streak-art{
+    position:relative;flex:0 0 276px;width:276px;min-width:276px;height:194px;display:block;opacity:1;
+    margin-right:12px;transform:translateX(-10px);overflow:visible;isolation:isolate;
+  }
+  .streak-stairs-stage{position:absolute;left:0;top:0;width:194px;height:194px;display:block;overflow:visible;}
+  .streak-stairs-stage .hero-stairs-image{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;display:block;opacity:.96;pointer-events:none;}
+  .streak-spark-marker{position:absolute;z-index:2;display:block;width:clamp(22px,2.25vw,30px);height:auto;max-width:none;object-fit:contain;left:42%;top:85%;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 3px rgba(44,42,31,.20));transition:left .62s cubic-bezier(.2,.75,.2,1),top .62s cubic-bezier(.2,.75,.2,1),filter .25s;pointer-events:none;}
+  .streak-count-badge{position:absolute;right:0;top:44%;z-index:3;width:70px;min-height:78px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:8px 5px;border:1px solid #eadbb6;border-radius:16px;background:rgba(255,252,244,.94);box-shadow:0 6px 18px rgba(60,49,24,.08);color:#24345f;text-align:center;}
+  .streak-flame{display:block;font-size:22px;line-height:1;filter:drop-shadow(0 1px 1px rgba(165,87,20,.12));}
+  .streak-count-badge strong{display:block;font-size:23px;line-height:1.08;font-weight:900;font-variant-numeric:tabular-nums;color:#27365e;}
+  .streak-count-badge small{display:block;font-size:8px;line-height:1.2;font-weight:900;letter-spacing:.11em;color:#9b742e;}
+  .streak-badge-caption{display:block;margin-top:3px;padding-top:3px;border-top:1px solid #efe4cd;width:100%;font-size:7px;line-height:1.1;letter-spacing:.12em;font-weight:900;color:#7c8190;}
+  @media(max-width:850px){
+    .hero-art.hero-streak-art{flex:0 0 176px;width:176px;min-width:176px;height:154px;margin-right:0;transform:none;}
+    .streak-stairs-stage{width:135px;height:135px;top:10px;}
+    .streak-count-badge{width:52px;min-height:67px;top:42%;padding:6px 3px;border-radius:12px;}
+    .streak-flame{font-size:18px;}
+    .streak-count-badge strong{font-size:19px;}
+    .streak-count-badge small{font-size:7px;}
+    .streak-badge-caption{font-size:6px;}
+    .streak-spark-marker{width:clamp(19px,3vw,25px);}
+  }
+  @media(max-width:540px){
+    .hero{flex-wrap:wrap!important;align-items:flex-start!important;}
+    .hero-copy{flex:1 1 100%!important;width:100%!important;max-width:100%!important;}
+    .hero-art.hero-streak-art{flex:0 0 100%;width:100%;min-width:0;height:136px;margin:4px 0 -2px;transform:none;}
+    .streak-stairs-stage{left:calc(50% - 75px);top:0;width:136px;height:136px;}
+    .streak-count-badge{right:calc(50% - 132px);top:28%;width:53px;min-height:65px;padding:6px 3px;}
+    .streak-spark-marker{width:clamp(19px,5.2vw,24px);}
+  }
+  @media(prefers-reduced-motion:reduce){.streak-spark-marker{transition:none;}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -847,7 +880,18 @@
               <div id="homeCountdownMeta" class="countdown-meta"></div>
             </div>
           </div><div class="hero-actions"><button class="btn btn-primary" onclick="switchView('practice');startQuiz('diagnostic')"><i data-lucide="play"></i> Test năng lực</button><button class="btn btn-light" onclick="switchView('schedule')"><i data-lucide="calendar-check"></i> Lập lịch học</button></div></div>
-          <div class="hero-art" aria-hidden="true"><img class="hero-stairs-image" src="/mathspark-stairs.png" alt="" width="122" height="122"></div>
+          <div class="hero-art hero-streak-art" aria-label="Tiến độ học liên tiếp">
+            <div class="streak-stairs-stage" id="studyStreakStage" data-step="1">
+              <img class="hero-stairs-image" src="/mathspark-stairs.png" alt="" width="122" height="122">
+              <img class="streak-spark-marker" id="studyStreakSpark" src="/mathspark-mark.png" alt="" width="28" height="27">
+            </div>
+            <div class="streak-count-badge" id="studyStreakBadge" role="status" aria-live="polite" aria-label="Chuỗi học liên tiếp: 0 ngày">
+              <span class="streak-flame" aria-hidden="true">🔥</span>
+              <strong id="studyStreakCount">0</strong>
+              <small>NGÀY</small>
+              <span class="streak-badge-caption">STREAK</span>
+            </div>
+          </div>
         </div>
         <div class="stats"><div class="stat"><label>Tiến độ học tập</label><strong id="homeProgress">0%</strong><small>Hoàn thành bài học</small></div><div class="stat"><label>Điểm năng lực</label><strong id="homeScore">—</strong><small id="homeScoreSub">Chưa làm bài test</small></div><div class="stat"><label>Mục tiêu điểm</label><strong id="homeTarget">8.0</strong><small>Điểm Toán vào 10</small></div></div>
         <div class="section-head"><div><h2 id="lessonHeading">Đề và tài liệu</h2><p id="lessonSubheading">Đề thi và tài liệu do quản trị viên cập nhật sẽ hiển thị tại đây.</p></div></div>
@@ -1034,12 +1078,12 @@
   }
 
   function loadState(){
-    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],gradingHistory:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
+    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,studyStreak:{current:0,best:0,lastActiveDate:'',lastActivity:''},plan:[],gradingHistory:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
-  function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
+  function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(typeof renderStudyStreak==='function')renderStudyStreak();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
 
-  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,plan:[],gradingHistory:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
+  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,studyStreak:{current:0,best:0,lastActiveDate:'',lastActivity:''},plan:[],gradingHistory:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
   function scheduleCloudStateSave(){
     if(!supabaseClient||!currentStudent||applyingCloudState)return;
     clearTimeout(cloudSaveTimer);
@@ -1057,7 +1101,7 @@
   function refreshAfterStudentStateLoad(){
     const target=document.getElementById('targetScore'),settings=document.getElementById('settingsTarget'),exam=document.getElementById('examDate'),examName=document.getElementById('examName');
     if(target)target.value=state.targetScore||'8';if(settings)settings.value=state.targetScore||'8';if(exam)exam.value=state.examDate||'';if(examName)examName.value=state.examName||'';const intensity=document.getElementById('studyIntensity');if(intensity)intensity.value=state.studyIntensity||'balanced';
-    if(typeof renderCalendar==='function')renderCalendar();if(typeof updateStats==='function')updateStats();if(typeof renderLessons==='function')renderLessons();if(typeof renderPlan==='function')renderPlan();if(typeof renderCountdowns==='function')renderCountdowns();if(typeof renderGradingHistory==='function')renderGradingHistory();if(typeof icons==='function')icons();
+    if(typeof renderCalendar==='function')renderCalendar();if(typeof updateStats==='function')updateStats();if(typeof renderLessons==='function')renderLessons();if(typeof renderPlan==='function')renderPlan();if(typeof renderCountdowns==='function')renderCountdowns();if(typeof renderGradingHistory==='function')renderGradingHistory();if(typeof renderStudyStreak==='function')renderStudyStreak();if(typeof icons==='function')icons();
   }
   async function activateStudent(user){
     if(!supabaseClient||!user)return;
@@ -1374,7 +1418,10 @@
   let documentReaderReturnScrollY=0;
   function markDocumentReadState(id){
     const key=`document:${id}`;
-    if(!state.completedLessons.includes(key)){state.completedLessons.push(key);saveState();}
+    if(!Array.isArray(state.completedLessons))state.completedLessons=[];
+    if(!state.completedLessons.includes(key))state.completedLessons.push(key);
+    recordStudyActivity('document-read');
+    saveState();
   }
   function finalizeOpenAdminDocument(){
     if(openAdminDocumentId===null||openAdminDocumentId===undefined)return;
@@ -1450,7 +1497,7 @@
     document.getElementById('lessonList').innerHTML=`<div class="panel" style="grid-column:1/-1"><button class="text-link" onclick="showAllResources()">← Quay lại danh sách</button><h2 style="margin-top:14px">${escapeHtml(lesson.title)}</h2><p class="panel-desc">${escapeHtml(lesson.description)}</p>${lesson.fileUrl?`<p><a class="btn btn-light" href="${escapeHtml(lesson.fileUrl)}" target="_blank" rel="noopener">📎 Mở tài liệu ${escapeHtml(lesson.fileName||'đính kèm')}</a></p>`:''}<div class="notice"><div class="notice-icon"><i data-lucide="pencil-line"></i></div><div><h3>Bài luyện nhanh</h3><p>${escapeHtml(question.q)}</p><div class="option-list">${question.options.map((o,i)=>`<button class="option" onclick="lessonAnswer(this,${i},${question.answer},${id})">${String.fromCharCode(65+i)}. ${escapeHtml(o)}</button>`).join('')}</div><div class="feedback" id="lessonFeedback"></div></div></div><button class="btn btn-primary" onclick="markLessonDone(${id})"><i data-lucide="check-circle"></i> Đánh dấu đã ôn xong</button></div>`;icons();window.scrollTo({top:0,behavior:'smooth'});
   }  function markAdminDocumentDone(id,toast=true){markLessonDone(`document:${id}`,toast)}
   function lessonAnswer(btn,index,answer,id){const panel=btn.closest('.notice');panel.querySelectorAll('.option').forEach(o=>o.disabled=true);if(index===answer){btn.classList.add('selected','correct');document.getElementById('lessonFeedback').textContent='Chính xác! Hãy thử tự trình bày vì sao đáp án này đúng.';markLessonDone(id,false)}else{btn.classList.add('selected','wrong');panel.querySelectorAll('.option')[answer].classList.add('correct');document.getElementById('lessonFeedback').textContent='Chưa đúng. Đọc lại định nghĩa, thử giải thích từng phương án rồi làm lại ở mục Luyện thi.'}}
-  function markLessonDone(id,toast=true){if(!state.completedLessons.includes(id))state.completedLessons.push(id);saveState();renderLessons();if(toast)showToast('Đã lưu tiến độ bài học.');}
+  function markLessonDone(id,toast=true){if(!Array.isArray(state.completedLessons))state.completedLessons=[];if(!state.completedLessons.includes(id))state.completedLessons.push(id);recordStudyActivity('lesson-complete');saveState();renderLessons();if(toast)showToast('Đã lưu tiến độ bài học và cập nhật streak.');}
   function formatScore(value){const n=Number(value);return Number.isFinite(n)?String(Number(n.toFixed(2))):'8'}
     function updateStats(){const lessonsDone=Array.isArray(state.completedLessons)?state.completedLessons.length:0,plan=Array.isArray(state.plan)?state.plan:[],blocks=plan.flatMap(day=>Array.isArray(day.blocks)?day.blocks:[]),completedIds=Array.isArray(state.completedPlanIds)?state.completedPlanIds:[],planDone=blocks.filter(block=>completedIds.includes(block.id)||block.slotIds?.length&&block.slotIds.every(slotId=>completedIds.includes(planIdFor(block.date,slotId)))).length,total=lessons.length+blocks.length,p=total?Math.round((lessonsDone+planDone)/total*100):0,latestScore=state.latestPracticeScore!==null?state.latestPracticeScore:state.diagnosticPercent;document.getElementById('homeProgress').textContent=p+'%';document.getElementById('homeScore').textContent=latestScore===null?'—':formatScore(latestScore/10);document.getElementById('homeScoreSub').textContent=latestScore===null?'Chưa làm bài test':`Cập nhật ${state.lastPracticeDate||state.diagnosticDate||'sau bài test'}`;document.getElementById('homeTarget').textContent=formatScore(state.targetScore||8);document.getElementById('diagnosticNotice')?.classList.toggle('hidden',state.diagnosticDone)}
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1481,6 +1528,70 @@
   let pointerSelection=null,suppressSlotClick=false;
   function mondayOf(d){const x=new Date(d);const wd=(x.getDay()+6)%7;x.setDate(x.getDate()-wd);x.setHours(0,0,0,0);return x}
   function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+
+  // Daily streak: a meaningful learning action counts once per local calendar day.
+  // The marker caps at step 8, while the flame counter continues increasing.
+  const STUDY_STREAK_STEPS={
+    1:{x:42,y:85}, // baseline start, matching the reference marker location
+    2:{x:67,y:66}, // small lower-right step
+    3:{x:84,y:49}, // next small step
+    4:{x:68,y:85}, // floor beside the first main stair
+    5:{x:60,y:49}, // first main stair level
+    6:{x:60,y:25}, // second main stair level
+    7:{x:86,y:25}, // upper platform
+    8:{x:86,y:12}  // summit; days beyond 8 stay here
+  };
+  function ensureStudyStreakState(){
+    if(!state.studyStreak||typeof state.studyStreak!=='object'||Array.isArray(state.studyStreak))state.studyStreak={current:0,best:0,lastActiveDate:'',lastActivity:''};
+    const streak=state.studyStreak;
+    streak.current=Math.max(0,Math.floor(Number(streak.current)||0));
+    streak.best=Math.max(streak.current,Math.floor(Number(streak.best)||0));
+    streak.lastActiveDate=typeof streak.lastActiveDate==='string'?streak.lastActiveDate:'';
+    streak.lastActivity=typeof streak.lastActivity==='string'?streak.lastActivity:'';
+    return streak;
+  }
+  function getVisibleStudyStreak(){
+    const streak=ensureStudyStreakState();
+    if(!streak.lastActiveDate)return 0;
+    const today=dateKey(new Date());
+    const yesterdayDate=new Date();yesterdayDate.setDate(yesterdayDate.getDate()-1);
+    const yesterday=dateKey(yesterdayDate);
+    return streak.lastActiveDate===today||streak.lastActiveDate===yesterday?streak.current:0;
+  }
+  function renderStudyStreak(){
+    const stage=document.getElementById('studyStreakStage');
+    const marker=document.getElementById('studyStreakSpark');
+    const badge=document.getElementById('studyStreakBadge');
+    const countNode=document.getElementById('studyStreakCount');
+    if(!stage||!marker||!badge||!countNode)return;
+    const count=getVisibleStudyStreak();
+    const step=count>0?Math.min(8,count):1;
+    const pos=STUDY_STREAK_STEPS[step]||STUDY_STREAK_STEPS[1];
+    stage.dataset.step=String(step);
+    marker.style.left=`${pos.x}%`;
+    marker.style.top=`${pos.y}%`;
+    marker.alt=`Biểu tượng Spark ở bậc ${step} trong 8 bậc`;
+    countNode.textContent=String(count);
+    const label=`Chuỗi học liên tiếp: ${count} ngày`;
+    badge.setAttribute('aria-label',label);
+    badge.title=count===0?'Hãy hoàn thành một hoạt động học tập hôm nay để bắt đầu streak.':`Bạn đã học liên tiếp ${count} ngày. Từ ngày thứ 8, Spark sẽ đứng trên đỉnh cầu thang.`;
+  }
+  function recordStudyActivity(activity='study'){
+    const streak=ensureStudyStreakState();
+    const today=dateKey(new Date());
+    const yesterdayDate=new Date();yesterdayDate.setDate(yesterdayDate.getDate()-1);
+    const yesterday=dateKey(yesterdayDate);
+    const last=streak.lastActiveDate;
+    let next=1;
+    if(last===today)next=Math.max(1,streak.current);
+    else if(last===yesterday)next=Math.max(1,streak.current)+1;
+    streak.current=next;
+    streak.best=Math.max(streak.best,next);
+    streak.lastActiveDate=today;
+    streak.lastActivity=String(activity||'study');
+    state.studyStreak=streak;
+    renderStudyStreak();
+  }
   function planIdFor(date,sessionId){return `plan_${String(date||'').replace(/[^0-9]/g,'')}_${sessionId||'study'}`}
   function blockIdFor(date,sessionId,endMinute){return `plan_${String(date||'').replace(/[^0-9]/g,'')}_block_${sessionId||'study'}_e${String(endMinute||0).padStart(4,'0')}`}
   function slotState(key){return state.busySlots.includes(key)?'busy':'free'}
@@ -1725,7 +1836,7 @@
     el.innerHTML=plan.map(day=>`<article class="plan-item day-plan"><div class="day-plan-head"><div class="day-plan-title"><strong>${escapeHtml(day.day||'')}</strong><span>${escapeHtml(day.date||'')}</span></div><span class="pill ${day.blocks.length?'green':'neutral'}">${day.blocks.length?`${day.blocks.length} khoảng học`:'Không có giờ Rảnh'}</span></div>${day.blocks.length?`<div class="day-timeline">${day.blocks.map(block=>{const done=doneIds.includes(block.id),questionCount=Number(block.questionCount||4);return `<div class="timeline-row ${done?'is-done':''}"><div class="timeline-time"><strong>${escapeHtml(block.time)}</strong><small>${Number(block.duration||30)} phút</small></div><div class="timeline-content"><strong>${escapeHtml(block.topic||'Ôn tập Toán')}</strong><div class="plan-meta"><span class="pill neutral">${escapeHtml(block.level||'Cơ bản')}</span><span>${questionCount} câu gợi ý</span></div><small>${escapeHtml(block.task||'Ôn kiến thức và luyện tập.')}</small></div><label class="plan-check"><input type="checkbox" data-plan-done="${escapeHtml(block.id)}" ${done?'checked':''} aria-label="Đánh dấu ${escapeHtml(block.topic||'buổi học')} đã hoàn thành"><span>Đã hoàn thành</span></label></div>`}).join('')}</div>`:'<p class="day-no-free">Không có khoảng Rảnh trong ngày này; hãy bỏ đánh dấu Bận nếu muốn thêm thời gian học.</p>'}</article>`).join('');
     el.querySelectorAll('[data-plan-done]').forEach(input=>input.addEventListener('change',()=>togglePlanDone(input.dataset.planDone,input.checked)));
   }
-  function togglePlanDone(id,done){if(!Array.isArray(state.completedPlanIds))state.completedPlanIds=[];state.completedPlanIds=done?[...new Set([...state.completedPlanIds,id])]:state.completedPlanIds.filter(value=>value!==id);saveState();renderPlan();showToast(done?'Đã cập nhật tiến độ buổi học.':'Đã bỏ đánh dấu hoàn thành.')}
+  function togglePlanDone(id,done){if(!Array.isArray(state.completedPlanIds))state.completedPlanIds=[];state.completedPlanIds=done?[...new Set([...state.completedPlanIds,id])]:state.completedPlanIds.filter(value=>value!==id);if(done)recordStudyActivity('plan-complete');saveState();renderPlan();showToast(done?'Đã cập nhật tiến độ buổi học và streak.':'Đã bỏ đánh dấu hoàn thành.')}
 
   function startQuiz(mode,customQuestions=null,source='mẫu'){const isDiagnostic=mode==='diagnostic';const topic= document.getElementById('practiceTopic')?.value||'Đề tổng hợp vào lớp 10';let pool=customQuestions||questionBank.filter(q=>isDiagnostic||topic==='Đề tổng hợp vào lớp 10'||q.topic===topic||norm(q.topic).includes(norm(topic).split(' ')[0]));if(!pool.length)pool=questionBank.filter(q=>q.topic===topic||topic==='Đề tổng hợp vào lớp 10');if(!pool.length)pool=questionBank.slice();pool=[...pool];if(isDiagnostic)pool=questionBank.slice(0,5);else if(!customQuestions){const count=Number(document.getElementById('practiceCount')?.value||5);const diff=document.getElementById('practiceLevel')?.value||'van-dung';let exact=pool.filter(q=>q.difficulty===diff);if(exact.length)pool=exact;pool=pool.slice(0,count);if(pool.length<count){const more=questionBank.filter(q=>!pool.includes(q));pool=pool.concat(more.slice(0,count-pool.length))}}activeQuiz={mode,questions:pool.map(q=>({...q})),answers:{},submitted:false,source};renderQuiz();document.getElementById('quizArea').scrollIntoView({behavior:'smooth',block:'start'});icons()}
   function renderQuiz(){
@@ -1967,7 +2078,7 @@
   }
 
   function updateWeakTopicsFromQuiz(){if(!activeQuiz)return;const grouped=new Map();activeQuiz.questions.forEach((q,i)=>{const topic=q.topic||'Toán 9';const row=grouped.get(topic)||{total:0,misses:0};row.total++;if(activeQuiz.answers[i]!==q.answer)row.misses++;grouped.set(topic,row)});const rows=Array.isArray(state.weakTopics)?state.weakTopics.map(x=>typeof x==='string'?{topic:x,misses:1}:x):[];for(const [topic,result] of grouped){let item=rows.find(x=>x.topic===topic);if(!item){item={topic,misses:0};rows.push(item)}item.misses=Math.max(0,Number(item.misses||0)+result.misses-(result.total-result.misses));item.updatedAt=Date.now();item.lastMisses=result.misses}state.weakTopics=rows.filter(x=>Number(x.misses)>0);}
-    function submitQuiz(){if(!activeQuiz)return;const missing=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===undefined).length;if(missing){showToast(`Bạn còn ${missing} câu chưa chọn đáp án.`);return}activeQuiz.submitted=true;const right=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===q.answer).length;const percent=Math.round(right/activeQuiz.questions.length*100);state.latestPracticeScore=percent;state.lastPracticeDate=new Date().toLocaleDateString('vi-VN');updateWeakTopicsFromQuiz();if(activeQuiz.mode==='diagnostic'){state.diagnosticDone=true;state.diagnosticPercent=percent;state.diagnosticDate=state.lastPracticeDate;document.getElementById('diagnosticNotice')?.classList.add('hidden')}const planUpdated=refreshPlanAfterAssessment();saveState();renderQuiz();renderPlan();updateStats();showToast(activeQuiz.mode==='diagnostic'?'Đã lưu kết quả đánh giá năng lực.':planUpdated?'Đã lưu kết quả và tự cập nhật lộ trình.':'Đã chấm xong bài luyện tập.');}
+    function submitQuiz(){if(!activeQuiz)return;const missing=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===undefined).length;if(missing){showToast(`Bạn còn ${missing} câu chưa chọn đáp án.`);return}activeQuiz.submitted=true;const right=activeQuiz.questions.filter((q,i)=>activeQuiz.answers[i]===q.answer).length;const percent=Math.round(right/activeQuiz.questions.length*100);state.latestPracticeScore=percent;state.lastPracticeDate=new Date().toLocaleDateString('vi-VN');recordStudyActivity('quiz-submit');updateWeakTopicsFromQuiz();if(activeQuiz.mode==='diagnostic'){state.diagnosticDone=true;state.diagnosticPercent=percent;state.diagnosticDate=state.lastPracticeDate;document.getElementById('diagnosticNotice')?.classList.add('hidden')}const planUpdated=refreshPlanAfterAssessment();saveState();renderQuiz();renderPlan();updateStats();showToast(activeQuiz.mode==='diagnostic'?'Đã lưu kết quả đánh giá năng lực.':planUpdated?'Đã lưu kết quả và tự cập nhật lộ trình.':'Đã chấm xong bài luyện tập.');}
   async function generatePracticeQuestions(){const btn=document.getElementById('generateQuestionsBtn'),topic=document.getElementById('practiceTopic').value,difficulty=document.getElementById('practiceLevel').value,count=Number(document.getElementById('practiceCount').value);btn.disabled=true;btn.innerHTML='<span class="loading"></span> Đang tạo…';document.getElementById('questionSource').innerHTML='<span class="dot"></span> Đang gửi yêu cầu tạo câu hỏi…';try{const r=await fetch('/api/ai/generate-questions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,difficulty,count,grade:9,examType:'tuyển sinh vào lớp 10'})});if(!r.ok)throw new Error('AI endpoint not ready');const d=await r.json();if(!Array.isArray(d.questions)||!d.questions.length)throw new Error('Empty AI result');const qs=d.questions.map(q=>({...q,answer:Number(q.answer)}));document.getElementById('questionSource').innerHTML='<span class="dot live"></span> Bộ câu hỏi mới do AI tạo.';startQuiz('practice',qs,'AI tạo mới');}catch(e){let candidates=questionBank.filter(q=>topic==='Đề tổng hợp vào lớp 10'||q.topic===topic);if(difficulty==='nang-cao'){const hard=candidates.filter(q=>q.difficulty==='nang-cao');if(hard.length)candidates=hard}if(!candidates.length)candidates=questionBank;const qs=[];while(qs.length<count){qs.push(candidates[qs.length%candidates.length])}document.getElementById('questionSource').innerHTML='<span class="dot"></span> Đang dùng câu hỏi mẫu; cần cấu hình OpenAI API để AI tạo câu hỏi mới.';startQuiz('practice',qs,'câu hỏi mẫu (chưa kết nối AI)');}finally{btn.disabled=false;btn.innerHTML='<i data-lucide="sparkles"></i> Tạo câu hỏi';icons()}}
 
   // AI image grading: never claim it worked if the server is not connected.
@@ -2645,7 +2756,7 @@
 // Initialization and safe local defaults.
   function scheduleInputsChanged(){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();state.studyIntensity=currentStudyIntensity();document.getElementById('targetScore').value=state.targetScore;document.getElementById('settingsTarget').value=state.targetScore;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';renderPlan();document.getElementById('planStatus').innerHTML='<span class="dot live"></span> Lịch đã cập nhật theo mục tiêu, kỳ thi và cường độ học.'}saveState();renderCountdowns()}
   ['targetScore','examDate','examName'].forEach(id=>document.getElementById(id).addEventListener('change',scheduleInputsChanged));document.getElementById('studyIntensity').addEventListener('change',studyIntensityChanged);document.getElementById('examDate').addEventListener('input',renderCountdowns);document.getElementById('examName').addEventListener('input',renderCountdowns);document.getElementById('targetScore').addEventListener('input',()=>{document.getElementById('homeTarget').textContent=formatScore(document.getElementById('targetScore').value||8)});
-  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('studyIntensity').value=state.studyIntensity||'balanced';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();renderGradingHistory();icons();renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();loadPublishedExams();initializeSupabaseAuth();syncAccountButton();
+  if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('studyIntensity').value=state.studyIntensity||'balanced';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();renderGradingHistory();icons();renderStudyStreak();setInterval(renderStudyStreak,60000);renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();loadPublishedExams();initializeSupabaseAuth();syncAccountButton();
 
 // ---------- Published exam bank / one question at a time ----------
 let publishedExams=[];let activeExam=null;let activeExamIndex=0;let activeExamAnswers={};let activeExamEssayFiles={};let activeExamEssayPreviewUrls={};let activeExamIntegrity={visibilityHidden:0,fullscreenExits:0,violations:0};let examGuardHooksInstalled=false;let examPhotoPickerOpen=false;let examPhotoPickerHidPage=false;let activeExamStartedAt=0;let activeExamTimer=null;let activeExamFinished=false;let activeExamLastResult=null;let examPdfCache=null;let examPdfCacheId=null;
@@ -2806,7 +2917,7 @@ async function submitActiveExam(auto=false){
     const headers={};if(supabaseClient){const sessionResult=await supabaseClient.auth.getSession();const token=sessionResult?.data?.session?.access_token;if(token)headers.Authorization=`Bearer ${token}`}
     const r=await fetch(`/api/exams/${encodeURIComponent(activeExam.id)}/submit`,{method:'POST',headers,body:fd});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Không nộp được đề');
     activeExamFinished=true;activeExamLastResult=data;clearInterval(activeExamTimer);activeExamTimer=null;leaveExamFullscreenMode();
-    state.examAttemptHistory=Array.isArray(state.examAttemptHistory)?state.examAttemptHistory:[];state.examAttemptHistory.unshift({examId:data.examId,title:data.examTitle,score:data.score,maxScore:data.maxScore,submittedAt:data.submittedAt});state.examAttemptHistory=state.examAttemptHistory.slice(0,30);saveState();
+    state.examAttemptHistory=Array.isArray(state.examAttemptHistory)?state.examAttemptHistory:[];state.examAttemptHistory.unshift({examId:data.examId,title:data.examTitle,score:data.score,maxScore:data.maxScore,submittedAt:data.submittedAt});state.examAttemptHistory=state.examAttemptHistory.slice(0,30);recordStudyActivity('published-exam-submit');saveState();
     await renderExamResult(data);document.getElementById('examRunnerPanel').classList.add('hidden');document.getElementById('examResultPanel').classList.remove('hidden');document.getElementById('examResultPanel').scrollIntoView({behavior:'smooth',block:'start'});
     showToast(data.savedToAccount?'Đã lưu kết quả thi vào tài khoản.':'Đã chấm xong. Đăng nhập để đồng bộ kết quả giữa các thiết bị.');
   }catch(e){document.getElementById('examSubmitStatus').textContent=e.message||'Có lỗi khi nộp bài.';showToast('Chưa nộp được bài thi.')}finally{btn.disabled=false;}
