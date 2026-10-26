@@ -533,7 +533,7 @@
   .flip-half-top{top:0;border-radius:7px 7px 0 0;border-bottom:1px solid rgba(0,0,0,.38)}
   .flip-half-top>span{top:0}
   .flip-half-bottom{bottom:0;border-radius:0 0 7px 7px;background:linear-gradient(180deg,#202d50 0%,#182440 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
-  .flip-half-bottom>span{top:-200%}
+  .flip-half-bottom>span{top:-100%}
   .flip-flap{top:0;z-index:3;transform-origin:bottom center;backface-visibility:hidden;border-radius:7px 7px 0 0;border-bottom:1px solid rgba(0,0,0,.4);background:linear-gradient(180deg,#354365 0%,#253251 100%)}
   .flip-flap>span{top:0}
   .flip-digit.is-flipping .flip-flap{animation:mathspark-flip-top .46s cubic-bezier(.37,.01,.35,1) both}
@@ -600,6 +600,39 @@
     .countdown-flip-units .flip-clock,.home-countdown-card .countdown-flip-units .flip-clock{gap:1px}
     .countdown-flip-units .flip-digit{width:clamp(16px,5.2vw,18px)}
     .home-countdown-card .flip-digit{width:clamp(15px,4.8vw,17px)}
+  }
+
+  /* Final compact frame sizing: fit the border to the actual countdown content. */
+  .countdown-card,.home-countdown-card,.schedule-countdown-card{
+    width:fit-content;max-width:calc(100% - 20px);min-width:0;
+    padding:13px 19px 10px;margin:0 auto 14px;
+  }
+  .home-countdown-card{
+    width:fit-content;max-width:calc(100% - 20px);
+    padding:12px 17px 9px;margin:11px auto 0;
+  }
+  .countdown-card .countdown-content{
+    width:auto;max-width:100%;min-width:0;flex:0 1 auto;gap:7px;
+  }
+  .countdown-title{width:auto;min-width:0;max-width:100%;}
+  .countdown-units.countdown-flip-units{
+    width:auto;max-width:100%;gap:clamp(5px,1.2vw,10px);
+  }
+  .countdown-flip-units .countdown-unit{width:auto;min-width:0;}
+  .countdown-flip-units .flip-clock{width:auto;min-width:0;min-height:0;gap:2px;}
+  .countdown-meta{max-width:100%;}
+  @media(max-width:540px){
+    .countdown-card,.home-countdown-card,.schedule-countdown-card{
+      max-width:calc(100% - 12px);padding:11px 11px 9px;
+    }
+    .home-countdown-card{max-width:calc(100% - 12px);padding:10px 9px 8px;margin:10px auto 0;}
+    .countdown-card .countdown-content{gap:6px;}
+    .countdown-units.countdown-flip-units{gap:clamp(4px,1.2vw,7px);}
+    .countdown-flip-units .flip-clock{gap:1px;}
+  }
+  @media(max-width:350px){
+    .countdown-card,.home-countdown-card,.schedule-countdown-card{padding-left:6px;padding-right:6px;}
+    .countdown-units.countdown-flip-units{gap:3px;}
   }
 </style>
 
