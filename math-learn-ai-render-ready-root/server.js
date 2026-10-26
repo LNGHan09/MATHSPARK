@@ -476,8 +476,21 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
     const questions = normalizeExamQuestions(row.questions);
     let answers = {};
     try { answers = JSON.parse(String(req.body.answers || '{}')); } catch { return res.status(400).json({ error: 'Dữ liệu đáp án không hợp lệ.' }); }
+    let rawIntegrity = {};
+    try { rawIntegrity = JSON.parse(String(req.body.integrity || '{}')); } catch {}
+    const integrity = {
+      visibilityHidden: Math.max(0, Math.min(1000, Number(rawIntegrity.visibilityHidden) || 0)),
+      fullscreenExits: Math.max(0, Math.min(1000, Number(rawIntegrity.fullscreenExits) || 0)),
+      violations: Math.max(0, Math.min(2000, Number(rawIntegrity.violations) || 0))
+    };
     const files = Array.isArray(req.files) ? req.files : [];
-    const byQuestionFile = new Map(files.map(f => [String(f.fieldname || '').replace(/^essay_/, ''), f]));
+    const byQuestionFile = new Map();
+    for (const q of questions) {
+      const exactLegacy = `essay_${q.id}`;
+      const orderedPrefix = `essay_${q.id}__`;
+      const questionFiles = files.filter(f => { const field = String(f.fieldname || ''); return field === exactLegacy || field.startsWith(orderedPrefix); }).sort((a,b) => { const getOrder = f => { const field = String(f.fieldname || ''); if (field === exactLegacy) return 1; return Number(field.slice(orderedPrefix.length)) || 0; }; return getOrder(a)-getOrder(b); });
+      if (questionFiles.length) byQuestionFile.set(String(q.id), questionFiles);
+    }
     const results = [];
     const essayInputs = [];
     for (const q of questions) {
@@ -486,17 +499,21 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
         const correct = Boolean(picked && q.correctAnswer && picked === q.correctAnswer);
         results.push({ questionId:q.id, number:q.number, type:'mcq', answer:picked, correctAnswer:q.correctAnswer, correct, score:correct?q.points:0, maxScore:q.points, feedback:correct?'Chính xác.':`Đáp án đúng: ${q.correctAnswer || 'Cần giáo viên xác minh'}.`, solution:q.solution || '' });
       } else {
-        const file = byQuestionFile.get(String(q.id));
-        if (file) essayInputs.push({ q, file });
+        const questionFiles = byQuestionFile.get(String(q.id)) || [];
+        if (questionFiles.length) essayInputs.push({ q, files:questionFiles });
         else results.push({ questionId:q.id, number:q.number, type:'essay', score:0, maxScore:q.points, feedback:'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '' });
       }
     }
     if (essayInputs.length) {
       const dataUrl = f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
       const content = [{ type:'input_text', text:`Chấm độc lập từng ảnh bài tự luận Toán dưới đây theo câu hỏi, lời giải tham khảo và rubric của từng câu. Thang điểm phải từ 0 đến maxScore tương ứng. Không gộp điểm giữa các câu. Đọc ảnh cẩn thận; nếu chữ không rõ, hạ độ chắc chắn và nói rõ. Công thức trong phản hồi dùng LaTeX hợp lệ, có dấu \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"..."}]}.` }];
-      for (const {q,file} of essayInputs) {
-        content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points})\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh bài làm tiếp theo thuộc riêng câu này.` });
-        content.push({ type:'input_image', image_url:dataUrl(file), detail:'high' });
+      for (const {q,files:questionFiles} of essayInputs) {
+        content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm)\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh được gửi theo thứ tự Trang 1 đến Trang ${questionFiles.length}; hãy ghép chúng thành một bài giải liên tục.` });
+        for (let pageIndex=0; pageIndex<questionFiles.length; pageIndex++) {
+          const file=questionFiles[pageIndex];
+          content.push({ type:'input_text', text:`CÂU ${q.number} — Ảnh trang ${pageIndex+1}/${questionFiles.length}. Đọc tiếp mạch lời giải ở trang trước nếu có.` });
+          content.push({ type:'input_image', image_url:dataUrl(file), detail:'high' });
+        }
       }
       const raw = await callOpenAI({
         instructions:'Bạn là giáo viên chấm tự luận Toán 9. Chấm theo rubric, không chỉ so đáp số, không cho điểm vượt điểm tối đa. Kết quả là gợi ý AI; tránh khẳng định quá mức nếu ảnh mờ.',
@@ -513,7 +530,7 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
     results.sort((a,b)=>a.number-b.number);
     const maxScore = results.reduce((sum,item)=>sum+Number(item.maxScore||0),0);
     const score = Math.round(results.reduce((sum,item)=>sum+Number(item.score||0),0)*100)/100;
-    const resultJson = { examId:String(row.id), examTitle:row.title, score, maxScore, results, submittedAt:new Date().toISOString() };
+    const resultJson = { examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString() };
     let saved = false;
     const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
     if (bearer && supabaseAdmin) {
