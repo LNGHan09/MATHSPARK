@@ -8,6 +8,8 @@ create table if not exists public.learning_exams (
   description text not null default '',
   duration_minutes integer not null default 120 check (duration_minutes between 10 and 360),
   status text not null default 'draft' check (status in ('draft','published')),
+  bank_type text not null default 'exam' check (bank_type in ('exam','specialty')),
+  ai_request text not null default '',
   source_file_name text not null default '',
   source_file_path text,
   questions jsonb not null default '[]'::jsonb,
@@ -27,6 +29,7 @@ create table if not exists public.exam_attempts (
 );
 
 create index if not exists learning_exams_status_created_idx on public.learning_exams(status, created_at desc);
+create index if not exists learning_exams_bank_type_status_created_idx on public.learning_exams(bank_type, status, created_at desc);
 create index if not exists exam_attempts_user_submitted_idx on public.exam_attempts(user_id, submitted_at desc);
 
 alter table public.learning_exams enable row level security;

@@ -195,6 +195,7 @@ function examAdminView(row) {
   return {
     id: String(row.id), title: row.title, description: row.description || '',
     durationMinutes: Number(row.duration_minutes || 120), status: row.status || 'draft',
+    bankType: row.bank_type || 'exam', aiRequest: row.ai_request || '',
     sourceFileName: row.source_file_name || '', sourceFileUrl: examPublicFileUrl(row.source_file_path),
     questionCount: Array.isArray(row.questions) ? row.questions.length : 0,
     questions: Array.isArray(row.questions) ? row.questions : [],
@@ -203,7 +204,7 @@ function examAdminView(row) {
 }
 function examStudentView(row) {
   return {
-    id: String(row.id), title: row.title, description: row.description || '',
+    id: String(row.id), title: row.title, description: row.description || '', bankType: row.bank_type || 'exam',
     durationMinutes: Number(row.duration_minutes || 120), questionCount: Array.isArray(row.questions) ? row.questions.length : 0,
     questionTypes: [...new Set((row.questions || []).map(q => q.type === 'mcq' ? 'Trắc nghiệm' : 'Tự luận'))],
     createdAt: row.created_at
@@ -267,6 +268,7 @@ function normalizeExamQuestions(input) {
       solution: normalizeExamMathText(safeText(q.solution, 4000)), rubric: normalizeExamMathText(safeText(q.rubric, 3000)),
       points: Math.max(0, Math.min(100, Number(q.points) || (type === 'mcq' ? 1 : 2))),
       sourcePage, hasDiagram: Boolean(q.hasDiagram || diagramBbox), diagramBbox,
+      origin: q.origin === 'ai_generated' ? 'ai_generated' : (q.origin === 'source' ? 'source' : (sourcePage > 0 ? 'source' : '')),
       diagramDescription: safeText(q.diagramDescription, 1000)
     };
   });
@@ -281,7 +283,7 @@ async function getExamRow(id, { publishedOnly = false } = {}) {
 }
 app.get('/api/admin/exams', requireAdmin, requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin.from('learning_exams').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabaseAdmin.from('learning_exams').select('*').eq('bank_type','exam').order('created_at', { ascending: false });
     if (error) throw error;
     res.set('Cache-Control','no-store').json((data || []).map(examAdminView));
   } catch (err) {
@@ -305,7 +307,7 @@ app.post('/api/admin/exams', requireAdmin, requireSupabase, upload.single('file'
     const row = {
       title, description: safeText(req.body.description || '', 1500),
       duration_minutes: Math.max(10, Math.min(360, Number(req.body.durationMinutes) || 120)),
-      status: 'draft', source_file_name: file.originalname, source_file_path: uploadedPath,
+      status: 'draft', bank_type: 'exam', ai_request: '', source_file_name: file.originalname, source_file_path: uploadedPath,
       questions: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString()
     };
     const { data, error } = await supabaseAdmin.from('learning_exams').insert(row).select('*').single();
@@ -320,7 +322,7 @@ app.post('/api/admin/exams', requireAdmin, requireSupabase, upload.single('file'
 app.post('/api/admin/exams/:id/analyze', requireAdmin, requireSupabase, aiRateLimit(3, 10 * 60 * 1000), ensureOpenAI, async (req, res) => {
   try {
     const row = await getExamRow(req.params.id);
-    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    if (!row || (row.bank_type || 'exam') !== 'exam') return res.status(404).json({ error: 'Không tìm thấy đề thi trong Kho đề luyện thi.' });
     if (!row.source_file_path) return res.status(400).json({ error: 'Đề chưa có tệp PDF gốc.' });
     const { data: blob, error: downloadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
     if (downloadError) throw downloadError;
@@ -358,10 +360,117 @@ QUY TẮC QUAN TRỌNG:
     res.status(502).json({ error: `Chưa phân tích được đề: ${err.message || 'lỗi không xác định'}` });
   }
 });
+
+// ---------- Admin-managed specialty bank: PDF + a natural-language AI extraction brief ----------
+app.get('/api/admin/specialty-exams', requireAdmin, requireSupabase, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from('learning_exams').select('*').eq('bank_type','specialty').order('created_at',{ascending:false});
+    if (error) throw error;
+    res.set('Cache-Control','no-store').json((data || []).map(examAdminView));
+  } catch (err) {
+    console.error('Admin specialty list failed:', err.message);
+    res.status(503).json({ error: 'Không tải được kho chuyên đề. Hãy chạy supabase/specialty-bank.sql trong Supabase SQL Editor.', details: err.message });
+  }
+});
+app.post('/api/admin/specialty-exams', requireAdmin, requireSupabase, upload.single('file'), async (req, res) => {
+  let uploadedPath = null;
+  try {
+    const file = req.file;
+    if (!file || !/\.pdf$/i.test(file.originalname) || (file.mimetype && !['application/pdf','application/octet-stream'].includes(file.mimetype))) {
+      return res.status(400).json({ error: 'Kho chuyên đề hiện nhận PDF. Hãy xuất tài liệu thành PDF rồi tải lên.' });
+    }
+    const title = safeText(req.body.title || path.basename(file.originalname, path.extname(file.originalname)), 180);
+    const aiRequest = safeText(req.body.aiRequest || '', 3000);
+    if (!title) return res.status(400).json({ error: 'Vui lòng nhập tên chuyên đề.' });
+    if (!aiRequest) return res.status(400).json({ error: 'Hãy nhập yêu cầu AI về số lượng, dạng câu hỏi và nội dung cần lọc.' });
+    const objectPath = `specialty-exams/${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${cleanFileName(file.originalname)}`;
+    const { error: uploadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(objectPath,file.buffer,{contentType:'application/pdf',cacheControl:'3600',upsert:false});
+    if (uploadError) throw uploadError;
+    uploadedPath = objectPath;
+    const now = new Date().toISOString();
+    const row = {
+      title, description: safeText(req.body.description || '',1500),
+      duration_minutes: Math.max(10,Math.min(360,Number(req.body.durationMinutes)||60)),
+      status:'draft', bank_type:'specialty', ai_request:aiRequest,
+      source_file_name:file.originalname, source_file_path:uploadedPath,
+      questions:[], created_at:now, updated_at:now
+    };
+    const { data, error } = await supabaseAdmin.from('learning_exams').insert(row).select('*').single();
+    if (error) throw error;
+    res.json({ ok:true, exam:examAdminView(data), message:'Đã tải PDF lên Kho chuyên đề và lưu yêu cầu AI. Tiếp theo hãy chạy AI, duyệt câu hỏi rồi đăng.' });
+  } catch (err) {
+    if (uploadedPath) await removeSupabaseFile(uploadedPath);
+    console.error('Specialty upload failed:', err.message);
+    res.status(500).json({ error:`Không lưu được chuyên đề: ${err.message}` });
+  }
+});
+app.post('/api/admin/specialty-exams/:id/analyze', requireAdmin, requireSupabase, aiRateLimit(3,10*60*1000), ensureOpenAI, async (req,res) => {
+  try {
+    const row = await getExamRow(req.params.id);
+    if (!row || row.bank_type !== 'specialty') return res.status(404).json({ error:'Không tìm thấy chuyên đề.' });
+    if (!row.source_file_path) return res.status(400).json({ error:'Chuyên đề chưa có PDF gốc.' });
+    const aiRequest = safeText(req.body?.aiRequest || row.ai_request || '',3000);
+    if (!aiRequest) return res.status(400).json({ error:'Chuyên đề chưa có yêu cầu AI.' });
+    const { data:blob, error:downloadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
+    if (downloadError) throw downloadError;
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    if (!buffer.length) return res.status(400).json({ error:'PDF rỗng.' });
+    const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
+    const prompt = `Bạn đang xử lý PDF nguồn để tạo một bài luyện theo chuyên đề cho học sinh Toán 9 trên MathSpark. Đọc nội dung PDF và làm theo YÊU CẦU CỤ THỂ CỦA QUẢN TRỊ VIÊN dưới đây.\n\nYÊU CẦU CỦA QUẢN TRỊ VIÊN:\n${aiRequest}\n\nTrả duy nhất JSON object {"questions":[...]} hợp lệ, không Markdown bên ngoài. Mỗi câu có cấu trúc {"number":1,"type":"mcq hoặc essay","prompt":"nội dung câu hỏi","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải tham khảo","rubric":"thang điểm tự luận","points":1,"sourcePage":1,"origin":"source hoặc ai_generated","hasDiagram":false,"diagramBbox":null,"diagramDescription":""}.\n\nQUY TẮC:\n1. Phải ưu tiên đúng số lượng câu trắc nghiệm/tự luận, chủ đề, mức độ và phạm vi mà quản trị viên yêu cầu. Nếu ghi 2–3 câu tự luận thì tạo trong khoảng đó.\n2. Ưu tiên chọn/lọc và đánh máy lại câu có trong PDF; giữ đúng dữ kiện, số liệu, ký hiệu, đơn vị và ý nhỏ. Với câu lấy từ nguồn, đặt origin="source", sourcePage là trang PDF bắt đầu từ 1.\n3. Nếu quản trị viên yêu cầu số lượng nhưng PDF không đủ câu phù hợp, chỉ soạn câu bổ sung bám sát chủ đề và dạng toán thể hiện trong PDF; không giả vờ rằng câu đó có trong PDF. Đặt origin="ai_generated", sourcePage=0 cho câu AI tự biên soạn.\n4. Không tự bịa đáp án chính thức. Nếu có đáp án cuối PDF và đọc rõ, answerSource="answer_key"; nếu AI tự giải, answerSource="ai_solved" và needsReview=true; nếu chưa chắc, để correctAnswer="" và answerSource="unknown". Tất cả câu mới phải needsReview=true để admin duyệt.\n5. Mỗi câu trắc nghiệm phải có đủ 4 lựa chọn A–D; correctAnswer chỉ là A/B/C/D. Câu không có lựa chọn là essay. Giữ đúng thứ tự bài thi đã được chọn. Tối đa 100 câu.\n6. Công thức dùng LaTeX hợp lệ: inline \\( ... \\), display \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.\n7. Không bỏ dữ kiện/ý nhỏ quan trọng. Câu có hình thì đánh dấu hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] từ 0–1000 nếu đủ chắc chắn; nếu không chắc để null và mô tả.\n8. Mọi câu đều có solution hoặc rubric tham khảo khi có thể. Không đưa đáp án/lời giải vào prompt hiển thị cho học sinh; đó là trường chấm kín.\nChuyên đề: ${row.title}. Mô tả: ${row.description || 'Không có'}. Thời gian dự kiến: ${row.duration_minutes} phút.`;
+    const output = await callOpenAI({
+      instructions:'Bạn là chuyên viên số hóa và biên soạn học liệu Toán. Tuân thủ chặt yêu cầu của quản trị viên, trung thực với PDF, đánh máy chính xác, không bịa nguồn. Chỉ trả JSON hợp lệ.',
+      input:[{ role:'user', content:[{type:'input_text',text:prompt},{type:'input_file',filename:row.source_file_name||'specialty.pdf',file_data:dataUrl,detail:'high'}]}],
+      maxOutputTokens:14000, reasoningEffort:'high'
+    });
+    const parsed = parseModelJson(output);
+    if (!Array.isArray(parsed.questions) || !parsed.questions.length) throw new Error('AI chưa tạo được câu hỏi phù hợp. Hãy làm rõ yêu cầu hoặc dùng PDF rõ hơn.');
+    const questions = normalizeExamQuestions(parsed.questions);
+    if (questions.some(q=>!q.prompt)) throw new Error('Có câu bị rỗng sau khi trích xuất. Hãy chạy lại hoặc chỉnh trong phần duyệt.');
+    const { data, error } = await supabaseAdmin.from('learning_exams').update({ questions, ai_request:aiRequest, status:'draft', updated_at:new Date().toISOString() }).eq('id',String(req.params.id)).select('*').single();
+    if (error) throw error;
+    res.json({ ok:true, exam:examAdminView(data), reviewRequired:questions.filter(q=>q.needsReview).length, message:`AI đã đánh máy/tạo ${questions.length} câu theo yêu cầu. ${questions.filter(q=>q.origin==='ai_generated').length} câu được AI biên soạn bổ sung; hãy kiểm tra nội dung, nguồn, công thức và đáp án trước khi đăng.` });
+  } catch (err) {
+    console.error('Specialty analysis failed:',{message:String(err?.message||err).slice(0,500),status:err?.status||0});
+    if (err?.status) return aiEndpointError(res,err);
+    res.status(502).json({ error:`Chưa xử lý được PDF chuyên đề: ${err.message||'lỗi không xác định'}` });
+  }
+});
+app.put('/api/admin/specialty-exams/:id', requireAdmin, requireSupabase, async (req,res) => {
+  try {
+    const existing = await getExamRow(req.params.id);
+    if (!existing || existing.bank_type !== 'specialty') return res.status(404).json({error:'Không tìm thấy chuyên đề.'});
+    const questions = normalizeExamQuestions(req.body.questions);
+    if (questions.some(q=>!q.prompt)) return res.status(400).json({error:'Mỗi câu cần có nội dung.'});
+    const changes = { questions, title:safeText(req.body.title||existing.title,180), description:safeText(req.body.description??existing.description??'',1500), duration_minutes:Math.max(10,Math.min(360,Number(req.body.durationMinutes)||Number(existing.duration_minutes)||60)), updated_at:new Date().toISOString(), status:'draft' };
+    if (req.body.aiRequest !== undefined) changes.ai_request = safeText(req.body.aiRequest,3000);
+    const {data,error}=await supabaseAdmin.from('learning_exams').update(changes).eq('id',String(req.params.id)).select('*').single();
+    if(error)throw error;res.json({ok:true,exam:examAdminView(data)});
+  } catch(err){res.status(400).json({error:`Không lưu được phần duyệt chuyên đề: ${err.message}`})}
+});
+app.post('/api/admin/specialty-exams/:id/publish', requireAdmin, requireSupabase, async (req,res) => {
+  try {
+    const row=await getExamRow(req.params.id);
+    if(!row||row.bank_type!=='specialty')return res.status(404).json({error:'Không tìm thấy chuyên đề.'});
+    const questions=normalizeExamQuestions(row.questions);
+    if(!questions.length)return res.status(400).json({error:'Chuyên đề chưa có câu hỏi. Hãy chạy AI trước.'});
+    for(const q of questions){if(!q.prompt)return res.status(400).json({error:`Câu ${q.number} chưa có nội dung.`});if(q.needsReview)return res.status(400).json({error:`Câu ${q.number} còn cần duyệt.`});if(q.type==='mcq'&&(!['A','B','C','D'].includes(q.correctAnswer)||q.options.some(o=>!o.text)))return res.status(400).json({error:`Câu ${q.number} cần đủ 4 lựa chọn và đáp án A/B/C/D.`});}
+    const {data,error}=await supabaseAdmin.from('learning_exams').update({status:'published',questions,updated_at:new Date().toISOString()}).eq('id',String(req.params.id)).select('*').single();
+    if(error)throw error;res.json({ok:true,exam:examAdminView(data),message:'Đã đăng chuyên đề lên Kho chuyên đề.'});
+  }catch(err){res.status(400).json({error:err.message||'Không đăng được chuyên đề.'})}
+});
+app.delete('/api/admin/specialty-exams/:id', requireAdmin, requireSupabase, async (req,res) => {
+  try {
+    const row=await getExamRow(req.params.id);
+    if(!row||row.bank_type!=='specialty')return res.status(404).json({error:'Không tìm thấy chuyên đề.'});
+    const {error}=await supabaseAdmin.from('learning_exams').delete().eq('id',String(req.params.id));
+    if(error)throw error;await removeSupabaseFile(row.source_file_path);res.json({ok:true});
+  }catch(err){res.status(500).json({error:`Không xóa được chuyên đề: ${err.message}`})}
+});
+
 app.put('/api/admin/exams/:id', requireAdmin, requireSupabase, async (req, res) => {
   try {
     const existing = await getExamRow(req.params.id);
-    if (!existing) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    if (!existing || (existing.bank_type || 'exam') !== 'exam') return res.status(404).json({ error: 'Không tìm thấy đề thi trong Kho đề luyện thi.' });
     const questions = normalizeExamQuestions(req.body.questions);
     if (questions.some(q => !q.prompt)) return res.status(400).json({ error: 'Mỗi câu cần có nội dung câu hỏi.' });
     const changes = {
@@ -378,7 +487,7 @@ app.put('/api/admin/exams/:id', requireAdmin, requireSupabase, async (req, res) 
 app.post('/api/admin/exams/:id/publish', requireAdmin, requireSupabase, async (req, res) => {
   try {
     const row = await getExamRow(req.params.id);
-    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    if (!row || (row.bank_type || 'exam') !== 'exam') return res.status(404).json({ error: 'Không tìm thấy đề thi trong Kho đề luyện thi.' });
     const questions = normalizeExamQuestions(row.questions);
     if (!questions.length) return res.status(400).json({ error: 'Đề chưa có câu hỏi. Hãy chạy phân tích AI trước.' });
     for (const q of questions) {
@@ -394,7 +503,7 @@ app.post('/api/admin/exams/:id/publish', requireAdmin, requireSupabase, async (r
 app.delete('/api/admin/exams/:id', requireAdmin, requireSupabase, async (req, res) => {
   try {
     const row = await getExamRow(req.params.id);
-    if (!row) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    if (!row || (row.bank_type || 'exam') !== 'exam') return res.status(404).json({ error: 'Không tìm thấy đề thi trong Kho đề luyện thi.' });
     const { error } = await supabaseAdmin.from('learning_exams').delete().eq('id', String(req.params.id));
     if (error) throw error;
     await removeSupabaseFile(row.source_file_path);
@@ -403,12 +512,22 @@ app.delete('/api/admin/exams/:id', requireAdmin, requireSupabase, async (req, re
 });
 app.get('/api/exams', requireSupabase, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin.from('learning_exams').select('id,title,description,duration_minutes,status,questions,created_at').eq('status','published').order('created_at',{ascending:false});
+    const { data, error } = await supabaseAdmin.from('learning_exams').select('id,title,description,duration_minutes,status,questions,created_at,bank_type').eq('status','published').eq('bank_type','exam').order('created_at',{ascending:false});
     if (error) throw error;
     res.set('Cache-Control','no-store').json((data || []).map(examStudentView));
   } catch (err) {
     console.error('Published exam list failed:', err.message);
     res.status(503).json({ error: 'Chưa tải được kho đề. Quản trị viên cần chạy supabase/exam-bank.sql trước.', details: err.message });
+  }
+});
+app.get('/api/specialty-exams', requireSupabase, async (req,res) => {
+  try {
+    const {data,error}=await supabaseAdmin.from('learning_exams').select('id,title,description,duration_minutes,status,questions,created_at,bank_type').eq('status','published').eq('bank_type','specialty').order('created_at',{ascending:false});
+    if(error)throw error;
+    res.set('Cache-Control','no-store').json((data||[]).map(examStudentView));
+  }catch(err){
+    console.error('Published specialty list failed:',err.message);
+    res.status(503).json({error:'Chưa tải được Kho chuyên đề. Quản trị viên cần chạy supabase/specialty-bank.sql.',details:err.message});
   }
 });
 app.get('/api/exams/:id', requireSupabase, async (req, res) => {
