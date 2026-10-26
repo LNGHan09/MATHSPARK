@@ -881,6 +881,103 @@
   }
   @media(prefers-reduced-motion:reduce){.streak-spark-marker{transition:none!important;animation:none!important;}}
 </style>
+
+<style id="mathspark-streak-layout-fix-v6">
+  /* Clear, larger Spark mark: its bottom tip aligns with each stair landing. */
+  .hero .hero-art.hero-streak-art{opacity:1!important;overflow:visible!important;}
+  .hero .streak-stairs-stage{overflow:visible!important;isolation:isolate;}
+  .hero .streak-spark-marker{
+    z-index:8!important;width:34px!important;height:auto!important;max-width:none!important;object-fit:contain!important;
+    opacity:1!important;visibility:visible!important;mix-blend-mode:normal!important;
+    filter:drop-shadow(0 0 2px rgba(255,253,249,.98)) drop-shadow(0 2px 4px rgba(30,43,76,.28))!important;
+    transition:left .72s cubic-bezier(.22,.85,.28,1),top .72s cubic-bezier(.22,.85,.28,1),filter .25s!important;
+  }
+  .hero .streak-spark-marker.streak-step-arrival{animation:streakSparkLandV6 .68s cubic-bezier(.2,.75,.2,1) both!important;}
+  @keyframes streakSparkLandV6{
+    0%{transform:translate(-50%,-100%) scale(.78);filter:drop-shadow(0 0 2px rgba(255,253,249,.98)) drop-shadow(0 1px 2px rgba(30,43,76,.18));}
+    58%{transform:translate(-50%,-116%) scale(1.16);filter:drop-shadow(0 0 3px rgba(255,253,249,1)) drop-shadow(0 4px 6px rgba(30,43,76,.26));}
+    100%{transform:translate(-50%,-100%) scale(1);filter:drop-shadow(0 0 2px rgba(255,253,249,.98)) drop-shadow(0 2px 4px rgba(30,43,76,.28));}
+  }
+
+  /* Desktop: let the staircase occupy the center of the right-hand hero area. */
+  @media(min-width:980px){
+    #view-home .hero{
+      display:grid!important;grid-template-columns:minmax(0,1.18fr) minmax(330px,.82fr)!important;
+      align-items:center!important;justify-content:stretch!important;column-gap:14px!important;
+    }
+    #view-home .hero-copy{display:block!important;width:100%!important;max-width:none!important;min-width:0!important;grid-column:1!important;grid-row:1!important;}
+    #view-home .hero-art.hero-streak-art{
+      grid-column:2!important;grid-row:1!important;justify-self:stretch!important;align-self:center!important;
+      flex:none!important;width:100%!important;min-width:0!important;max-width:none!important;height:230px!important;
+      margin:0!important;transform:none!important;display:block!important;
+    }
+    #view-home .streak-stairs-stage{left:calc(50% - 158px)!important;top:0!important;width:224px!important;height:224px!important;}
+    #view-home .streak-count-badge{
+      left:calc(50% + 84px)!important;right:auto!important;top:50%!important;transform:translateY(-50%)!important;
+      width:76px!important;min-height:104px!important;padding:9px 6px!important;border-radius:19px!important;
+    }
+    #view-home .streak-spark-marker{width:35px!important;}
+  }
+
+  /* Mobile: full-width countdown, streak artwork above buttons, buttons at the bottom. */
+  @media(max-width:540px){
+    #view-home .hero{
+      display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+      grid-template-rows:auto auto auto auto 184px auto!important;row-gap:12px!important;
+      align-items:start!important;justify-content:stretch!important;padding:18px!important;gap:12px!important;overflow:hidden!important;
+    }
+    #view-home .hero-copy{display:contents!important;}
+    #view-home .hero-copy>.eyebrow{grid-column:1!important;grid-row:1!important;margin:0!important;align-self:end!important;}
+    #view-home .hero-copy>h1{grid-column:1!important;grid-row:2!important;margin:0!important;max-width:100%!important;font-size:clamp(24px,6.3vw,30px)!important;line-height:1.13!important;overflow-wrap:anywhere!important;}
+    #view-home .hero-copy>p:not(.eyebrow){grid-column:1!important;grid-row:3!important;margin:0!important;max-width:100%!important;font-size:13px!important;line-height:1.55!important;}
+    #view-home .hero-copy>.home-countdown-card{
+      grid-column:1!important;grid-row:4!important;justify-self:stretch!important;align-self:stretch!important;
+      width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;padding:12px 10px 10px!important;
+      display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;gap:8px!important;
+      border-radius:16px!important;box-sizing:border-box!important;
+    }
+    #view-home .hero-copy .home-countdown-card .countdown-content{
+      display:flex!important;flex:1 1 auto!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+      width:100%!important;max-width:100%!important;min-width:0!important;gap:7px!important;
+    }
+    #view-home .hero-copy .home-countdown-card .countdown-title{align-self:stretch!important;width:100%!important;text-align:center!important;font-size:clamp(20px,5.4vw,24px)!important;}
+    #view-home .hero-copy .home-countdown-card .countdown-units.countdown-flip-units{
+      display:flex!important;flex:0 0 auto!important;align-self:stretch!important;justify-content:center!important;
+      width:100%!important;max-width:100%!important;min-width:0!important;gap:clamp(4px,1.2vw,7px)!important;
+    }
+    #view-home .hero-copy .home-countdown-card .countdown-meta{align-self:center!important;width:100%!important;text-align:center!important;font-size:10px!important;}
+    #view-home .hero-art.hero-streak-art{
+      grid-column:1!important;grid-row:5!important;justify-self:center!important;align-self:center!important;
+      display:block!important;position:relative!important;flex:none!important;width:100%!important;max-width:400px!important;min-width:0!important;
+      height:184px!important;margin:0!important;transform:none!important;overflow:visible!important;
+    }
+    #view-home .streak-stairs-stage{left:calc(50% - 135px)!important;top:4px!important;width:174px!important;height:174px!important;}
+    #view-home .streak-spark-marker{width:32px!important;}
+    #view-home .streak-count-badge{
+      left:calc(50% + 59px)!important;right:auto!important;top:50%!important;transform:translateY(-50%)!important;
+      width:72px!important;min-height:98px!important;padding:8px 5px!important;border-radius:17px!important;gap:3px!important;
+    }
+    #view-home .streak-flame{width:30px!important;height:30px!important;font-size:22px!important;}
+    #view-home .streak-count-badge strong{font-size:24px!important;line-height:1.02!important;}
+    #view-home .streak-count-badge small{font-size:8px!important;}
+    #view-home .streak-badge-caption{font-size:6.5px!important;padding-top:4px!important;}
+    #view-home .hero-copy>.hero-actions{
+      grid-column:1!important;grid-row:6!important;justify-self:stretch!important;align-self:stretch!important;
+      display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+      width:100%!important;min-width:0!important;gap:10px!important;margin:0!important;padding:0!important;
+    }
+    #view-home .hero-copy>.hero-actions>.btn{width:min(100%,340px)!important;min-height:48px!important;justify-content:center!important;margin:0!important;}
+  }
+  @media(max-width:360px){
+    #view-home .hero{padding:14px!important;grid-template-rows:auto auto auto auto 170px auto!important;}
+    #view-home .hero-art.hero-streak-art{height:170px!important;}
+    #view-home .streak-stairs-stage{left:calc(50% - 127px)!important;width:164px!important;height:164px!important;}
+    #view-home .streak-spark-marker{width:29px!important;}
+    #view-home .streak-count-badge{left:calc(50% + 55px)!important;width:68px!important;min-height:92px!important;}
+  }
+  @media(prefers-reduced-motion:reduce){.hero .streak-spark-marker{transition:none!important;animation:none!important;}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1563,16 +1660,16 @@
 
   // Daily streak: a meaningful learning action counts once per local calendar day.
   // The marker caps at step 8, while the flame counter continues increasing.
-  const STUDY_STREAK_START={x:50,y:90}; // Floor beside the first small stair when the streak is 0.
+  const STUDY_STREAK_START={x:42,y:88}; // Reset position on the floor beside the first small step.
   const STUDY_STREAK_STEPS={
-    1:{x:29,y:90}, // Day 1: the marked starting step.
-    2:{x:42,y:69}, // Day 2: the next small step.
-    3:{x:58,y:51}, // Day 3: the third small step.
-    4:{x:70,y:90}, // Day 4: floor beside the first large stair.
-    5:{x:68,y:69}, // Day 5: first large stair.
-    6:{x:86,y:51}, // Day 6: higher right-hand step.
-    7:{x:86,y:33}, // Day 7: near the upper landing.
-    8:{x:86,y:18}  // Day 8: summit; later days remain here.
+    1:{x:26,y:86}, // Day 1: inside the lowest left landing.
+    2:{x:46,y:76}, // Day 2: move one level up and right.
+    3:{x:62,y:66}, // Day 3: third lower landing.
+    4:{x:78,y:87}, // Day 4: floor beside the first large stair.
+    5:{x:78,y:68}, // Day 5: first large landing.
+    6:{x:78,y:50}, // Day 6: higher landing.
+    7:{x:80,y:31}, // Day 7: upper landing.
+    8:{x:80,y:23}  // Day 8: summit; later days remain here.
   };
   function ensureStudyStreakState(){
     if(!state.studyStreak||typeof state.studyStreak!=='object'||Array.isArray(state.studyStreak))state.studyStreak={current:0,best:0,lastActiveDate:'',lastActivity:''};
