@@ -1009,14 +1009,17 @@
 </style>
 
 
-<style id="mathspark-staircase-position-v9">
-  /* Desktop refinement: move the staircase slightly right and down, without moving the streak badge or changing mobile layout. */
+<style id="mathspark-staircase-position-v10">
+  /* Desktop only: shift the staircase center slightly right/down and enlarge it by 1.25x.
+     Scaling from the center keeps the intended placement stable; mobile rules remain untouched. */
   @media (min-width: 980px) {
     #view-home .streak-stairs-stage {
-      left: calc(50% - 265px) !important;
-      top: 24px !important;
+      left: calc(50% - 249px) !important;
+      top: 32px !important;
       width: 210px !important;
       height: 210px !important;
+      transform: scale(1.25) !important;
+      transform-origin: center center !important;
     }
   }
 </style>
