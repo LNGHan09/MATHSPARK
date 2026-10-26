@@ -636,6 +636,57 @@
   }
 </style>
 
+
+<style id="mathspark-flipclock-final-polish-v3">
+  /* A single, full-height numeral is the resting face. Only the top flap animates. */
+  .countdown-flip-units .flip-digit{
+    position:relative;overflow:hidden;isolation:isolate;
+  }
+  .countdown-flip-units .flip-base-number{
+    position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:clamp(23px,3.25vw,35px);font-weight:850;letter-spacing:-.04em;
+    line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 1px 1px rgba(0,0,0,.15);
+    pointer-events:none;
+  }
+  .countdown-flip-units .flip-flap{z-index:3;transform-origin:bottom center;backface-visibility:hidden;}
+  .countdown-flip-units .flip-flap>span{
+    top:0;height:200%;display:flex;align-items:center;justify-content:center;
+    font-size:clamp(23px,3.25vw,35px);line-height:1;
+  }
+  .countdown-flip-units .flip-seam{
+    position:absolute;left:0;right:0;top:50%;z-index:4;height:1px;transform:translateY(-.5px);
+    background:rgba(0,0,0,.43);box-shadow:0 1px 0 rgba(255,255,255,.08);pointer-events:none;
+  }
+  .home-countdown-card .countdown-flip-units .flip-base-number,
+  .home-countdown-card .countdown-flip-units .flip-flap>span{font-size:clamp(21px,2.7vw,30px)}
+
+  /* Keep the four units grouped at the left edge of the content instead of leaving a wide central gap. */
+  .countdown-units.countdown-flip-units{
+    display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:flex-start;
+    width:max-content;max-width:100%;margin:0 auto 0 0;
+    gap:clamp(5px,1vw,9px);
+  }
+  .countdown-flip-units .countdown-unit{flex:0 0 auto;width:auto;min-width:0;}
+  .countdown-flip-units .flip-clock{display:flex;flex:0 0 auto;align-items:center;justify-content:center;width:auto;min-width:0;min-height:0;gap:2px;}
+  .countdown-flip-units .flip-digit{flex:0 0 auto;}
+  .home-countdown-card .countdown-units.countdown-flip-units{gap:clamp(5px,1.15vw,9px)}
+  .home-countdown-card .countdown-flip-units .flip-clock{gap:2px}
+  @media(max-width:540px){
+    .countdown-flip-units .flip-base-number,.countdown-flip-units .flip-flap>span{font-size:clamp(21px,6.4vw,28px)}
+    .home-countdown-card .countdown-flip-units .flip-base-number,
+    .home-countdown-card .countdown-flip-units .flip-flap>span{font-size:clamp(19px,5.5vw,25px)}
+    .countdown-units.countdown-flip-units{gap:clamp(4px,1.1vw,7px)}
+    .countdown-flip-units .flip-clock{gap:1px}
+    .home-countdown-card .countdown-units.countdown-flip-units{gap:clamp(4px,1.2vw,7px)}
+  }
+  @media(max-width:350px){
+    .countdown-units.countdown-flip-units{gap:3px}
+    .countdown-flip-units .flip-clock,.home-countdown-card .countdown-flip-units .flip-clock{gap:1px}
+    .countdown-flip-units .flip-digit{width:clamp(16px,5.2vw,18px)}
+    .home-countdown-card .flip-digit{width:clamp(15px,4.8vw,17px)}
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1352,7 +1403,8 @@
   function parseExamDate(value){const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(year,month-1,day);if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return null;return {year,month,day}}
   function examDateAtEight(value){const parsed=parseExamDate(value);return parsed?new Date(parsed.year,parsed.month-1,parsed.day,8,0,0,0):null}
   function countdownFlipDigitMarkup(digit){
-    return `<span class="flip-digit" data-digit="${digit}" aria-hidden="true"><span class="flip-half flip-half-top"><span>${digit}</span></span><span class="flip-half flip-half-bottom"><span>${digit}</span></span><span class="flip-flap"><span>${digit}</span></span></span>`;
+    /* One full-height face prevents duplicated/misaligned glyphs at the split seam. */
+    return `<span class="flip-digit" data-digit="${digit}" aria-hidden="true"><span class="flip-base-number">${digit}</span><span class="flip-flap"><span>${digit}</span></span><span class="flip-seam" aria-hidden="true"></span></span>`;
   }
   function countdownUnitsMarkup(values){
     const labels=['NGÀY','GIỜ','PHÚT','GIÂY'];
@@ -1366,33 +1418,42 @@
       const clock=units[index]?.querySelector('.flip-clock');
       return !clock||clock.querySelectorAll('.flip-digit').length!==String(value).length;
     });
-    if(shouldRebuild){container.innerHTML=countdownUnitsMarkup(values);}
-    else values.forEach((value,index)=>{
-      const clock=units[index].querySelector('.flip-clock'),digits=[...clock.querySelectorAll('.flip-digit')],next=String(value);
+    if(shouldRebuild)container.innerHTML=countdownUnitsMarkup(values);
+    const renderedUnits=[...container.querySelectorAll('.countdown-unit')];
+    renderedUnits.forEach((unit,index)=>{
+      const clock=unit.querySelector('.flip-clock');
+      const next=String(values[index]);
+      const digits=[...clock.querySelectorAll('.flip-digit')];
       next.split('').forEach((digit,digitIndex)=>{
-        const card=digits[digitIndex],previous=card.dataset.digit;
-        if(previous===digit)return;
+        const card=digits[digitIndex];
+        if(!card)return;
+        const previous=card.dataset.digit||digit;
+        const face=card.querySelector('.flip-base-number');
         const flap=card.querySelector('.flip-flap > span');
+        if(previous===digit){
+          if(face)face.textContent=digit;
+          if(flap&&!card.classList.contains('is-flipping'))flap.textContent=digit;
+          return;
+        }
+        /* Show the new face underneath while the old top flap folds away. */
+        if(face)face.textContent=digit;
         if(flap)flap.textContent=previous;
-        const top=card.querySelector('.flip-half-top > span'),bottom=card.querySelector('.flip-half-bottom > span');
-        if(top)top.textContent=digit;
-        if(bottom)bottom.textContent=digit;
         card.dataset.digit=digit;
         card.classList.remove('is-flipping');
         void card.offsetWidth;
         if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
           if(flap)flap.textContent=digit;
-          card.classList.remove('is-flipping');
-        }else{
-          card.classList.add('is-flipping');
-          card.addEventListener('animationend',()=>{
-            if(flap)flap.textContent=digit;
-            card.classList.remove('is-flipping');
-          },{once:true});
+          return;
         }
+        card.classList.add('is-flipping');
+        card.addEventListener('animationend',event=>{
+          if(event.animationName!=='mathspark-flip-top')return;
+          if(card.dataset.digit===digit&&flap)flap.textContent=digit;
+          card.classList.remove('is-flipping');
+        },{once:true});
       });
       clock.dataset.value=next;
-      units[index].setAttribute('aria-label',`${next} ${labels[index].toLowerCase()}`);
+      unit.setAttribute('aria-label',`${next} ${labels[index].toLowerCase()}`);
     });
     container.setAttribute('aria-label',`Còn ${values[0]} ngày, ${values[1]} giờ, ${values[2]} phút, ${values[3]} giây`);
   }
