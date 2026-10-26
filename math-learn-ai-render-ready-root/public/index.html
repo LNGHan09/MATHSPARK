@@ -533,7 +533,7 @@
   .flip-half-top{top:0;border-radius:7px 7px 0 0;border-bottom:1px solid rgba(0,0,0,.38)}
   .flip-half-top>span{top:0}
   .flip-half-bottom{bottom:0;border-radius:0 0 7px 7px;background:linear-gradient(180deg,#202d50 0%,#182440 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
-  .flip-half-bottom>span{top:-100%}
+  .flip-half-bottom>span{top:-200%}
   .flip-flap{top:0;z-index:3;transform-origin:bottom center;backface-visibility:hidden;border-radius:7px 7px 0 0;border-bottom:1px solid rgba(0,0,0,.4);background:linear-gradient(180deg,#354365 0%,#253251 100%)}
   .flip-flap>span{top:0}
   .flip-digit.is-flipping .flip-flap{animation:mathspark-flip-top .46s cubic-bezier(.37,.01,.35,1) both}
@@ -578,6 +578,31 @@
   }
   @media(prefers-reduced-motion:reduce){.flip-digit.is-flipping .flip-flap{animation:none}}
 </style>
+
+<style id="mathspark-flip-countdown-display-spacing-fix">
+  /* Group each two-digit unit by its content rather than spreading units over four equal columns. */
+  .countdown-units.countdown-flip-units{
+    display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:center;
+    gap:clamp(8px,1.65vw,15px);width:100%;max-width:100%;margin-inline:auto;
+  }
+  .countdown-flip-units .countdown-unit{flex:0 0 auto;width:auto}
+  .countdown-flip-units .flip-clock{flex:0 0 auto;width:auto;gap:3px}
+  .countdown-flip-units .flip-digit{flex:0 0 auto}
+  .home-countdown-card .countdown-units.countdown-flip-units{gap:clamp(8px,1.8vw,14px)}
+  .home-countdown-card .countdown-flip-units .flip-clock{gap:2px}
+  @media(max-width:540px){
+    .countdown-units.countdown-flip-units{gap:clamp(4px,1.4vw,7px)}
+    .countdown-flip-units .flip-clock{gap:2px}
+    .home-countdown-card .countdown-units.countdown-flip-units{gap:clamp(4px,1.3vw,7px)}
+  }
+  @media(max-width:350px){
+    .countdown-units.countdown-flip-units{gap:3px}
+    .countdown-flip-units .flip-clock,.home-countdown-card .countdown-flip-units .flip-clock{gap:1px}
+    .countdown-flip-units .flip-digit{width:clamp(16px,5.2vw,18px)}
+    .home-countdown-card .flip-digit{width:clamp(15px,4.8vw,17px)}
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1322,8 +1347,16 @@
         card.dataset.digit=digit;
         card.classList.remove('is-flipping');
         void card.offsetWidth;
-        card.classList.add('is-flipping');
-        card.addEventListener('animationend',()=>card.classList.remove('is-flipping'),{once:true});
+        if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+          if(flap)flap.textContent=digit;
+          card.classList.remove('is-flipping');
+        }else{
+          card.classList.add('is-flipping');
+          card.addEventListener('animationend',()=>{
+            if(flap)flap.textContent=digit;
+            card.classList.remove('is-flipping');
+          },{once:true});
+        }
       });
       clock.dataset.value=next;
       units[index].setAttribute('aria-label',`${next} ${labels[index].toLowerCase()}`);
