@@ -978,6 +978,36 @@
   @media(prefers-reduced-motion:reduce){.hero .streak-spark-marker{transition:none!important;animation:none!important;}}
 </style>
 
+<style id="mathspark-streak-alignment-v7">
+  /* Center Spark on each explicitly mapped landing. This avoids the old bottom-anchor offset. */
+  #view-home .hero .streak-spark-marker{
+    transform:translate(-50%,-50%);
+    transition:left .72s cubic-bezier(.22,.85,.28,1),top .72s cubic-bezier(.22,.85,.28,1),filter .25s!important;
+  }
+  #view-home .hero .streak-spark-marker.streak-step-arrival{
+    animation:streakSparkLandV7 .68s cubic-bezier(.2,.75,.2,1) both!important;
+  }
+  @keyframes streakSparkLandV7{
+    0%{transform:translate(-50%,-50%) scale(.80);filter:drop-shadow(0 0 2px rgba(255,253,249,.98)) drop-shadow(0 1px 2px rgba(30,43,76,.18));}
+    58%{transform:translate(-50%,-57%) scale(1.13);filter:drop-shadow(0 0 3px rgba(255,253,249,1)) drop-shadow(0 4px 6px rgba(30,43,76,.26));}
+    100%{transform:translate(-50%,-50%) scale(1);filter:drop-shadow(0 0 2px rgba(255,253,249,.98)) drop-shadow(0 2px 4px rgba(30,43,76,.28));}
+  }
+
+  /* Desktop: center the staircase itself in the right-side area, with the streak card just beside it. */
+  @media(min-width:980px){
+    #view-home .streak-stairs-stage{
+      left:calc(50% - 105px)!important;top:10px!important;width:210px!important;height:210px!important;
+    }
+    #view-home .streak-count-badge{
+      left:calc(50% + 88px)!important;right:auto!important;top:50%!important;transform:translateY(-50%)!important;
+      width:72px!important;min-height:104px!important;padding:9px 6px!important;border-radius:19px!important;
+    }
+  }
+  @media(prefers-reduced-motion:reduce){
+    #view-home .hero .streak-spark-marker{transition:none!important;animation:none!important;}
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1658,18 +1688,18 @@
   function mondayOf(d){const x=new Date(d);const wd=(x.getDay()+6)%7;x.setDate(x.getDate()-wd);x.setHours(0,0,0,0);return x}
   function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 
-  // Daily streak: a meaningful learning action counts once per local calendar day.
-  // The marker caps at step 8, while the flame counter continues increasing.
-  const STUDY_STREAK_START={x:42,y:88}; // Reset position on the floor beside the first small step.
+  // Positions are mapped to the marked points on the staircase illustration.
+  // The Spark is centered on each target so its colored mark lands where intended.
+  const STUDY_STREAK_START={x:31,y:88}; // Streak lost: floor beside the first small step.
   const STUDY_STREAK_STEPS={
-    1:{x:26,y:86}, // Day 1: inside the lowest left landing.
-    2:{x:46,y:76}, // Day 2: move one level up and right.
-    3:{x:62,y:66}, // Day 3: third lower landing.
-    4:{x:78,y:87}, // Day 4: floor beside the first large stair.
-    5:{x:78,y:68}, // Day 5: first large landing.
-    6:{x:78,y:50}, // Day 6: higher landing.
-    7:{x:80,y:31}, // Day 7: upper landing.
-    8:{x:80,y:23}  // Day 8: summit; later days remain here.
+    1:{x:40,y:78}, // Black mark: first lower step.
+    2:{x:59,y:63}, // Blue mark: second small step.
+    3:{x:76,y:42}, // Yellow mark: third small step.
+    4:{x:54,y:82}, // Grey mark: floor beside the first large step.
+    5:{x:23,y:57}, // Pink mark: first large step.
+    6:{x:59,y:37}, // Second large step.
+    7:{x:76,y:18}, // Third large step.
+    8:{x:82,y:12}  // Summit; later streaks remain here.
   };
   function ensureStudyStreakState(){
     if(!state.studyStreak||typeof state.studyStreak!=='object'||Array.isArray(state.studyStreak))state.studyStreak={current:0,best:0,lastActiveDate:'',lastActivity:''};
