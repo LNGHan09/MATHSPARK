@@ -58,3 +58,14 @@ The app now stores new Admin files in Supabase Storage rather than Render's temp
 ## Scope note
 
 The account setup saves the current client-side learning state for each signed-in student. OpenAI-backed AI chat, question generation, semantic search, study-plan suggestions, and image-based solution grading use OPENAI_API_KEY (default model: gpt-6-luna). Keep the key in Render Environment; never put it in HTML or GitHub.
+
+
+## Kho đề luyện thi AI
+
+1. Chạy `supabase/exam-bank.sql` một lần trong Supabase SQL Editor để tạo các bảng `learning_exams` và `exam_attempts`.
+2. Mở `/admin.html`, đăng nhập bằng `ADMIN_PASSWORD`, tải PDF ở mục **Kho đề luyện thi · AI tách câu**.
+3. Nhấn **AI phân tích PDF**. AI trích câu hỏi, lựa chọn, đáp án đề xuất, lời giải/rubric, số trang và vùng hình dự kiến.
+4. Bắt buộc đọc lại và sửa các câu đã đánh dấu **Cần duyệt**. Công thức, đáp án và crop hình AI tạo ra có thể sai; chỉ bấm “Duyệt và đăng đề” sau khi đã kiểm tra.
+5. Học sinh mở **Luyện thi → Kho đề luyện thi**, làm từng câu, nộp lựa chọn A–D hoặc ảnh lời giải cho câu tự luận. Trắc nghiệm được chấm bằng answer key phía máy chủ; tự luận được AI chấm riêng từng câu. Nếu đã đăng nhập, kết quả được lưu vào `exam_attempts`.
+
+Việc phân tích PDF và chấm tự luận sử dụng OpenAI API token. Nên tải PDF rõ nét, chia đề dài thành nhiều file nhỏ khi cần. Bản hiện tại nhận PDF (tối đa 20 MB), không tự publish sau khi phân tích; admin phải duyệt trước khi học sinh nhìn thấy.
