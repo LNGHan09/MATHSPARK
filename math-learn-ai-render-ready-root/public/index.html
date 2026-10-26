@@ -818,36 +818,68 @@
 </style>
 <style id="mathspark-study-streak-progress-styles">
   .hero-art.hero-streak-art{
-    position:relative;flex:0 0 276px;width:276px;min-width:276px;height:194px;display:block;opacity:1;
-    margin-right:12px;transform:translateX(-10px);overflow:visible;isolation:isolate;
+    position:relative;flex:0 0 292px;width:292px;min-width:292px;height:202px;display:block;opacity:1;
+    margin-right:8px;transform:translateX(-28px);overflow:visible;isolation:isolate;
   }
-  .streak-stairs-stage{position:absolute;left:0;top:0;width:194px;height:194px;display:block;overflow:visible;}
+  .streak-stairs-stage{position:absolute;left:0;top:0;width:202px;height:202px;display:block;overflow:visible;}
   .streak-stairs-stage .hero-stairs-image{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;display:block;opacity:.96;pointer-events:none;}
-  .streak-spark-marker{position:absolute;z-index:2;display:block;width:clamp(22px,2.25vw,30px);height:auto;max-width:none;object-fit:contain;left:42%;top:85%;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 3px rgba(44,42,31,.20));transition:left .62s cubic-bezier(.2,.75,.2,1),top .62s cubic-bezier(.2,.75,.2,1),filter .25s;pointer-events:none;}
-  .streak-count-badge{position:absolute;right:0;top:44%;z-index:3;width:70px;min-height:78px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:8px 5px;border:1px solid #eadbb6;border-radius:16px;background:rgba(255,252,244,.94);box-shadow:0 6px 18px rgba(60,49,24,.08);color:#24345f;text-align:center;}
-  .streak-flame{display:block;font-size:22px;line-height:1;filter:drop-shadow(0 1px 1px rgba(165,87,20,.12));}
-  .streak-count-badge strong{display:block;font-size:23px;line-height:1.08;font-weight:900;font-variant-numeric:tabular-nums;color:#27365e;}
+  .streak-spark-marker{
+    position:absolute;z-index:2;display:block;width:clamp(24px,2.5vw,31px);height:auto;max-width:none;object-fit:contain;
+    left:50%;top:90%;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 3px rgba(44,42,31,.20));
+    transition:left .72s cubic-bezier(.22,.85,.28,1),top .72s cubic-bezier(.22,.85,.28,1),filter .25s;
+    will-change:left,top;pointer-events:none;
+  }
+  .streak-spark-marker.streak-step-arrival{animation:streakSparkLand .68s cubic-bezier(.2,.75,.2,1) both;}
+  @keyframes streakSparkLand{
+    0%{transform:translate(-50%,-100%) scale(.84);filter:drop-shadow(0 1px 2px rgba(44,42,31,.12));}
+    56%{transform:translate(-50%,-112%) scale(1.12);filter:drop-shadow(0 4px 5px rgba(44,42,31,.22));}
+    100%{transform:translate(-50%,-100%) scale(1);filter:drop-shadow(0 2px 3px rgba(44,42,31,.20));}
+  }
+  .streak-count-badge{
+    position:absolute;right:0;top:40%;z-index:3;width:78px;min-height:104px;box-sizing:border-box;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px;
+    border:1px solid #eadbb6;border-radius:20px;
+    background:linear-gradient(155deg,rgba(255,254,249,.98),rgba(255,247,226,.98));
+    box-shadow:0 8px 22px rgba(60,49,24,.10),inset 0 1px 0 rgba(255,255,255,.9);
+    color:#24345f;text-align:center;
+  }
+  .streak-flame{
+    width:31px;height:31px;display:grid;place-items:center;border-radius:50%;
+    background:linear-gradient(180deg,#fff2d4,#ffe4a8);font-size:22px;line-height:1;
+    filter:drop-shadow(0 1px 1px rgba(165,87,20,.12));
+  }
+  .streak-count-badge strong{display:block;font-size:26px;line-height:1.02;font-weight:900;font-variant-numeric:tabular-nums;color:#27365e;}
   .streak-count-badge small{display:block;font-size:8px;line-height:1.2;font-weight:900;letter-spacing:.11em;color:#9b742e;}
-  .streak-badge-caption{display:block;margin-top:3px;padding-top:3px;border-top:1px solid #efe4cd;width:100%;font-size:7px;line-height:1.1;letter-spacing:.12em;font-weight:900;color:#7c8190;}
+  .streak-badge-caption{display:block;margin-top:3px;padding-top:5px;border-top:1px solid #efe4cd;width:100%;font-size:7px;line-height:1.1;letter-spacing:.12em;font-weight:900;color:#7c8190;}
   @media(max-width:850px){
     .hero-art.hero-streak-art{flex:0 0 176px;width:176px;min-width:176px;height:154px;margin-right:0;transform:none;}
-    .streak-stairs-stage{width:135px;height:135px;top:10px;}
-    .streak-count-badge{width:52px;min-height:67px;top:42%;padding:6px 3px;border-radius:12px;}
-    .streak-flame{font-size:18px;}
-    .streak-count-badge strong{font-size:19px;}
+    .streak-stairs-stage{width:136px;height:136px;top:8px;left:0;}
+    .streak-count-badge{width:60px;min-height:82px;top:35%;padding:7px 4px;border-radius:15px;gap:2px;}
+    .streak-flame{width:27px;height:27px;font-size:19px;}
+    .streak-count-badge strong{font-size:22px;}
     .streak-count-badge small{font-size:7px;}
-    .streak-badge-caption{font-size:6px;}
-    .streak-spark-marker{width:clamp(19px,3vw,25px);}
+    .streak-badge-caption{font-size:6px;padding-top:4px;}
+    .streak-spark-marker{width:clamp(20px,3vw,25px);}
   }
   @media(max-width:540px){
     .hero{flex-wrap:wrap!important;align-items:flex-start!important;}
     .hero-copy{flex:1 1 100%!important;width:100%!important;max-width:100%!important;}
-    .hero-art.hero-streak-art{flex:0 0 100%;width:100%;min-width:0;height:136px;margin:4px 0 -2px;transform:none;}
-    .streak-stairs-stage{left:calc(50% - 75px);top:0;width:136px;height:136px;}
-    .streak-count-badge{right:calc(50% - 132px);top:28%;width:53px;min-height:65px;padding:6px 3px;}
-    .streak-spark-marker{width:clamp(19px,5.2vw,24px);}
+    .hero-art.hero-streak-art{flex:0 0 100%;width:100%;min-width:0;height:148px;margin:7px 0 0;transform:none;}
+    .streak-stairs-stage{left:calc(50% - 110px);top:0;width:136px;height:136px;}
+    .streak-count-badge{right:calc(50% - 105px);top:29%;width:62px;min-height:88px;padding:7px 4px;border-radius:16px;}
+    .streak-flame{width:28px;height:28px;font-size:20px;}
+    .streak-count-badge strong{font-size:23px;}
+    .streak-count-badge small{font-size:7.5px;}
+    .streak-badge-caption{font-size:6.5px;}
+    .streak-spark-marker{width:clamp(20px,5.4vw,25px);}
+    .stats{grid-template-columns:minmax(0,1fr)!important;width:100%;max-width:420px;margin:14px auto 0;gap:11px;}
+    .stat{width:100%;box-sizing:border-box;min-width:0;min-height:96px;padding:15px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow-wrap:anywhere;}
+    .stat label,.stat strong,.stat small{display:block;width:100%;text-align:center;}
+    .stat label{font-size:12px;line-height:1.35;}
+    .stat strong{font-size:24px;margin-top:6px;line-height:1.1;}
+    .stat small{font-size:11px;line-height:1.4;margin-top:3px;}
   }
-  @media(prefers-reduced-motion:reduce){.streak-spark-marker{transition:none;}}
+  @media(prefers-reduced-motion:reduce){.streak-spark-marker{transition:none!important;animation:none!important;}}
 </style>
 </head>
 <body>
@@ -881,7 +913,7 @@
             </div>
           </div><div class="hero-actions"><button class="btn btn-primary" onclick="switchView('practice');startQuiz('diagnostic')"><i data-lucide="play"></i> Test năng lực</button><button class="btn btn-light" onclick="switchView('schedule')"><i data-lucide="calendar-check"></i> Lập lịch học</button></div></div>
           <div class="hero-art hero-streak-art" aria-label="Tiến độ học liên tiếp">
-            <div class="streak-stairs-stage" id="studyStreakStage" data-step="1">
+            <div class="streak-stairs-stage" id="studyStreakStage" data-step="-1">
               <img class="hero-stairs-image" src="/mathspark-stairs.png" alt="" width="122" height="122">
               <img class="streak-spark-marker" id="studyStreakSpark" src="/mathspark-mark.png" alt="" width="28" height="27">
             </div>
@@ -1531,15 +1563,16 @@
 
   // Daily streak: a meaningful learning action counts once per local calendar day.
   // The marker caps at step 8, while the flame counter continues increasing.
+  const STUDY_STREAK_START={x:50,y:90}; // Floor beside the first small stair when the streak is 0.
   const STUDY_STREAK_STEPS={
-    1:{x:42,y:85}, // baseline start, matching the reference marker location
-    2:{x:67,y:66}, // small lower-right step
-    3:{x:84,y:49}, // next small step
-    4:{x:68,y:85}, // floor beside the first main stair
-    5:{x:60,y:49}, // first main stair level
-    6:{x:60,y:25}, // second main stair level
-    7:{x:86,y:25}, // upper platform
-    8:{x:86,y:12}  // summit; days beyond 8 stay here
+    1:{x:29,y:90}, // Day 1: the marked starting step.
+    2:{x:42,y:69}, // Day 2: the next small step.
+    3:{x:58,y:51}, // Day 3: the third small step.
+    4:{x:70,y:90}, // Day 4: floor beside the first large stair.
+    5:{x:68,y:69}, // Day 5: first large stair.
+    6:{x:86,y:51}, // Day 6: higher right-hand step.
+    7:{x:86,y:33}, // Day 7: near the upper landing.
+    8:{x:86,y:18}  // Day 8: summit; later days remain here.
   };
   function ensureStudyStreakState(){
     if(!state.studyStreak||typeof state.studyStreak!=='object'||Array.isArray(state.studyStreak))state.studyStreak={current:0,best:0,lastActiveDate:'',lastActivity:''};
@@ -1565,12 +1598,28 @@
     const countNode=document.getElementById('studyStreakCount');
     if(!stage||!marker||!badge||!countNode)return;
     const count=getVisibleStudyStreak();
-    const step=count>0?Math.min(8,count):1;
-    const pos=STUDY_STREAK_STEPS[step]||STUDY_STREAK_STEPS[1];
+    // 0 has its own floor position; once the first activity is recorded, Spark moves to step 1.
+    const step=Math.min(8,count);
+    const pos=step===0?STUDY_STREAK_START:(STUDY_STREAK_STEPS[step]||STUDY_STREAK_STEPS[8]);
+    const previousStep=stage.dataset.step;
+    const firstRender=stage.dataset.ready!=='true';
     stage.dataset.step=String(step);
-    marker.style.left=`${pos.x}%`;
-    marker.style.top=`${pos.y}%`;
-    marker.alt=`Biểu tượng Spark ở bậc ${step} trong 8 bậc`;
+    marker.alt=step===0?'Biểu tượng Spark ở nền cạnh cầu thang, chưa có streak':`Biểu tượng Spark ở bậc ${step} trong 8 bậc`;
+    if(firstRender){
+      marker.style.transition='none';
+      marker.style.left=`${pos.x}%`;
+      marker.style.top=`${pos.y}%`;
+      stage.dataset.ready='true';
+      requestAnimationFrame(()=>{marker.style.transition='';});
+    }else{
+      marker.style.left=`${pos.x}%`;
+      marker.style.top=`${pos.y}%`;
+      if(previousStep!==String(step)){
+        marker.classList.remove('streak-step-arrival');
+        void marker.offsetWidth;
+        marker.classList.add('streak-step-arrival');
+      }
+    }
     countNode.textContent=String(count);
     const label=`Chuỗi học liên tiếp: ${count} ngày`;
     badge.setAttribute('aria-label',label);
