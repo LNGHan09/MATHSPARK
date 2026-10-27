@@ -612,20 +612,51 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
     }
     const results = [];
     const essayInputs = [];
+    const mcqNeedingExplanation = [];
     for (const q of questions) {
       if (q.type === 'mcq') {
         const picked = String(answers[q.id] || '').trim().toUpperCase();
         const correct = Boolean(picked && q.correctAnswer && picked === q.correctAnswer);
-        results.push({ questionId:q.id, number:q.number, type:'mcq', answer:picked, correctAnswer:q.correctAnswer, correct, score:correct?q.points:0, maxScore:q.points, feedback:correct?'Chính xác.':`Đáp án đúng: ${q.correctAnswer || 'Cần giáo viên xác minh'}.`, solution:q.solution || '' });
+        const resultItem = { questionId:q.id, number:q.number, type:'mcq', answer:picked, correctAnswer:q.correctAnswer, correct, score:correct?q.points:0, maxScore:q.points, feedback:correct?'Chính xác.':(picked?`Bạn chọn ${picked} chưa chính xác. Đáp án đúng là ${q.correctAnswer || 'cần giáo viên xác minh'}.`:`Bạn chưa chọn đáp án. Đáp án đúng là ${q.correctAnswer || 'cần giáo viên xác minh'}.`), solution:q.solution || '' };
+        results.push(resultItem);
+        if (!correct && q.correctAnswer && !resultItem.solution) mcqNeedingExplanation.push({ q, picked, resultItem });
       } else {
         const questionFiles = byQuestionFile.get(String(q.id)) || [];
         if (questionFiles.length) essayInputs.push({ q, files:questionFiles });
         else results.push({ questionId:q.id, number:q.number, type:'essay', score:0, maxScore:q.points, feedback:'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '' });
       }
     }
+    if (mcqNeedingExplanation.length) {
+      try {
+        const questionPayload = mcqNeedingExplanation.map(({q,picked}) => ({
+          questionId:q.id, number:q.number, prompt:q.prompt,
+          options:(q.options||[]).map(option=>({label:option.label,text:option.text})),
+          studentAnswer:picked||'Chưa chọn', correctAnswer:q.correctAnswer
+        }));
+        const rawExplanations = await callOpenAI({
+          instructions:'Bạn là giáo viên Toán THCS. Với từng câu trắc nghiệm học sinh làm sai hoặc bỏ trống, hãy viết hướng dẫn giải rõ ràng theo từng bước, giải thích vì sao đáp án đúng là hợp lý và chỉ ra ngắn gọn vì sao lựa chọn của học sinh không đúng (nếu đã chọn). Không đoán dữ kiện ngoài đề. Công thức dùng LaTeX hợp lệ. Trả về duy nhất JSON hợp lệ, không markdown, theo mẫu {"results":[{"questionId":"...","explanation":"..."}]} .',
+          input:[{role:'user',content:[{type:'input_text',text:'Hãy giải thích các câu trắc nghiệm sau. Mỗi kết quả phải giữ nguyên questionId. Nếu đề thiếu dữ kiện khiến không thể kết luận, nêu rõ điều đó.\n'+JSON.stringify(questionPayload)}]}],
+          maxOutputTokens:Math.min(9000,1500+mcqNeedingExplanation.length*650), reasoningEffort:'low'
+        });
+        const parsedExplanations = parseModelJson(rawExplanations);
+        const byQuestion = new Map((Array.isArray(parsedExplanations.results)?parsedExplanations.results:[]).map(item=>[String(item.questionId),item]));
+        for (const {q,resultItem} of mcqNeedingExplanation) {
+          const explanation = safeText(byQuestion.get(String(q.id))?.explanation || '',5000);
+          if (explanation) resultItem.solution = explanation;
+          else resultItem.explanationUnavailable = true;
+        }
+      } catch (explanationError) {
+        console.warn('Could not generate missing MCQ explanations; submission will continue:',String(explanationError?.message||explanationError).slice(0,300));
+        for (const {resultItem} of mcqNeedingExplanation) resultItem.explanationUnavailable = true;
+      }
+    }
     if (essayInputs.length) {
       const dataUrl = f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
-      const content = [{ type:'input_text', text:`Chấm độc lập từng ảnh bài tự luận Toán dưới đây theo câu hỏi, lời giải tham khảo và rubric của từng câu. Thang điểm phải từ 0 đến maxScore tương ứng. Không gộp điểm giữa các câu. Đọc ảnh cẩn thận; nếu chữ không rõ, hạ độ chắc chắn và nói rõ. Công thức trong phản hồi dùng LaTeX hợp lệ, có dấu \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"..."}]}.` }];
+      const content = [{ type:'input_text', text:`Bạn là giáo viên chấm bài Toán lớp 9 kỹ lưỡng và công bằng. Chấm độc lập từng câu tự luận dựa trên đề, bài làm trong toàn bộ ảnh theo thứ tự trang, rubric và lời giải tham khảo. Thang điểm phải từ 0 đến maxScore; chấm theo quá trình, giữ điểm cho các bước đúng dù đáp số cuối sai, không trừ hai lần cho cùng một lỗi.
+
+YÊU CẦU NHẬN XÉT: Nếu bài làm có lỗi, hãy chỉ rõ lỗi ở bước nào hoặc phép biến đổi nào của học sinh, viết lại ngắn gọn phần học sinh đã làm sai, giải thích vì sao sai, hậu quả đối với các bước sau và cách sửa đúng. Không nhận xét chung chung như 'cần cẩn thận'. Phân biệt lỗi khái niệm, lập luận, dấu, tính toán, điều kiện và trình bày. Mảng mistakes phải chứa từng lỗi cụ thể, mỗi lỗi một mục. correctedApproach phải hướng dẫn sửa theo trình tự từng bước, dẫn tới kết quả đúng; feedback phải nêu căn cứ chấm điểm và phần làm đúng/sai. Nếu bài hoàn toàn đúng, mistakes để mảng rỗng và feedback chỉ cần xác nhận điểm mạnh/căn cứ điểm, không bịa lỗi. Nếu ảnh hoặc nét viết không đọc được, nêu rõ giới hạn và hạ confidence.
+
+Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ, không markdown bên ngoài, đúng dạng: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"..."}]}. Không làm tròn điểm quá mức và không được vượt điểm tối đa.` }];
       for (const {q,files:questionFiles} of essayInputs) {
         content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm)\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh được gửi theo thứ tự Trang 1 đến Trang ${questionFiles.length}; hãy ghép chúng thành một bài giải liên tục.` });
         for (let pageIndex=0; pageIndex<questionFiles.length; pageIndex++) {
@@ -656,7 +687,7 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
         const fallbackFeedback = gradingJsonFallback
           ? 'Bài làm đã được nhận, nhưng AI trả kết quả không đúng định dạng nên câu này đang chờ chấm lại/giáo viên kiểm tra. Bạn không cần tải lại ảnh.'
           : 'AI chưa trả về nhận xét riêng cho câu này.';
-        results.push({ questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points, confidence:item?.confidence || 'low', feedback:safeText(item?.feedback || fallbackFeedback, 6000), mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,400)):[], correctedApproach:safeText(item?.correctedApproach || '',3000), needsTeacherReview:!item || item?.confidence === 'low', solution:q.solution || '' });
+        results.push({ questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points, confidence:item?.confidence || 'low', feedback:safeText(item?.feedback || fallbackFeedback, 6000), mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,400)):[], correctedApproach:safeText(item?.correctedApproach || '',5000), needsTeacherReview:!item || item?.confidence === 'low', solution:q.solution || '' });
       }
     }
     results.sort((a,b)=>a.number-b.number);

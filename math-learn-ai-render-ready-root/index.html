@@ -1073,6 +1073,30 @@
   }
 </style>
 
+<style id="mathspark-exam-grading-overlay-styles">
+  .exam-grading-overlay{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:20px;background:rgba(20,29,51,.48);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+  .exam-grading-card{width:min(440px,100%);padding:27px 25px 24px;border:1px solid #e9ddc8;border-radius:22px;background:linear-gradient(145deg,#fffdf8,#f7f0e3);box-shadow:0 24px 80px rgba(18,29,55,.26);text-align:center;color:#1d2b50;animation:examGradingPop .22s ease-out both}
+  .exam-grading-spinner{width:48px;height:48px;margin:0 auto 17px;border:4px solid #e8dfcc;border-top-color:#1f2d52;border-right-color:#c4a15e;border-radius:50%;animation:examGradingSpin .8s linear infinite}
+  .exam-grading-card h2{font-size:20px;line-height:1.45;margin:0 0 8px;color:#1d2b50}
+  .exam-grading-card p{margin:0;color:#687084;font-size:13px;line-height:1.6}
+  .exam-grading-progress{height:5px;background:#eee5d5;border-radius:99px;overflow:hidden;margin-top:21px}
+  .exam-grading-progress span{display:block;width:38%;height:100%;border-radius:99px;background:linear-gradient(90deg,#c5a05a,#1f2d52);animation:examGradingProgress 1.35s ease-in-out infinite alternate}
+  @keyframes examGradingSpin{to{transform:rotate(360deg)}}
+  @keyframes examGradingProgress{from{transform:translateX(-10%);width:28%}to{transform:translateX(245%);width:45%}}
+  @keyframes examGradingPop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @media(max-width:560px){.exam-grading-card{padding:24px 19px 20px;border-radius:19px}.exam-grading-card h2{font-size:18px}}
+  @media(prefers-reduced-motion:reduce){.exam-grading-spinner,.exam-grading-progress span{animation-duration:3s}.exam-grading-card{animation:none}}
+</style>
+
+<style id="mathspark-exam-grading-result-styles">
+  .exam-answer-summary{padding:9px 11px;border-radius:9px;background:#f4f1ea;margin:9px 0!important}
+  .exam-answer-correct-text{font-weight:700;color:#26714e}
+  .exam-result-item.correct{background:#fffefa}
+  .exam-result-item.incorrect{background:#fffaf9}
+  .exam-result-solution{border-top:1px solid #e8e0d5;margin-top:12px;padding-top:11px}
+  .exam-result-solution>strong{display:block;color:#1d2b50;margin-bottom:5px}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1225,6 +1249,14 @@
       </section>
     </div>
   </div>
+</div>
+<div id="examGradingOverlay" class="exam-grading-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="examGradingTitle" aria-describedby="examGradingDescription">
+  <section class="exam-grading-card">
+    <div class="exam-grading-spinner" aria-hidden="true"></div>
+    <h2 id="examGradingTitle">Bài làm của bạn đang được chấm, xin đợi trong giây lát</h2>
+    <p id="examGradingDescription">AI đang kiểm tra đáp án và phân tích bài tự luận. Đừng đóng trang trong lúc này.</p>
+    <div class="exam-grading-progress" aria-hidden="true"><span></span></div>
+  </section>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -3149,11 +3181,23 @@ async function renderActiveExamQuestion(){
 async function moveExamQuestion(delta){if(!activeExam||activeExamFinished)return;activeExamIndex=Math.max(0,Math.min(activeExam.questions.length-1,activeExamIndex+delta));await renderActiveExamQuestion();document.getElementById('examRunnerPanel').scrollIntoView({behavior:'smooth',block:'start'})}
 async function renderExamDiagram(q,canvas){try{if(!window.pdfjsLib){await loadGradingScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjsLib');window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}const url=`/api/exams/${encodeURIComponent(activeExam.id)}/diagram/${encodeURIComponent(q.id)}`;const pdf=await window.pdfjsLib.getDocument(url).promise;const page=await pdf.getPage(1);const viewport=page.getViewport({scale:1.5});canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;return true}catch(e){console.warn('Could not render cropped exam diagram:',e?.message||e);return false}}
 function exitExamRunner(){if(!confirm('Thoát bài thi? Câu trả lời hiện tại sẽ không được chấm.'))return;activeExamFinished=true;clearInterval(activeExamTimer);activeExamTimer=null;leaveExamFullscreenMode();document.getElementById('examRunnerPanel').classList.add('hidden');showActiveExamBank();}
+function showExamGradingOverlay(){
+  const overlay=document.getElementById('examGradingOverlay');
+  if(!overlay)return;
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-busy','true');
+}
+function hideExamGradingOverlay(){
+  const overlay=document.getElementById('examGradingOverlay');
+  if(!overlay)return;
+  overlay.classList.add('hidden');
+  overlay.removeAttribute('aria-busy');
+}
 async function submitActiveExam(auto=false){
   if(!activeExam||activeExamFinished)return;
   const blank=activeExam.questions.filter(q=>q.type==='mcq'?!activeExamAnswers[q.id]:examEssayFilesForQuestion(q.id).length===0).length;
   if(!auto&&!confirm(`Bạn còn ${blank} câu chưa trả lời/nộp ảnh. Nộp bài để chấm?`))return;
-  const btn=document.getElementById('examSubmitBtn');btn.disabled=true;
+  const btn=document.getElementById('examSubmitBtn');btn.disabled=true;showExamGradingOverlay();
   document.getElementById('examSubmitStatus').textContent='Đang chấm trắc nghiệm và gửi các ảnh tự luận theo thứ tự trang đến AI…';
   const fd=new FormData();fd.append('answers',JSON.stringify(activeExamAnswers));fd.append('integrity',JSON.stringify(activeExamIntegrity));
   for(const [qid,value] of Object.entries(activeExamEssayFiles)){
@@ -3165,11 +3209,41 @@ async function submitActiveExam(auto=false){
     const r=await fetch(`/api/exams/${encodeURIComponent(activeExam.id)}/submit`,{method:'POST',headers,body:fd});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Không nộp được đề');
     activeExamFinished=true;activeExamLastResult=data;clearInterval(activeExamTimer);activeExamTimer=null;leaveExamFullscreenMode();
     state.examAttemptHistory=Array.isArray(state.examAttemptHistory)?state.examAttemptHistory:[];state.examAttemptHistory.unshift({examId:data.examId,title:data.examTitle,score:data.score,maxScore:data.maxScore,submittedAt:data.submittedAt});state.examAttemptHistory=state.examAttemptHistory.slice(0,30);recordStudyActivity('published-exam-submit');saveState();
-    await renderExamResult(data);document.getElementById('examRunnerPanel').classList.add('hidden');document.getElementById('examResultPanel').classList.remove('hidden');document.getElementById('examResultPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    await renderExamResult(data);document.getElementById('examRunnerPanel').classList.add('hidden');document.getElementById('examResultPanel').classList.remove('hidden');hideExamGradingOverlay();requestAnimationFrame(()=>document.getElementById('examResultPanel').scrollIntoView({behavior:'smooth',block:'start'}));
     showToast(data.savedToAccount?'Đã lưu kết quả thi vào tài khoản.':'Đã chấm xong. Đăng nhập để đồng bộ kết quả giữa các thiết bị.');
-  }catch(e){document.getElementById('examSubmitStatus').textContent=e.message||'Có lỗi khi nộp bài.';showToast('Chưa nộp được bài thi.')}finally{btn.disabled=false;}
+  }catch(e){document.getElementById('examSubmitStatus').textContent=e.message||'Có lỗi khi nộp bài.';showToast('Chưa nộp được bài thi.')}finally{hideExamGradingOverlay();btn.disabled=false;}
 }
-async function renderExamResult(data){document.getElementById('examResultSubheading').textContent=`${data.examTitle} · ${new Date(data.submittedAt).toLocaleString('vi-VN')}`;document.getElementById('examResultScore').textContent=`${data.score}/${data.maxScore}`;const host=document.getElementById('examResultDetails');host.innerHTML=(data.results||[]).map(item=>`<article class="exam-result-item ${item.type==='mcq'?(item.correct?'correct':'incorrect'):(item.needsTeacherReview?'pending':'')}" id="examResult-${examEscape(item.questionId)}"><h4>Câu ${item.number} · ${Number(item.score)||0}/${Number(item.maxScore)||0} điểm</h4><div data-result-feedback="${examEscape(item.questionId)}"></div>${item.type==='mcq'?`<p><strong>Đáp án của bạn:</strong> ${examEscape(item.answer||'Chưa chọn')} · <strong>Đáp án đúng:</strong> ${examEscape(item.correctAnswer||'Chưa xác định')}</p>`:''}${item.mistakes?.length?`<div><strong>Lỗi cần sửa:</strong> <span data-result-mistakes="${examEscape(item.questionId)}"></span></div>`:''}${item.correctedApproach?`<div><strong>Hướng sửa:</strong> <span data-result-approach="${examEscape(item.questionId)}"></span></div>`:''}${item.solution?`<div class="exam-result-solution"><strong>Lời giải tham khảo:</strong><div data-result-solution="${examEscape(item.questionId)}"></div></div>`:''}${item.needsTeacherReview?'<p class="exam-review-needed">Độ chắc chắn thấp; nên nhờ giáo viên kiểm tra.</p>':''}</article>`).join('')||'<p class="empty">Không có kết quả chi tiết.</p>';if(data.integrity&&Number(data.integrity.violations)>0){const note=document.createElement('div');note.className='exam-integrity-notice warning';note.textContent=`Ghi nhận trong phiên thi: ${Number(data.integrity.visibilityHidden)||0} lần rời tab, ${Number(data.integrity.fullscreenExits)||0} lần thoát toàn màn hình. Đây là cảnh báo hỗ trợ giám sát, không phải bằng chứng gian lận tuyệt đối.`;host.prepend(note)}for(const item of data.results||[]){const sel=(name)=>host.querySelector(`[data-${name}="${CSS.escape(String(item.questionId))}"]`);if(item.feedback&&sel('result-feedback'))await renderGradingMarkdown(item.feedback,sel('result-feedback'));if(item.mistakes?.length&&sel('result-mistakes'))await renderGradingMarkdown(item.mistakes.map(x=>`- ${x}`).join('\n'),sel('result-mistakes'));if(item.correctedApproach&&sel('result-approach'))await renderGradingMarkdown(item.correctedApproach,sel('result-approach'));if(item.solution&&sel('result-solution'))await renderGradingMarkdown(item.solution,sel('result-solution'))}}
+async function renderExamResult(data){
+  document.getElementById('examResultSubheading').textContent=`${data.examTitle} · ${new Date(data.submittedAt).toLocaleString('vi-VN')}`;
+  document.getElementById('examResultScore').textContent=`${data.score}/${data.maxScore}`;
+  const host=document.getElementById('examResultDetails');
+  host.innerHTML=(data.results||[]).map(item=>{
+    const isMCQ=item.type==='mcq';
+    const correctMCQ=isMCQ&&Boolean(item.correct);
+    const showSolution=!isMCQ||!item.correct;
+    const feedbackMarkup=isMCQ?'':`<div data-result-feedback="${examEscape(item.questionId)}"></div>`;
+    const answerMarkup=isMCQ?(correctMCQ
+      ?`<p class="exam-answer-summary"><strong>Kết quả:</strong> Bạn chọn ${examEscape(item.answer||'Chưa chọn')} — <span class="exam-answer-correct-text">Chính xác.</span></p>`
+      :`<p class="exam-answer-summary"><strong>Kết quả:</strong> Chưa chính xác · <strong>Bạn chọn:</strong> ${examEscape(item.answer||'Chưa chọn')} · <strong>Đáp án đúng:</strong> ${examEscape(item.correctAnswer||'Cần giáo viên xác minh')}</p>`):'';
+    const solutionMarkup=showSolution&&item.solution
+      ?`<div class="exam-result-solution"><strong>${isMCQ?'Hướng dẫn giải:':'Lời giải tham khảo:'}</strong><div data-result-solution="${examEscape(item.questionId)}"></div></div>`:'';
+    const unavailableMarkup=isMCQ&&!item.correct&&item.explanationUnavailable
+      ?'<p class="exam-review-needed">Chưa tạo được hướng dẫn giải tự động cho câu này; đáp án và điểm trắc nghiệm vẫn đã được ghi nhận.</p>':'';
+    return `<article class="exam-result-item ${isMCQ?(item.correct?'correct':'incorrect'):(item.needsTeacherReview?'pending':'')}" id="examResult-${examEscape(item.questionId)}"><h4>Câu ${item.number} · ${Number(item.score)||0}/${Number(item.maxScore)||0} điểm</h4>${feedbackMarkup}${answerMarkup}${item.mistakes?.length?`<div><strong>Lỗi cần sửa:</strong> <span data-result-mistakes="${examEscape(item.questionId)}"></span></div>`:''}${item.correctedApproach?`<div><strong>Hướng sửa:</strong> <span data-result-approach="${examEscape(item.questionId)}"></span></div>`:''}${solutionMarkup}${unavailableMarkup}${item.needsTeacherReview?'<p class="exam-review-needed">Độ chắc chắn thấp; nên nhờ giáo viên kiểm tra.</p>':''}</article>`;
+  }).join('')||'<p class="empty">Không có kết quả chi tiết.</p>';
+  if(data.integrity&&Number(data.integrity.violations)>0){
+    const note=document.createElement('div');note.className='exam-integrity-notice warning';
+    note.textContent=`Ghi nhận trong phiên thi: ${Number(data.integrity.visibilityHidden)||0} lần rời tab, ${Number(data.integrity.fullscreenExits)||0} lần thoát toàn màn hình. Đây là cảnh báo hỗ trợ giám sát, không phải bằng chứng gian lận tuyệt đối.`;
+    host.prepend(note);
+  }
+  for(const item of data.results||[]){
+    const sel=(name)=>host.querySelector(`[data-${name}="${CSS.escape(String(item.questionId))}"]`);
+    if(item.feedback&&sel('result-feedback'))await renderGradingMarkdown(item.feedback,sel('result-feedback'));
+    if(item.mistakes?.length&&sel('result-mistakes'))await renderGradingMarkdown(item.mistakes.map(x=>`- ${x}`).join('\n'),sel('result-mistakes'));
+    if(item.correctedApproach&&sel('result-approach'))await renderGradingMarkdown(item.correctedApproach,sel('result-approach'));
+    if(item.solution&&sel('result-solution')&&(item.type!=='mcq'||!item.correct))await renderGradingMarkdown(item.solution,sel('result-solution'));
+  }
+}
 function backToExamBank(){activeExamFinished=true;leaveExamFullscreenMode();document.getElementById('examResultPanel').classList.add('hidden');document.getElementById('examRunnerPanel').classList.add('hidden');showActiveExamBank()}
 function retakeActiveExam(){if(!activeExam)return;document.getElementById('examResultPanel').classList.add('hidden');requestExamFullscreenFromGesture();startPublishedExam(activeExam.id)}
 
