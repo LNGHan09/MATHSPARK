@@ -1507,6 +1507,20 @@
   }
 </style>
 
+
+<style id="mathspark-weekly-collapse-control-polish">
+  #view-schedule .calendar-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+  #view-schedule .calendar-collapse-toggle{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:38px;padding:5px 13px 5px 7px;border:1px solid #e5d9c5;border-radius:999px;background:linear-gradient(180deg,#fffdf9 0%,#fbf6eb 100%);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(35,48,83,.055);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+  #view-schedule .calendar-collapse-toggle:hover{background:#fffdf9;border-color:#cbb995;box-shadow:0 5px 13px rgba(35,48,83,.09);transform:translateY(-1px)}
+  #view-schedule .calendar-collapse-toggle:active{transform:translateY(0);box-shadow:0 2px 5px rgba(35,48,83,.06)}
+  #view-schedule .calendar-collapse-toggle:focus-visible{outline:3px solid rgba(42,64,109,.25);outline-offset:3px}
+  #view-schedule .calendar-collapse-icon-wrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 25px;width:25px;height:25px;border-radius:50%;background:#f0e8d8;color:#26365d;transition:background .18s ease,color .18s ease}
+  #view-schedule .calendar-collapse-chevron{display:block;width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(225deg);margin-top:4px;transition:transform .22s ease,margin .22s ease}
+  #view-schedule .calendar-collapse-toggle[aria-expanded="false"] .calendar-collapse-icon-wrap{background:#26365d;color:#fffdf8}
+  #view-schedule .calendar-collapse-toggle[aria-expanded="false"] .calendar-collapse-chevron{transform:rotate(45deg);margin-top:0}
+  @media(max-width:700px){#view-schedule .calendar-head-actions{gap:8px}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1578,7 +1592,7 @@
       <section id="view-schedule" class="view">
         <div class="page-head"><div><p class="eyebrow">Kế hoạch cá nhân</p><h1>Lịch trình tự học</h1></div></div>
         <div class="countdown-card schedule-countdown-card"><div class="countdown-content"><div class="countdown-title" id="scheduleCountdownTitle">Thi vào lớp 10</div><div id="scheduleCountdown" class="countdown-units countdown-flip-units" role="timer" aria-live="off" aria-label="Đếm ngược đến kỳ thi"><div class="countdown-empty">Đang tải thời gian…</div></div><div id="scheduleCountdownMeta" class="countdown-meta"></div></div></div>
-        <div class="panel" id="weeklyAvailabilityPanel"><div class="section-head calendar-section-head" style="margin:0 0 8px"><div><h2>Lịch rảnh trong tuần</h2><p class="calendar-section-subtitle">Tô hồng các khung giờ bạn rảnh. Lịch sẽ tự lặp lại vào các tuần sau; bạn có thể sửa bất cứ lúc nào.</p></div><div class="calendar-head-actions"><span class="pill neutral" id="weekRange">Tuần này</span><button type="button" class="calendar-collapse-toggle" id="calendarCollapseToggle" aria-expanded="true" aria-controls="calendarCollapsibleContent" onclick="toggleScheduleCalendar()"><span id="calendarCollapseArrow" aria-hidden="true">⌃</span><span id="calendarCollapseLabel">Thu gọn</span></button></div></div>
+        <div class="panel" id="weeklyAvailabilityPanel"><div class="section-head calendar-section-head" style="margin:0 0 8px"><div><h2>Lịch rảnh trong tuần</h2><p class="calendar-section-subtitle">Tô hồng các khung giờ bạn rảnh. Lịch sẽ tự lặp lại vào các tuần sau; bạn có thể sửa bất cứ lúc nào.</p></div><div class="calendar-head-actions"><span class="pill neutral" id="weekRange">Tuần này</span><button type="button" class="calendar-collapse-toggle" id="calendarCollapseToggle" aria-expanded="true" aria-controls="calendarCollapsibleContent" title="Thu gọn lịch rảnh" onclick="toggleScheduleCalendar()"><span class="calendar-collapse-icon-wrap" aria-hidden="true"><span class="calendar-collapse-chevron" id="calendarCollapseArrow"></span></span><span id="calendarCollapseLabel">Thu gọn lịch</span></button></div></div>
           <div id="calendarCollapsibleContent" class="calendar-collapsible-content"><div class="calendar-tools" role="group" aria-label="Cách đánh dấu thời gian"><span>Đánh dấu:</span><button type="button" class="btn calendar-mode active" data-slot-mode="free" onclick="setCalendarPaintMode('free')">Rảnh · màu hồng</button><button type="button" class="btn calendar-mode" data-slot-mode="busy" onclick="setCalendarPaintMode('busy')">Bận</button><button type="button" class="btn calendar-mode" data-slot-mode="unset" onclick="setCalendarPaintMode('unset')">Bỏ chọn</button><span class="calendar-saved-note"><i data-lucide="repeat-2"></i> Tự lưu và lặp lại hằng tuần</span></div>
           <div class="calendar-wrap" aria-label="Lịch chọn thời gian trong tuần"><div id="calendarGrid" class="calendar"></div></div><p class="calendar-help">Kéo trên các ô để tô nhanh nhiều khung giờ. Ô màu hồng là giờ rảnh được dùng để lập lộ trình; ô xám là bận, ô trắng là chưa chọn.</p></div>
           <div class="form-row schedule-form-row" style="margin-top:18px"><div class="field"><label for="targetScore">Mục tiêu điểm số (0–10)</label><input id="targetScore" type="number" min="0" max="10" step="0.25" inputmode="decimal" value="8" /></div><div class="field"><label for="examName">Tên kỳ thi</label><input id="examName" type="text" maxlength="80" placeholder="Thi vào lớp 10" /></div></div><div class="field schedule-date-field" style="margin-top:13px"><label for="examDate">Ngày thi dự kiến</label><input type="date" id="examDate" /></div>
@@ -2321,7 +2335,7 @@
   function toggleScheduleCalendar(){
     state.scheduleCalendarCollapsed=!Boolean(state.scheduleCalendarCollapsed);
     const content=document.getElementById('calendarCollapsibleContent'),button=document.getElementById('calendarCollapseToggle'),arrow=document.getElementById('calendarCollapseArrow'),label=document.getElementById('calendarCollapseLabel');
-    if(content)content.hidden=Boolean(state.scheduleCalendarCollapsed);if(button)button.setAttribute('aria-expanded',String(!state.scheduleCalendarCollapsed));if(arrow)arrow.textContent=state.scheduleCalendarCollapsed?'⌄':'⌃';if(label)label.textContent=state.scheduleCalendarCollapsed?'Mở lịch':'Thu gọn';saveState();
+    if(content)content.hidden=Boolean(state.scheduleCalendarCollapsed);if(button){button.setAttribute('aria-expanded',String(!state.scheduleCalendarCollapsed));button.title=state.scheduleCalendarCollapsed?'Mở lại lịch rảnh':'Thu gọn lịch rảnh'}if(label)label.textContent=state.scheduleCalendarCollapsed?'Mở lịch':'Thu gọn lịch';saveState();
   }
   function migrateLegacyAvailability(){
     if(!Array.isArray(state.busySlots))state.busySlots=[];
@@ -2353,7 +2367,7 @@
       days.forEach((day,index)=>{const key=`${dateKey(day)}_${session.id}`,status=slotState(key),label=status==='busy'?'bận':status==='free'?'rảnh':'chưa chọn';markup+=`<button type="button" class="slot ${status==='busy'?'busy':status==='free'?'free':''}" data-slot="${key}" data-day="${weekdayNames[index]}" data-session="${session.time}" data-state="${status}" aria-label="${weekdayNames[index]} ${session.time}: ${label}" aria-pressed="${status!=='unset'}" title="${weekdayNames[index]} ${session.time}: ${label}"></button>`});
     });
     markup+='<div class="calendar-end-time"><strong>24:00</strong></div>'+days.map(()=>'<div class="calendar-end-fill" aria-hidden="true"></div>').join('');
-    document.getElementById('calendarGrid').innerHTML=markup;setCalendarPaintMode(calendarPaintMode);const calendarContent=document.getElementById('calendarCollapsibleContent'),collapseButton=document.getElementById('calendarCollapseToggle'),collapseArrow=document.getElementById('calendarCollapseArrow'),collapseLabel=document.getElementById('calendarCollapseLabel');if(calendarContent)calendarContent.hidden=Boolean(state.scheduleCalendarCollapsed);if(collapseButton)collapseButton.setAttribute('aria-expanded',String(!state.scheduleCalendarCollapsed));if(collapseArrow)collapseArrow.textContent=state.scheduleCalendarCollapsed?'⌄':'⌃';if(collapseLabel)collapseLabel.textContent=state.scheduleCalendarCollapsed?'Mở lịch':'Thu gọn';
+    document.getElementById('calendarGrid').innerHTML=markup;setCalendarPaintMode(calendarPaintMode);const calendarContent=document.getElementById('calendarCollapsibleContent'),collapseButton=document.getElementById('calendarCollapseToggle'),collapseArrow=document.getElementById('calendarCollapseArrow'),collapseLabel=document.getElementById('calendarCollapseLabel');if(calendarContent)calendarContent.hidden=Boolean(state.scheduleCalendarCollapsed);if(collapseButton){collapseButton.setAttribute('aria-expanded',String(!state.scheduleCalendarCollapsed));collapseButton.title=state.scheduleCalendarCollapsed?'Mở lại lịch rảnh':'Thu gọn lịch rảnh'}if(collapseLabel)collapseLabel.textContent=state.scheduleCalendarCollapsed?'Mở lịch':'Thu gọn lịch';
     document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('examName').value=state.examName||'';const intensityInput=document.getElementById('studyIntensity');if(intensityInput)intensityInput.value=state.studyIntensity||'balanced';
     if(state.examDate)document.getElementById('examDate').value=state.examDate;else if(!document.getElementById('examDate').value){const e=new Date();e.setMonth(e.getMonth()+7);document.getElementById('examDate').value=dateKey(e)}
     renderPlan();renderCountdowns();
