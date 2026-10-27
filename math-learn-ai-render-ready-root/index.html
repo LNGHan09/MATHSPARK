@@ -1107,6 +1107,87 @@
     .topbar, .layout, .content { width: 100%; max-width: none; min-width: 0; }
   }
 </style>
+
+<style id="mathspark-home-hero-countdown-streak-layout-v11">
+  /* Desktop only: align the countdown width with the greeting and move the streak badge below the enlarged staircase. */
+  @media (min-width: 980px) {
+    #view-home .hero-copy #homeCountdown.home-countdown-card {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      width: min(100%, 460px) !important;
+      max-width: 460px !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+      padding: 14px 18px 12px !important;
+    }
+    #view-home #homeCountdown .countdown-content {
+      display: flex !important;
+      flex: 0 1 auto !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: center !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      gap: 10px !important;
+    }
+    #view-home #homeCountdown .countdown-title,
+    #view-home #homeCountdown .countdown-meta {
+      width: 100% !important;
+      max-width: 100% !important;
+      text-align: center !important;
+    }
+    #view-home #homeCountdown .countdown-units.countdown-flip-units {
+      display: flex !important;
+      flex: 0 1 auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      justify-content: space-around !important;
+      gap: clamp(8px, 1.2vw, 14px) !important;
+      margin: 0 !important;
+    }
+
+    #view-home .hero-art.hero-streak-art {
+      height: 370px !important;
+      min-height: 370px !important;
+      overflow: visible !important;
+    }
+    #view-home .streak-stairs-stage {
+      left: calc(100% - 278px) !important;
+      top: 0 !important;
+      width: 235px !important;
+      height: 235px !important;
+      transform: scale(1.18) !important;
+      transform-origin: center center !important;
+    }
+    #view-home .streak-count-badge {
+      left: calc(100% - 199px) !important;
+      right: auto !important;
+      top: 277px !important;
+      transform: none !important;
+      width: 76px !important;
+      min-height: 90px !important;
+      padding: 7px 6px !important;
+      border-radius: 17px !important;
+      gap: 2px !important;
+    }
+    #view-home .streak-flame {
+      width: 27px !important;
+      height: 27px !important;
+      font-size: 20px !important;
+    }
+    #view-home .streak-count-badge strong { font-size: 24px !important; }
+    #view-home .streak-count-badge small { font-size: 7.5px !important; }
+    #view-home .streak-badge-caption {
+      font-size: 6.5px !important;
+      padding-top: 4px !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
