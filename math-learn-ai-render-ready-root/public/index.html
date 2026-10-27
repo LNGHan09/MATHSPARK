@@ -1242,6 +1242,133 @@
   }
 </style>
 
+
+
+<style id="mathspark-home-hero-layout-v13">
+  /* Desktop home hero: vertically stack the two actions to the left of a centered countdown,
+     while keeping the staircase/streak group on the right. Mobile rules are intentionally untouched. */
+  @media (min-width: 980px) {
+    #view-home .hero {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.72fr) minmax(280px, 1fr) !important;
+      align-items: center !important;
+      justify-content: stretch !important;
+      column-gap: clamp(14px, 1.6vw, 22px) !important;
+      row-gap: 0 !important;
+    }
+
+    #view-home .hero-copy {
+      display: grid !important;
+      grid-template-columns: minmax(124px, 146px) minmax(0, 1fr) !important;
+      grid-template-rows: auto auto auto minmax(144px, auto) !important;
+      column-gap: clamp(12px, 1.2vw, 16px) !important;
+      row-gap: 9px !important;
+      align-content: center !important;
+      align-items: center !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      grid-column: 1 !important;
+      grid-row: 1 !important;
+    }
+
+    #view-home .hero-copy > .eyebrow {
+      grid-column: 1 / -1 !important;
+      grid-row: 1 !important;
+      margin: 0 !important;
+      align-self: end !important;
+    }
+    #view-home .hero-copy > h1 {
+      grid-column: 1 / -1 !important;
+      grid-row: 2 !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+    #view-home .hero-copy > p:not(.eyebrow) {
+      grid-column: 1 / -1 !important;
+      grid-row: 3 !important;
+      max-width: min(100%, 760px) !important;
+      margin: 0 0 2px !important;
+    }
+
+    #view-home .hero-copy #homeCountdown.home-countdown-card {
+      grid-column: 2 !important;
+      grid-row: 4 !important;
+      justify-self: center !important;
+      align-self: center !important;
+      width: min(100%, 460px) !important;
+      max-width: 460px !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+    }
+
+    #view-home .hero-copy > .hero-actions {
+      grid-column: 1 !important;
+      grid-row: 4 !important;
+      justify-self: stretch !important;
+      align-self: center !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: center !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      gap: 10px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    #view-home .hero-copy > .hero-actions > .btn {
+      box-sizing: border-box !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      min-height: 44px !important;
+      padding: 9px 7px !important;
+      font-size: 12.5px !important;
+      white-space: nowrap !important;
+      justify-content: center !important;
+      margin: 0 !important;
+    }
+
+    /* Move the complete staircase group down slightly; keep the streak bar aligned to its base. */
+    #view-home .hero-art.hero-streak-art {
+      grid-column: 2 !important;
+      grid-row: 1 !important;
+      justify-self: stretch !important;
+      align-self: center !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      height: 390px !important;
+      min-height: 390px !important;
+      margin: 0 !important;
+      overflow: visible !important;
+    }
+    #view-home .streak-stairs-stage {
+      left: calc(100% - 278px) !important;
+      top: 20px !important;
+      width: 235px !important;
+      height: 235px !important;
+      transform: scale(1.18) !important;
+      transform-origin: center center !important;
+    }
+    #view-home .streak-count-badge {
+      left: calc(100% - 299px) !important;
+      right: auto !important;
+      top: 286px !important;
+      transform: none !important;
+      width: 277px !important;
+      min-height: 58px !important;
+      height: 58px !important;
+    }
+
+    /* Bring the four countdown groups a little closer without joining them together. */
+    #view-home #homeCountdown .countdown-units.countdown-flip-units {
+      justify-content: center !important;
+      gap: clamp(10px, 1vw, 13px) !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
