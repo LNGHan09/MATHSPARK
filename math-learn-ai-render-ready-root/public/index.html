@@ -1097,6 +1097,16 @@
   .exam-result-solution>strong{display:block;color:#1d2b50;margin-bottom:5px}
 </style>
 
+
+<style id="mathspark-desktop-full-width-fix">
+  /* Desktop only: let MathSpark use the full browser width. Mobile rules remain unchanged. */
+  @media (min-width: 851px) {
+    html, body { width: 100%; min-width: 0; }
+    body { background: var(--paper); }
+    .app { width: 100%; max-width: none; min-width: 0; margin: 0; box-shadow: none; }
+    .topbar, .layout, .content { width: 100%; max-width: none; min-width: 0; }
+  }
+</style>
 </head>
 <body>
 <div class="app">
