@@ -1475,6 +1475,38 @@
   }
 </style>
 
+
+<style id="mathspark-weekly-availability-v2">
+  #view-schedule .calendar-section-head{align-items:flex-start;gap:12px;flex-wrap:wrap}
+  #view-schedule .calendar-section-head>div:first-child{min-width:0;flex:1 1 300px}
+  #view-schedule .calendar-section-subtitle{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+  #view-schedule .calendar-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+  #view-schedule .calendar-collapse-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 11px;border:1px solid var(--line);border-radius:10px;background:#fffdf9;color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+  #view-schedule .calendar-collapse-toggle:hover{background:#f5f1e9;border-color:#cfc6b8}
+  #view-schedule .calendar-collapse-toggle:focus-visible,#view-schedule .calendar-mode:focus-visible{outline:3px solid rgba(42,64,109,.28);outline-offset:2px}
+  #view-schedule .calendar-collapse-toggle span:first-child{font-size:17px;line-height:1;min-width:12px}
+  #view-schedule .calendar-collapsible-content[hidden]{display:none!important}
+  #view-schedule .calendar-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:13px 0 10px;color:var(--muted);font-size:12px;font-weight:700}
+  #view-schedule .calendar-mode{min-height:34px;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:#fffdf9;color:var(--ink);font-size:12px;font-weight:700;cursor:pointer;box-shadow:none}
+  #view-schedule .calendar-mode.active[data-slot-mode="free"]{background:#f9dce6!important;border-color:#e6a9bf!important;color:#873550!important;box-shadow:inset 0 0 0 1px rgba(176,71,110,.08)!important}
+  #view-schedule .calendar-mode.active[data-slot-mode="busy"]{background:#e6e8ed!important;border-color:#c8cdd7!important;color:#454d5d!important}
+  #view-schedule .calendar-mode.active[data-slot-mode="unset"]{background:#eeeae3!important;border-color:#cbc4b8!important;color:#4f5663!important}
+  #view-schedule .calendar-saved-note{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font-weight:500;color:#6c7280}
+  #view-schedule .calendar-saved-note svg{width:14px;height:14px}
+  #view-schedule .calendar-help{margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
+  #view-schedule .slot{background:#fffdf9!important;border-color:#e1ddd6!important;color:#707786!important}
+  #view-schedule .slot.free{background:#f8dce6!important;border-color:#e4a7bb!important;color:#8c3552!important;box-shadow:inset 0 0 0 1px rgba(178,68,105,.06)!important}
+  #view-schedule .slot.busy{background:#e5e7ec!important;border-color:#c7ccd6!important;color:#555d6c!important}
+  #view-schedule .slot.is-touching{box-shadow:inset 0 0 0 2px rgba(35,48,83,.22)!important}
+  @media(max-width:700px){
+    #view-schedule .calendar-section-head{align-items:flex-start}
+    #view-schedule .calendar-head-actions{width:100%;justify-content:space-between}
+    #view-schedule .calendar-saved-note{flex-basis:100%;margin-left:0}
+    #view-schedule .calendar-tools{gap:6px}
+    #view-schedule .calendar-mode{padding:7px 8px;font-size:11px}
+  }
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -1546,8 +1578,9 @@
       <section id="view-schedule" class="view">
         <div class="page-head"><div><p class="eyebrow">Kế hoạch cá nhân</p><h1>Lịch trình tự học</h1></div></div>
         <div class="countdown-card schedule-countdown-card"><div class="countdown-content"><div class="countdown-title" id="scheduleCountdownTitle">Thi vào lớp 10</div><div id="scheduleCountdown" class="countdown-units countdown-flip-units" role="timer" aria-live="off" aria-label="Đếm ngược đến kỳ thi"><div class="countdown-empty">Đang tải thời gian…</div></div><div id="scheduleCountdownMeta" class="countdown-meta"></div></div></div>
-        <div class="panel"><div class="section-head" style="margin:0 0 8px"><div><h2>Lịch rảnh trong tuần</h2></div><span class="pill neutral" id="weekRange">Tuần này</span></div>
-          <div class="calendar-wrap" aria-label="Lịch chọn thời gian trong tuần"><div id="calendarGrid" class="calendar"></div></div>
+        <div class="panel" id="weeklyAvailabilityPanel"><div class="section-head calendar-section-head" style="margin:0 0 8px"><div><h2>Lịch rảnh trong tuần</h2><p class="calendar-section-subtitle">Tô hồng các khung giờ bạn rảnh. Lịch sẽ tự lặp lại vào các tuần sau; bạn có thể sửa bất cứ lúc nào.</p></div><div class="calendar-head-actions"><span class="pill neutral" id="weekRange">Tuần này</span><button type="button" class="calendar-collapse-toggle" id="calendarCollapseToggle" aria-expanded="true" aria-controls="calendarCollapsibleContent" onclick="toggleScheduleCalendar()"><span id="calendarCollapseArrow" aria-hidden="true">⌃</span><span id="calendarCollapseLabel">Thu gọn</span></button></div></div>
+          <div id="calendarCollapsibleContent" class="calendar-collapsible-content"><div class="calendar-tools" role="group" aria-label="Cách đánh dấu thời gian"><span>Đánh dấu:</span><button type="button" class="btn calendar-mode active" data-slot-mode="free" onclick="setCalendarPaintMode('free')">Rảnh · màu hồng</button><button type="button" class="btn calendar-mode" data-slot-mode="busy" onclick="setCalendarPaintMode('busy')">Bận</button><button type="button" class="btn calendar-mode" data-slot-mode="unset" onclick="setCalendarPaintMode('unset')">Bỏ chọn</button><span class="calendar-saved-note"><i data-lucide="repeat-2"></i> Tự lưu và lặp lại hằng tuần</span></div>
+          <div class="calendar-wrap" aria-label="Lịch chọn thời gian trong tuần"><div id="calendarGrid" class="calendar"></div></div><p class="calendar-help">Kéo trên các ô để tô nhanh nhiều khung giờ. Ô màu hồng là giờ rảnh được dùng để lập lộ trình; ô xám là bận, ô trắng là chưa chọn.</p></div>
           <div class="form-row schedule-form-row" style="margin-top:18px"><div class="field"><label for="targetScore">Mục tiêu điểm số (0–10)</label><input id="targetScore" type="number" min="0" max="10" step="0.25" inputmode="decimal" value="8" /></div><div class="field"><label for="examName">Tên kỳ thi</label><input id="examName" type="text" maxlength="80" placeholder="Thi vào lớp 10" /></div></div><div class="field schedule-date-field" style="margin-top:13px"><label for="examDate">Ngày thi dự kiến</label><input type="date" id="examDate" /></div>
           <div class="field schedule-date-field" style="margin-top:13px"><label for="studyIntensity">Cường độ học Toán</label><select id="studyIntensity"><option value="light">Nhẹ nhàng · 3 buổi/tuần · khoảng 60 phút/buổi</option><option value="balanced" selected>Cân bằng · 4 buổi/tuần · khoảng 60 phút/buổi</option><option value="intensive">Tăng tốc · 5 buổi/tuần · khoảng 90 phút/buổi</option><option value="gifted">Học sinh giỏi · 6 buổi/tuần · khoảng 90 phút/buổi</option></select><small id="studyIntensityHelp">AI cân đối lịch rảnh, mục tiêu điểm, kết quả làm bài và phần kiến thức cần củng cố.</small></div>
           <div class="button-row" style="margin-top:15px"><button class="btn btn-primary" id="generatePlanBtn" onclick="generateStudyPlan()"><i data-lucide="sparkles"></i> AI lập lịch học cá nhân</button><button class="btn btn-light" onclick="clearBusySlots()">Xóa đánh dấu lịch</button></div>
@@ -1713,12 +1746,12 @@
   }
 
   function loadState(){
-    const fallback={busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,studyStreak:{current:0,best:0,lastActiveDate:'',lastActivity:''},plan:[],gradingHistory:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
+    const fallback={busySlots:[],weeklyFreeSlots:[],weeklyBusySlots:[],weeklyAvailabilityVersion:0,scheduleCalendarCollapsed:false,diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,studyStreak:{current:0,best:0,lastActiveDate:'',lastActivity:''},plan:[],gradingHistory:[],history:['Đạo hàm','Hàm số bậc hai','Bộ đề số 1','Hình học không gian'],lastQuery:''};
     try{return {...fallback,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return fallback}
   }
   function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){console.warn('Could not persist local state',e)}updateStats();if(typeof renderStudyStreak==='function')renderStudyStreak();if(currentStudent&&!applyingCloudState)scheduleCloudStateSave()}
 
-  function freshStudentState(){return {busySlots:[],diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,studyStreak:{current:0,best:0,lastActiveDate:'',lastActivity:''},plan:[],gradingHistory:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
+  function freshStudentState(){return {busySlots:[],weeklyFreeSlots:[],weeklyBusySlots:[],weeklyAvailabilityVersion:0,scheduleCalendarCollapsed:false,diagnosticDone:false,diagnosticPercent:null,diagnosticDate:null,targetScore:'8',examDate:'',examName:'',studyIntensity:'balanced',completedLessons:[],favoriteDocuments:[],completedPlanIds:[],weakTopics:[],latestPracticeScore:null,lastPracticeDate:null,studyStreak:{current:0,best:0,lastActiveDate:'',lastActivity:''},plan:[],gradingHistory:[],history:['Đề thi vào 10','Hàm số bậc hai','Hệ phương trình'],lastQuery:''}}
   function scheduleCloudStateSave(){
     if(!supabaseClient||!currentStudent||applyingCloudState)return;
     clearTimeout(cloudSaveTimer);
@@ -2168,6 +2201,7 @@
   const weekdayNames=['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
   const defaultTopics=['Phương trình và hệ phương trình','Hàm số bậc hai và đồ thị','Hệ thức lượng trong tam giác vuông','Đường tròn','Biểu thức đại số và căn thức','Bài toán thực tế'];
   let pointerSelection=null,suppressSlotClick=false;
+  let calendarPaintMode = 'free';
   function mondayOf(d){const x=new Date(d);const wd=(x.getDay()+6)%7;x.setDate(x.getDate()-wd);x.setHours(0,0,0,0);return x}
   function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 
@@ -2253,15 +2287,57 @@
   }
   function planIdFor(date,sessionId){return `plan_${String(date||'').replace(/[^0-9]/g,'')}_${sessionId||'study'}`}
   function blockIdFor(date,sessionId,endMinute){return `plan_${String(date||'').replace(/[^0-9]/g,'')}_block_${sessionId||'study'}_e${String(endMinute||0).padStart(4,'0')}`}
-  function slotState(key){return state.busySlots.includes(key)?'busy':'free'}
-  function setSlotState(key,status){state.busySlots=state.busySlots.filter(value=>value!==key&&value!==`${key}__free`);if(status==='busy')state.busySlots.push(key)}
-  function paintSlotButton(button,status){if(!button)return;button.classList.toggle('busy',status==='busy');button.dataset.state=status;const label=status==='busy'?'bận':'rảnh';button.setAttribute('aria-label',`${button.dataset.day} ${button.dataset.session}: ${label}`);button.setAttribute('aria-pressed',String(status==='busy'));button.title=`${button.dataset.day} ${button.dataset.session}: ${label}`}
+  function weeklyPatternKey(key){
+    const match=String(key||'').match(/^(\d{4}-\d{2}-\d{2})_(h\d{2}m\d{2})$/);if(!match)return '';
+    const date=new Date(`${match[1]}T12:00:00`);if(Number.isNaN(date.getTime()))return '';
+    const weekday=(date.getDay()+6)%7;return `${weekday}_${match[2]}`;
+  }
+  function slotState(key){
+    const patternKey=weeklyPatternKey(key);if(!patternKey)return 'unset';
+    if((state.weeklyFreeSlots||[]).includes(patternKey))return 'free';
+    if((state.weeklyBusySlots||[]).includes(patternKey))return 'busy';
+    return 'unset';
+  }
+  function setSlotState(key,status){
+    const patternKey=weeklyPatternKey(key);if(!patternKey)return;
+    if(!Array.isArray(state.weeklyFreeSlots))state.weeklyFreeSlots=[];
+    if(!Array.isArray(state.weeklyBusySlots))state.weeklyBusySlots=[];
+    state.weeklyFreeSlots=state.weeklyFreeSlots.filter(value=>value!==patternKey);
+    state.weeklyBusySlots=state.weeklyBusySlots.filter(value=>value!==patternKey);
+    if(status==='free')state.weeklyFreeSlots.push(patternKey);
+    else if(status==='busy')state.weeklyBusySlots.push(patternKey);
+    state.weeklyFreeSlots=[...new Set(state.weeklyFreeSlots)];state.weeklyBusySlots=[...new Set(state.weeklyBusySlots)];
+  }
+  function paintSlotButton(button,status){
+    if(!button)return;button.classList.toggle('busy',status==='busy');button.classList.toggle('free',status==='free');button.dataset.state=status;
+    const label=status==='busy'?'bận':status==='free'?'rảnh':'chưa chọn';button.setAttribute('aria-label',`${button.dataset.day} ${button.dataset.session}: ${label}`);button.setAttribute('aria-pressed',String(status!=='unset'));button.title=`${button.dataset.day} ${button.dataset.session}: ${label}`;
+  }
+  function setCalendarPaintMode(mode){
+    calendarPaintMode=['free','busy','unset'].includes(mode)?mode:'free';
+    document.querySelectorAll('#view-schedule [data-slot-mode]').forEach(button=>{const active=button.dataset.slotMode===calendarPaintMode;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active))});
+    const grid=document.getElementById('calendarGrid');if(grid)grid.setAttribute('data-paint-mode',calendarPaintMode);
+  }
+  function nextPaintStatus(key){const current=slotState(key);if(calendarPaintMode==='unset')return 'unset';return current===calendarPaintMode?'unset':calendarPaintMode}
+  function toggleScheduleCalendar(){
+    state.scheduleCalendarCollapsed=!Boolean(state.scheduleCalendarCollapsed);
+    const content=document.getElementById('calendarCollapsibleContent'),button=document.getElementById('calendarCollapseToggle'),arrow=document.getElementById('calendarCollapseArrow'),label=document.getElementById('calendarCollapseLabel');
+    if(content)content.hidden=Boolean(state.scheduleCalendarCollapsed);if(button)button.setAttribute('aria-expanded',String(!state.scheduleCalendarCollapsed));if(arrow)arrow.textContent=state.scheduleCalendarCollapsed?'⌄':'⌃';if(label)label.textContent=state.scheduleCalendarCollapsed?'Mở lịch':'Thu gọn';saveState();
+  }
   function migrateLegacyAvailability(){
     if(!Array.isArray(state.busySlots))state.busySlots=[];
     if(!Array.isArray(state.completedPlanIds))state.completedPlanIds=[];
     let changed=false;const normalizedBusy=new Set();
     state.busySlots.forEach(value=>{const text=String(value),match=text.match(/^(\d{4}-\d{2}-\d{2})_(h(\d{2})(?:m(00|30))?|morning|afternoon|evening)(__free)?$/);if(!match){if(!text.endsWith('__free'))normalizedBusy.add(text);return}if(match[5])return;const hour=match[3]?Number(match[3]):match[2]==='morning'?8:match[2]==='afternoon'?15:20;if(match[4])normalizedBusy.add(text);else for(const minute of [0,30])normalizedBusy.add(`${match[1]}_h${String(hour).padStart(2,'0')}m${String(minute).padStart(2,'0')}`)});
     const nextBusy=[...normalizedBusy];if(JSON.stringify(nextBusy)!==JSON.stringify(state.busySlots)){state.busySlots=nextBusy;changed=true}
+    if(Number(state.weeklyAvailabilityVersion||0)<1){
+      const migratedFree=new Set(Array.isArray(state.weeklyFreeSlots)?state.weeklyFreeSlots:[]);
+      // Older versions stored the highlighted cells as date-specific busySlots. In the new
+      // weekly template, those formerly highlighted cells become the reusable "Rảnh" pattern.
+      state.busySlots.forEach(value=>{const match=String(value).match(/^(\d{4}-\d{2}-\d{2})_(h\d{2}m\d{2})$/);if(!match)return;const date=new Date(`${match[1]}T12:00:00`);if(Number.isNaN(date.getTime()))return;const weekday=(date.getDay()+6)%7;migratedFree.add(`${weekday}_${match[2]}`)});
+      state.weeklyFreeSlots=[...migratedFree];state.weeklyBusySlots=Array.isArray(state.weeklyBusySlots)?state.weeklyBusySlots:[];state.weeklyAvailabilityVersion=1;changed=true;
+    }
+    if(!Array.isArray(state.weeklyFreeSlots)){state.weeklyFreeSlots=[];changed=true}if(!Array.isArray(state.weeklyBusySlots)){state.weeklyBusySlots=[];changed=true}
+    if(typeof state.scheduleCalendarCollapsed!=='boolean'){state.scheduleCalendarCollapsed=false;changed=true}
     const expandOldPlanId=id=>{const match=String(id).match(/^plan_(\d{8})_(h(\d{2})(?:m(00|30))?|morning|afternoon|evening)$/);if(!match)return [id];if(match[4])return [id];const hour=match[3]?Number(match[3]):match[2]==='morning'?8:match[2]==='afternoon'?15:20;return [0,30].map(minute=>`plan_${match[1]}_h${String(hour).padStart(2,'0')}m${String(minute).padStart(2,'0')}`)};
     const oldCompleted=[...state.completedPlanIds],migratedCompleted=[...new Set(oldCompleted.flatMap(expandOldPlanId))];if(JSON.stringify(migratedCompleted)!==JSON.stringify(oldCompleted)){state.completedPlanIds=migratedCompleted;changed=true}
     if(Array.isArray(state.plan)&&state.plan.length&&state.plan.some(item=>!Array.isArray(item.blocks))){const previousDone=new Set(state.completedPlanIds),rebuilt=buildLocalPlan(availableSlots()),newDone=[];rebuilt.forEach(day=>day.blocks.forEach(block=>{if(block.slotIds.length&&block.slotIds.every(slotId=>previousDone.has(planIdFor(day.date,slotId))))newDone.push(block.id)}));state.completedPlanIds=[...new Set([...state.completedPlanIds,...newDone])];state.plan=rebuilt;state.planSource='adaptive';changed=true}
@@ -2274,26 +2350,26 @@
     days.forEach((day,index)=>{const isToday=dateKey(day)===dateKey(now);markup+=`<div class="cal-head ${isToday?'today':''}" ${isToday?'aria-current="date"':''}>${short[index]}<br>${day.getDate()}/${day.getMonth()+1}</div>`});
     sessions.forEach(session=>{
       markup+=`<div class="time-label">${session.minute===0?`<strong>${session.label}</strong>`:''}</div>`;
-      days.forEach((day,index)=>{const key=`${dateKey(day)}_${session.id}`,status=slotState(key),label=status==='busy'?'bận':'rảnh';markup+=`<button type="button" class="slot ${status==='busy'?'busy':''}" data-slot="${key}" data-day="${weekdayNames[index]}" data-session="${session.time}" data-state="${status}" aria-label="${weekdayNames[index]} ${session.time}: ${label}" aria-pressed="${status==='busy'}" title="${weekdayNames[index]} ${session.time}: ${label}"></button>`});
+      days.forEach((day,index)=>{const key=`${dateKey(day)}_${session.id}`,status=slotState(key),label=status==='busy'?'bận':status==='free'?'rảnh':'chưa chọn';markup+=`<button type="button" class="slot ${status==='busy'?'busy':status==='free'?'free':''}" data-slot="${key}" data-day="${weekdayNames[index]}" data-session="${session.time}" data-state="${status}" aria-label="${weekdayNames[index]} ${session.time}: ${label}" aria-pressed="${status!=='unset'}" title="${weekdayNames[index]} ${session.time}: ${label}"></button>`});
     });
     markup+='<div class="calendar-end-time"><strong>24:00</strong></div>'+days.map(()=>'<div class="calendar-end-fill" aria-hidden="true"></div>').join('');
-    document.getElementById('calendarGrid').innerHTML=markup;
+    document.getElementById('calendarGrid').innerHTML=markup;setCalendarPaintMode(calendarPaintMode);const calendarContent=document.getElementById('calendarCollapsibleContent'),collapseButton=document.getElementById('calendarCollapseToggle'),collapseArrow=document.getElementById('calendarCollapseArrow'),collapseLabel=document.getElementById('calendarCollapseLabel');if(calendarContent)calendarContent.hidden=Boolean(state.scheduleCalendarCollapsed);if(collapseButton)collapseButton.setAttribute('aria-expanded',String(!state.scheduleCalendarCollapsed));if(collapseArrow)collapseArrow.textContent=state.scheduleCalendarCollapsed?'⌄':'⌃';if(collapseLabel)collapseLabel.textContent=state.scheduleCalendarCollapsed?'Mở lịch':'Thu gọn';
     document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('examName').value=state.examName||'';const intensityInput=document.getElementById('studyIntensity');if(intensityInput)intensityInput.value=state.studyIntensity||'balanced';
     if(state.examDate)document.getElementById('examDate').value=state.examDate;else if(!document.getElementById('examDate').value){const e=new Date();e.setMonth(e.getMonth()+7);document.getElementById('examDate').value=dateKey(e)}
     renderPlan();renderCountdowns();
   }
-  function persistCalendarEdit(){if(Array.isArray(state.plan)&&state.plan.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';const count=state.plan.reduce((sum,day)=>sum+day.blocks.length,0);document.getElementById('planStatus').innerHTML=count?'<span class="dot live"></span> Lộ trình đã tự cập nhật theo các khoảng Rảnh vừa chọn.':'<span class="dot"></span> Tuần này đang được đánh dấu Bận ở tất cả khung giờ.'}saveState();renderCalendar()}
+  function persistCalendarEdit(){if(Array.isArray(state.plan)&&state.plan.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive';const count=state.plan.reduce((sum,day)=>sum+day.blocks.length,0);document.getElementById('planStatus').innerHTML=count?'<span class="dot live"></span> Lộ trình đã tự cập nhật theo các khoảng Rảnh vừa chọn.':'<span class="dot"></span> Chưa có khung giờ Rảnh nào được tô hồng trong mẫu tuần.'}saveState();renderCalendar()}
   function setupCalendarInteraction(){
     const grid=document.getElementById('calendarGrid');const findSlot=(x,y)=>{const el=document.elementFromPoint(x,y);return el?.closest?.('.slot[data-slot]')||null};
-    grid.addEventListener('pointerdown',event=>{const button=event.target.closest('.slot[data-slot]');if(!button||(event.pointerType==='mouse'&&event.button!==0))return;event.preventDefault();pointerSelection={pointerId:event.pointerId,target:slotState(button.dataset.slot)==='busy'?'free':'busy',lastKey:null,changed:false};suppressSlotClick=true;try{grid.setPointerCapture(event.pointerId)}catch{}applyPointerSlot(button)});
+    grid.addEventListener('pointerdown',event=>{const button=event.target.closest('.slot[data-slot]');if(!button||(event.pointerType==='mouse'&&event.button!==0))return;event.preventDefault();pointerSelection={pointerId:event.pointerId,target:nextPaintStatus(button.dataset.slot),lastKey:null,changed:false};suppressSlotClick=true;try{grid.setPointerCapture(event.pointerId)}catch{}applyPointerSlot(button)});
     function applyPointerSlot(button){if(!pointerSelection||!button||pointerSelection.lastKey===button.dataset.slot)return;pointerSelection.lastKey=button.dataset.slot;setSlotState(button.dataset.slot,pointerSelection.target);paintSlotButton(button,pointerSelection.target);button.classList.add('is-touching');pointerSelection.changed=true}
     grid.addEventListener('pointermove',event=>{if(!pointerSelection||event.pointerId!==pointerSelection.pointerId)return;event.preventDefault();applyPointerSlot(findSlot(event.clientX,event.clientY))});
     function finishPointer(event){if(!pointerSelection||event.pointerId!==pointerSelection.pointerId)return;const changed=pointerSelection.changed;pointerSelection=null;try{if(grid.hasPointerCapture(event.pointerId))grid.releasePointerCapture(event.pointerId)}catch{}if(changed)persistCalendarEdit();setTimeout(()=>{suppressSlotClick=false},0)}
     grid.addEventListener('pointerup',finishPointer);grid.addEventListener('pointercancel',finishPointer);
-    grid.addEventListener('click',event=>{const button=event.target.closest('.slot[data-slot]');if(!button)return;if(suppressSlotClick){event.preventDefault();return}if(event.detail===0){const target=slotState(button.dataset.slot)==='busy'?'free':'busy';setSlotState(button.dataset.slot,target);persistCalendarEdit()}});
+    grid.addEventListener('click',event=>{const button=event.target.closest('.slot[data-slot]');if(!button)return;if(suppressSlotClick){event.preventDefault();return}if(event.detail===0){setSlotState(button.dataset.slot,nextPaintStatus(button.dataset.slot));persistCalendarEdit()}});
   }
-  function toggleSlot(key){setSlotState(key,slotState(key)==='busy'?'free':'busy');persistCalendarEdit()}
-  function clearBusySlots(){state.busySlots=[];if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive'}saveState();renderCalendar();showToast('Đã xóa các mốc Bận; khoảng trắng được tính là Rảnh.')}
+  function toggleSlot(key){setSlotState(key,nextPaintStatus(key));persistCalendarEdit()}
+  function clearBusySlots(){state.weeklyFreeSlots=[];state.weeklyBusySlots=[];state.weeklyAvailabilityVersion=1;if(state.plan?.length){state.plan=buildLocalPlan(availableSlots());state.planSource='adaptive'}saveState();renderCalendar();showToast('Đã xóa các lựa chọn Rảnh/Bận trong mẫu tuần.')}
   function slotIsBusy(key){return slotState(key)==='busy'}
   function slotIsFree(key){return slotState(key)==='free'}
   function availableSlots(){const monday=mondayOf(new Date()),arr=[];for(let i=0;i<7;i++){const day=new Date(monday);day.setDate(monday.getDate()+i);for(const session of sessions){const key=`${dateKey(day)}_${session.id}`;if(slotIsFree(key))arr.push({date:new Date(day),day:i,session,key,explicitFree:true})}}return arr}
@@ -2471,7 +2547,7 @@
   async function generateStudyPlan(options={}){
     const btn=document.getElementById('generatePlanBtn'),silent=!!options.silent,localOnly=!!options.localOnly;
     if(!silent){state.targetScore=String(Math.min(10,Math.max(0,Number(document.getElementById('targetScore').value||8))));state.examDate=document.getElementById('examDate').value;state.examName=document.getElementById('examName').value.trim();state.studyIntensity=currentStudyIntensity();document.getElementById('targetScore').value=state.targetScore;saveState()}
-    const slots=availableSlots(),localPlan=buildLocalPlan(slots),baseBlocks=localPlan.flatMap(day=>day.blocks);if(!baseBlocks.length){state.plan=localPlan;state.planSource='adaptive';document.getElementById('planStatus').innerHTML='<span class="dot"></span> Không tìm thấy khung Rảnh phù hợp trong 06:00–22:00. Hãy bỏ đánh dấu Bận ở các giờ bạn có thể học.';renderPlan();saveState();if(!silent)showToast('Chưa có khung giờ học phù hợp.');return false}
+    const slots=availableSlots(),localPlan=buildLocalPlan(slots),baseBlocks=localPlan.flatMap(day=>day.blocks);if(!baseBlocks.length){state.plan=localPlan;state.planSource='adaptive';document.getElementById('planStatus').innerHTML='<span class="dot"></span> Chưa có khung Rảnh phù hợp. Hãy chọn chế độ “Rảnh · màu hồng” rồi tô các giờ bạn có thể học.';renderPlan();saveState();if(!silent)showToast('Chưa có khung giờ học phù hợp.');return false}
     if(!silent){btn.disabled=true;btn.innerHTML='<span class="loading"></span> AI đang lập lịch…'}
     let aiFailureReason='';
     try{
@@ -2492,7 +2568,7 @@
     const el=document.getElementById('studyPlan'),subtitle=document.getElementById('planSubtitle'),badge=document.getElementById('planBadge'),plan=Array.isArray(state.plan)?state.plan:[],blocks=plan.flatMap(day=>Array.isArray(day.blocks)?day.blocks:[]),doneIds=Array.isArray(state.completedPlanIds)?state.completedPlanIds:[];
     if(!plan.length){el.className='empty';el.textContent='Chưa có lộ trình.';subtitle.textContent='';badge.className='pill neutral';badge.textContent='Chưa tạo';return}
     el.className='plan-list';badge.className='pill '+(state.planSource==='ai'?'green':state.planSource==='adaptive'?'green':'gold');badge.textContent=state.planSource==='ai'?'AI cá nhân hóa':state.planSource==='adaptive'?'Đã thích ứng':'Lịch gợi ý';const daysLeft=examDaysLeft(),gap=Math.max(0,Number(state.targetScore||8)-currentScore());subtitle.textContent=`${blocks.length} buổi/tuần · ${STUDY_INTENSITIES[currentStudyIntensity()].label} · mục tiêu ${formatScore(state.targetScore)}/10 · cách ${gap.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')} điểm${daysLeft===null?'':` · còn ${daysLeft} ngày đến thi`}`;
-    el.innerHTML=plan.map(day=>`<article class="plan-item day-plan"><div class="day-plan-head"><div class="day-plan-title"><strong>${escapeHtml(day.day||'')}</strong><span>${escapeHtml(day.date||'')}</span></div><span class="pill ${day.blocks.length?'green':'neutral'}">${day.blocks.length?`${day.blocks.length} khoảng học`:'Không có giờ Rảnh'}</span></div>${day.blocks.length?`<div class="day-timeline">${day.blocks.map(block=>{const done=doneIds.includes(block.id),questionCount=Number(block.questionCount||4);return `<div class="timeline-row ${done?'is-done':''}"><div class="timeline-time"><strong>${escapeHtml(block.time)}</strong><small>${Number(block.duration||30)} phút</small></div><div class="timeline-content"><strong>${escapeHtml(block.topic||'Ôn tập Toán')}</strong><div class="plan-meta"><span class="pill neutral">${escapeHtml(block.level||'Cơ bản')}</span><span>${questionCount} câu gợi ý</span></div><small>${escapeHtml(block.task||'Ôn kiến thức và luyện tập.')}</small></div><label class="plan-check"><input type="checkbox" data-plan-done="${escapeHtml(block.id)}" ${done?'checked':''} aria-label="Đánh dấu ${escapeHtml(block.topic||'buổi học')} đã hoàn thành"><span>Đã hoàn thành</span></label></div>`}).join('')}</div>`:'<p class="day-no-free">Không có khoảng Rảnh trong ngày này; hãy bỏ đánh dấu Bận nếu muốn thêm thời gian học.</p>'}</article>`).join('');
+    el.innerHTML=plan.map(day=>`<article class="plan-item day-plan"><div class="day-plan-head"><div class="day-plan-title"><strong>${escapeHtml(day.day||'')}</strong><span>${escapeHtml(day.date||'')}</span></div><span class="pill ${day.blocks.length?'green':'neutral'}">${day.blocks.length?`${day.blocks.length} khoảng học`:'Không có giờ Rảnh'}</span></div>${day.blocks.length?`<div class="day-timeline">${day.blocks.map(block=>{const done=doneIds.includes(block.id),questionCount=Number(block.questionCount||4);return `<div class="timeline-row ${done?'is-done':''}"><div class="timeline-time"><strong>${escapeHtml(block.time)}</strong><small>${Number(block.duration||30)} phút</small></div><div class="timeline-content"><strong>${escapeHtml(block.topic||'Ôn tập Toán')}</strong><div class="plan-meta"><span class="pill neutral">${escapeHtml(block.level||'Cơ bản')}</span><span>${questionCount} câu gợi ý</span></div><small>${escapeHtml(block.task||'Ôn kiến thức và luyện tập.')}</small></div><label class="plan-check"><input type="checkbox" data-plan-done="${escapeHtml(block.id)}" ${done?'checked':''} aria-label="Đánh dấu ${escapeHtml(block.topic||'buổi học')} đã hoàn thành"><span>Đã hoàn thành</span></label></div>`}).join('')}</div>`:'<p class="day-no-free">Chưa chọn khoảng Rảnh trong ngày này; hãy tô hồng các giờ bạn có thể học.</p>'}</article>`).join('');
     el.querySelectorAll('[data-plan-done]').forEach(input=>input.addEventListener('change',()=>togglePlanDone(input.dataset.planDone,input.checked)));
   }
   function togglePlanDone(id,done){if(!Array.isArray(state.completedPlanIds))state.completedPlanIds=[];state.completedPlanIds=done?[...new Set([...state.completedPlanIds,id])]:state.completedPlanIds.filter(value=>value!==id);if(done)recordStudyActivity('plan-complete');saveState();renderPlan();showToast(done?'Đã cập nhật tiến độ buổi học và streak.':'Đã bỏ đánh dấu hoàn thành.')}
