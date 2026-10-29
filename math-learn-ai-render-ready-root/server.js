@@ -207,7 +207,13 @@ function examStudentView(row) {
   return {
     id: String(row.id), title: row.title, description: row.description || '', bankType: row.bank_type || 'exam',
     durationMinutes: Number(row.duration_minutes || 120), questionCount: Array.isArray(row.questions) ? row.questions.length : 0,
-    questionTypes: [...new Set((row.questions || []).map(q => ['multi_select','multiple_select','multiple_choice_multiple_answers','multiple-choice-multiple-answers'].includes(String(q.type || '').toLowerCase()) || /nhiều.*đáp án|multiple.*answers/i.test(String(q.type || '')) ? 'Trắc nghiệm nhiều đáp án' : (['mcq','multiple_choice','multiple-choice','trắc nghiệm'].includes(String(q.type || '').toLowerCase()) || (Array.isArray(q.options) && q.options.length >= 4) ? 'Trắc nghiệm' : 'Tự luận')))],
+    questionTypes: [...new Set((row.questions || []).map(q => {
+      const type = String(q.type || '').toLowerCase();
+      if (['multi_select','multiple_select','multiple_choice_multiple_answers','multiple-choice-multiple-answers'].includes(type) || /nhiều.*đáp án|multiple.*answers/i.test(type)) return 'Trắc nghiệm nhiều đáp án';
+      if (['short_answer','short-answer','short_answer_photo','short-answer-photo','short_response','fill_in','fill_blank','trả lời ngắn','tra loi ngan'].includes(type)) return 'Trả lời ngắn · chụp ảnh';
+      if (['mcq','multiple_choice','multiple-choice','single_choice','single-choice','trắc nghiệm'].includes(type) || (Array.isArray(q.options) && q.options.length >= 4)) return 'Trắc nghiệm một đáp án';
+      return 'Tự luận · chụp ảnh';
+    }))],
     createdAt: row.created_at
   };
 }
@@ -250,7 +256,9 @@ function normalizeExamQuestions(input) {
   };
   const explicitMultiTypes = new Set(['multi_select','multi-select','multiple_select','multiple-select','multiple_answers','multiple-answers','multiple_choice_multiple_answers','multiple-choice-multiple-answers','trắc nghiệm nhiều đáp án','trac nghiem nhieu dap an']);
   const explicitSingleTypes = new Set(['mcq','multiple_choice','multiple-choice','single_choice','single-choice','trắc nghiệm','trac nghiem','trắc nghiệm một đáp án','trac nghiem mot dap an']);
-  const explicitEssayTypes = new Set(['essay','short_answer','short-answer','written','tự luận','tu luan']);
+  // Short-answer questions are distinct from full essays, but both use photo submissions.
+  const explicitShortAnswerTypes = new Set(['short_answer','short-answer','short_answer_photo','short-answer-photo','short_response','short-response','fill_in','fill-in','fill_blank','fill-blank','trả lời ngắn','tra loi ngan','điền đáp án','dien dap an','điền từ','dien tu','câu trả lời ngắn','cau tra loi ngan']);
+  const explicitEssayTypes = new Set(['essay','written','free_response','free-response','tự luận','tu luan']);
 
   return input.map((raw, index) => {
     const q = raw && typeof raw === 'object' ? raw : {};
@@ -267,11 +275,16 @@ function normalizeExamQuestions(input) {
     const correctLabels = normalizeChoiceLabels(rawCorrectValue);
     const hasChoiceOptions = rawOptions.length >= 2;
     const explicitlyMulti = explicitMultiTypes.has(qType) || /nhiều.*đáp án|multiple.*answers/.test(qType);
+    const explicitlySingle = explicitSingleTypes.has(qType);
+    const explicitlyShortAnswer = explicitShortAnswerTypes.has(qType) || /(trả lời ngắn|tra loi ngan|điền đáp án|dien dap an|điền từ|dien tu)/.test(qType);
     const explicitlyEssay = explicitEssayTypes.has(qType);
     let type;
-    if (explicitlyEssay) type = 'essay';
-    else if (explicitlyMulti || correctLabels.length > 1) type = 'multi_select';
-    else if (explicitSingleTypes.has(qType) || hasChoiceOptions) type = 'mcq';
+    if (explicitlyShortAnswer) type = 'short_answer';
+    else if (explicitlyEssay) type = 'essay';
+    else if (explicitlyMulti) type = 'multi_select';
+    else if (explicitlySingle) type = 'mcq';
+    else if (correctLabels.length > 1) type = 'multi_select';
+    else if (hasChoiceOptions) type = 'mcq';
     else type = 'essay';
 
     const hasOptionE = rawOptions.length > 4 || labelsInOptions.includes('E') || correctLabels.includes('E');
@@ -301,10 +314,17 @@ function normalizeExamQuestions(input) {
     const correctAnswers = type === 'multi_select'
       ? correctLabels
       : (type === 'mcq' ? (correctAnswer ? [correctAnswer] : []) : []);
+    const expectedAnswer = normalizeExamMathText(safeText(q.expectedAnswer ?? q.expected_answer ?? q.shortAnswer ?? q.answerText ?? (type === 'short_answer' && typeof q.answer === 'string' ? q.answer : ''), 2200));
+    const rawKeywords = q.answerKeywords ?? q.answer_keywords ?? '';
+    const answerKeywords = Array.isArray(rawKeywords)
+      ? rawKeywords.slice(0, 20).map(value => normalizeExamMathText(safeText(value, 180))).filter(Boolean)
+      : String(rawKeywords).split(/[;,\n]/).map(value => normalizeExamMathText(safeText(value, 180))).filter(Boolean).slice(0, 20);
+    const sourceQuestionNumber = safeText(q.sourceQuestionNumber ?? q.source_question_number ?? q.originalNumber ?? q.original_number ?? '', 40);
     const providedAnswerSource = String(q.answerSource || '').trim();
+    const hasAnyReferenceAnswer = Boolean(correctAnswers.length || correctAnswer || expectedAnswer);
     const answerSource = ['answer_key','ai_solved','unknown','admin_verified'].includes(providedAnswerSource)
       ? providedAnswerSource
-      : ((correctAnswers.length || correctAnswer) ? 'ai_solved' : 'unknown');
+      : (hasAnyReferenceAnswer ? 'ai_solved' : 'unknown');
     const baseId = safeText(q.id || `q${number}`, 50).replace(/[^A-Za-z0-9_-]/g, '') || `q${number}`;
     let uniqueId = baseId, suffix = 2;
     while (usedQuestionIds.has(uniqueId)) uniqueId = `${baseId}_${suffix++}`;
@@ -321,10 +341,11 @@ function normalizeExamQuestions(input) {
     const skillCode = MathSparkDiagnosticEngine.validSkillCode(q.skillCode || q.skill_code);
     const parallelKey = safeText(q.parallelKey || q.parallel_key || '', 120).replace(/[\r\n\t]/g, ' ').trim();
     return {
-      id: uniqueId, number, type,
+      id: uniqueId, number, type, sourceQuestionNumber,
       prompt: normalizeExamMathText(safeText(q.prompt, 9000)), options,
-      correctAnswer, correctAnswers, answerSource,
-      needsReview: q.needsReview !== false,
+      correctAnswer, correctAnswers, expectedAnswer, answerKeywords, answerSource,
+      // If the model labels a single-choice item but emits multiple answer keys, retain single-choice behavior and force admin review.
+      needsReview: q.needsReview !== false || (explicitlySingle && correctLabels.length > 1),
       solution: normalizeExamMathText(safeText(q.solution, 4000)),
       rubric: normalizeExamMathText(safeText(q.rubric, 3000)),
       points: Math.max(0, Math.min(100, Number(q.points) || (type === 'mcq' || type === 'multi_select' ? 1 : 2))),
@@ -411,18 +432,18 @@ app.post('/api/admin/exams/:id/analyze', requireAdmin, requireSupabase, aiRateLi
     const buffer = Buffer.from(await blob.arrayBuffer());
     if (!buffer.length) return res.status(400).json({ error: 'Tệp PDF rỗng.' });
     const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
-    const prompt = `Bạn đang phân tích một đề Toán Việt Nam để đưa vào kho thi thử trực tuyến MathSpark. Hãy đọc PDF theo đúng thứ tự trang và tách thành từng câu độc lập, kể cả câu có các ý nhỏ a), b), c) thì giữ ý nhỏ bên trong câu chính. Trả duy nhất một JSON object có trường questions là mảng; không thêm Markdown bên ngoài JSON.
-Mỗi câu có cấu trúc: {"number":1,"type":"mcq, multi_select hoặc essay","prompt":"nội dung câu hỏi, bảo toàn dữ kiện và ý nhỏ","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D cho câu một đáp án hoặc chuỗi rỗng","correctAnswers":["A","C"],"answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải hoặc giải thích đáp án","rubric":"thang điểm từng ý cho câu tự luận","points":1,"partialCredit":false,"distractorMap":{"B":"L04"},"skillCode":"KT03","parallelKey":"stable-format-key","sourcePage":1,"hasDiagram":false,"diagramBbox":[100,200,800,900] hoặc null,"diagramDescription":"mô tả hình nếu có"}.
+    const prompt = `Bạn đang số hóa một đề Toán Việt Nam cho MathSpark. Đọc PDF theo đúng thứ tự trang và vị trí trên trang. Mục tiêu là tạo ĐÚNG 20 câu hỏi từ nguồn, giữ thứ tự gốc; không đổi chỗ, không gộp hai câu độc lập, không tách các ý a), b), c) của cùng một câu thành câu mới.
+Trả duy nhất JSON object có trường questions là mảng. Nếu PDF có từ 20 câu độc lập trở lên, lấy 20 câu đầu tiên theo thứ tự xuất hiện trong tài liệu. Nếu PDF có dưới 20 câu độc lập, không bịa thêm: trả các câu đọc được và thêm validationError giải thích không đủ 20 câu; hệ thống sẽ không lưu kết quả thiếu.
+Mỗi câu có cấu trúc: {"number":1,"sourceQuestionNumber":"số/nhãn gốc trong PDF nếu đọc được","type":"mcq | multi_select | short_answer | essay","prompt":"nội dung câu hỏi nguyên vẹn","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D cho câu chỉ chọn một đáp án","correctAnswers":["A","C"],"expectedAnswer":"đáp án ngắn tham chiếu cho short_answer","answerKeywords":["từ khóa/chấp nhận tương đương nếu có"],"answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải hoặc hướng dẫn chấm","rubric":"thang điểm từng ý","points":1,"partialCredit":false,"distractorMap":{"B":"L04"},"skillCode":"KT03","parallelKey":"stable-format-key","sourcePage":1,"origin":"source","hasDiagram":false,"diagramBbox":null,"diagramDescription":""}.
 QUY TẮC QUAN TRỌNG:
-1) Giữ chính xác dữ kiện, ký hiệu, số liệu, đơn vị, cấu trúc và thứ tự câu. Mảng questions phải theo đúng thứ tự đọc PDF từ trang đầu đến trang cuối, trên xuống dưới. Không sắp xếp lại theo số câu AI tự nhận diện; number là thứ tự 1,2,3,... theo vị trí trong mảng. Không tự thêm đề hoặc bỏ ý.
-2) Trường type là mcq khi chỉ có một đáp án đúng; dùng multi_select khi đề yêu cầu chọn nhiều đáp án hoặc có từ hai phương án đúng; nếu không có lựa chọn thì essay. Với multi_select, điền correctAnswers là mảng nhãn đáp án đúng và để correctAnswer rỗng. Với hệ phương trình, dùng đúng môi trường LaTeX \begin{cases}...\\...\end{cases}; mọi dấu gạch chéo ngược phải được escape đúng trong JSON. Không được bỏ dấu \ hoặc dấu ngoặc nhọn của begin/end.
-3) Với mọi công thức trong prompt và options, dùng LaTeX hợp lệ và luôn bọc công thức inline bằng \\( ... \\), công thức riêng dòng bằng \\[ ... \\]. Trong JSON, escape dấu gạch chéo ngược đúng. Viết số mũ x^{2}, m^{2}; phân số \\frac{a}{b}; căn \\sqrt{...}; đơn vị trong toán dùng \\text{...}. Không để mã LaTeX thô ngoài dấu phân cách.
-4) Chỉ lấy đáp án từ đáp án chính thức/đáp án cuối nếu thấy rõ. Nếu đề không có đáp án, có thể tự giải để đề xuất correctAnswer hoặc correctAnswers, đặt answerSource="ai_solved", needsReview=true để admin xác minh. Nếu không chắc, để đáp án rỗng, answerSource="unknown", needsReview=true. Không đoán mơ hồ.
-5) Với câu tự luận, tạo rubric theo các bước hợp lý và giải thích tham khảo. needsReview=true để admin duyệt trước khi đăng.
-6) sourcePage là số trang PDF, bắt đầu từ 1. Nếu câu có hình, đặt hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] là hình chữ nhật CHỈ BAO QUANH HÌNH vẽ trên trang, tọa độ nguyên từ 0 đến 1000 theo [trái,trên,phải,dưới]; nếu không có hình thì null. Nếu không chắc bbox, để null và mô tả hình.
-7) Câu trắc nghiệm có 4 options A–D (cho phép E nếu PDF có 5 lựa chọn). Nếu có nhiều đáp án đúng, type=multi_select và dùng correctAnswers. Gắn distractorMap theo nhãn và mã L01–L09 chỉ khi có căn cứ; gắn skillCode KT01–KT07 khi xác định được. Gắn cùng parallelKey cho câu tương đương cùng dạng/kỹ năng nhưng khác số liệu. Không bịa mã và không đưa các metadata này lên giao diện học sinh.
-8) Không quá 100 câu. Nếu PDF có đáp án ở cuối, đối chiếu theo đúng số câu. Không suy diễn nếu ký hiệu/hình không đọc rõ.
-Đề: ${row.title}. Thời gian: ${row.duration_minutes} phút. Nếu có thể, dựa vào đề để suy ra môn/lớp/chuyên đề nhưng đừng thay nội dung gốc.`;
+1) Bảo toàn dữ kiện, số liệu, ký hiệu, đơn vị, dấu câu, hình và ý nhỏ. Mảng questions phải theo đúng thứ tự đọc PDF từ trang đầu đến cuối, trên xuống dưới. number là số thứ tự làm bài 1–20; sourceQuestionNumber giữ nhãn câu gốc nếu đọc được. Không sắp xếp theo độ khó.
+2) Chỉ có một đáp án đúng và đề yêu cầu chọn một: type=mcq, correctAnswer là một nhãn. Học sinh chỉ được chọn một. Đề yêu cầu chọn tất cả đáp án đúng/nhiều phương án đúng: type=multi_select, correctAnswers là mảng các nhãn đúng, correctAnswer để rỗng; học sinh được chọn nhiều. Không suy ra multi_select chỉ vì một câu có nhiều mệnh đề nếu đề chỉ yêu cầu chọn một phương án.
+3) Câu yêu cầu điền/trả lời ngắn bằng chữ, số, biểu thức hoặc kết quả ngắn nhưng không có lựa chọn: type=short_answer. Học sinh sẽ viết đáp án ra giấy và chụp ảnh để AI chấm; điền expectedAnswer ngắn gọn khi xác minh được, answerKeywords nếu có cách viết tương đương. Không tạo ô nhập văn bản thay cho việc chụp ảnh.
+4) Câu yêu cầu trình bày lời giải/chứng minh/lập luận nhiều bước: type=essay; học sinh trình bày trên giấy, chụp một hoặc nhiều ảnh; điền rubric theo từng ý. Cả short_answer và essay đều không có options.
+5) Đối với mọi công thức trong prompt/options, dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.
+6) Không tự bịa đáp án chính thức. Nếu đáp án ở cuối PDF và đọc rõ, answerSource=\"answer_key\"; nếu tự giải, answerSource=\"ai_solved\" và needsReview=true; nếu chưa chắc, để đáp án trống/unknown để admin duyệt. Không tự biên soạn câu thay cho câu có nguồn.
+7) Mỗi câu trắc nghiệm có 4 lựa chọn A–D (cho phép E nếu PDF có 5 lựa chọn). Gắn distractorMap L01–L09, skillCode KT01–KT07 và parallelKey chỉ khi có căn cứ. Nếu PDF không đủ 20 câu độc lập, không tự sinh thêm câu; trả validationError.
+Đề: ${row.title}. Thời gian: ${row.duration_minutes} phút.`;
     const output = await callOpenAI({
       instructions: 'Bạn là chuyên viên số hóa đề thi Toán. Ưu tiên trung thực với nguồn, chính xác toán học, không bịa chữ/hình. Chỉ trả JSON hợp lệ.',
       input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, { type: 'input_file', filename: row.source_file_name || 'exam.pdf', file_data: dataUrl, detail: 'high' }] }],
@@ -430,12 +451,16 @@ QUY TẮC QUAN TRỌNG:
       reasoningEffort: 'high'
     });
     const parsed = parseModelJson(output);
+    if (parsed.validationError) return res.status(422).json({ error: `Không thể tạo đề 20 câu từ PDF này: ${safeText(parsed.validationError, 500)}. PDF và bản nháp hiện có được giữ nguyên.` });
     if (!Array.isArray(parsed.questions) || !parsed.questions.length) throw new Error('AI chưa tách được câu hỏi. Thử PDF rõ nét hơn hoặc chia đề dài thành các tệp nhỏ hơn.');
-    const questions = normalizeExamQuestions(parsed.questions);
+    if (parsed.questions.length < 20) return res.status(422).json({ error: `AI chỉ đọc được ${parsed.questions.length}/20 câu độc lập từ PDF. Không lưu bản thiếu và không tự bịa câu; hãy kiểm tra PDF hoặc tải bản rõ/đầy đủ hơn. Bản nháp hiện có được giữ nguyên.` });
+    const sourceQuestions = parsed.questions.slice(0, 20); // keep source order; never sort by model numbering
+    const questions = normalizeExamQuestions(sourceQuestions);
+    if (questions.length !== 20) return res.status(422).json({ error: 'AI chưa tạo đúng 20 câu sau bước chuẩn hóa. Bản nháp hiện có được giữ nguyên; hãy chạy lại hoặc kiểm tra PDF.' });
     if (questions.some(q => !q.prompt)) throw new Error('Có câu được trích xuất nhưng nội dung bị rỗng. Hãy thử lại hoặc sửa trong phần duyệt đề.');
     const { data, error } = await supabaseAdmin.from('learning_exams').update({ questions, status: 'draft', updated_at: new Date().toISOString() }).eq('id', String(req.params.id)).select('*').single();
     if (error) throw error;
-    res.json({ ok: true, exam: examAdminView(data), reviewRequired: questions.filter(q => q.needsReview).length, message: `AI tách được ${questions.length} câu. Hãy kiểm tra câu hỏi, công thức, đáp án và thang điểm trước khi đăng.` });
+    res.json({ ok: true, exam: examAdminView(data), reviewRequired: questions.filter(q => q.needsReview).length, message: `Đã tạo đúng 20 câu theo thứ tự xuất hiện trong PDF. Câu chọn một đáp án, chọn nhiều đáp án, trả lời ngắn bằng ảnh và tự luận bằng ảnh được phân loại riêng. Hãy kiểm tra từng câu/đáp án/công thức trước khi đăng.` });
   } catch (err) {
     console.error('Exam analysis failed:', { message: String(err?.message || err).slice(0, 500), status: err?.status || 0 });
     if (err?.status) return aiEndpointError(res, err);
@@ -498,7 +523,22 @@ app.post('/api/admin/specialty-exams/:id/analyze', requireAdmin, requireSupabase
     const buffer = Buffer.from(await blob.arrayBuffer());
     if (!buffer.length) return res.status(400).json({ error:'PDF rỗng.' });
     const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
-    const prompt = `Bạn đang xử lý PDF nguồn để tạo một bài luyện theo chuyên đề cho học sinh Toán 9 trên MathSpark. Đọc nội dung PDF và làm theo YÊU CẦU CỤ THỂ CỦA QUẢN TRỊ VIÊN dưới đây.\n\nYÊU CẦU CỦA QUẢN TRỊ VIÊN:\n${aiRequest}\n\nTrả duy nhất JSON object {"questions":[...]} hợp lệ, không Markdown bên ngoài. Mỗi câu có cấu trúc {"number":1,"type":"mcq, multi_select hoặc essay","prompt":"nội dung câu hỏi","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","correctAnswers":["A","C"],"answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải tham khảo","rubric":"thang điểm tự luận","points":1,"partialCredit":false,"distractorMap":{"B":"L04"},"skillCode":"KT03","parallelKey":"stable-format-key","sourcePage":1,"origin":"source hoặc ai_generated","hasDiagram":false,"diagramBbox":null,"diagramDescription":""}.\n\nQUY TẮC:\n1. Phải ưu tiên đúng số lượng câu trắc nghiệm/tự luận, chủ đề, mức độ và phạm vi mà quản trị viên yêu cầu. Nếu ghi 2–3 câu tự luận thì tạo trong khoảng đó.\n2. Ưu tiên chọn/lọc và đánh máy lại câu có trong PDF; giữ đúng dữ kiện, số liệu, ký hiệu, đơn vị và ý nhỏ. Với câu lấy từ nguồn, đặt origin="source", sourcePage là trang PDF bắt đầu từ 1.\n3. Nếu quản trị viên yêu cầu số lượng nhưng PDF không đủ câu phù hợp, chỉ soạn câu bổ sung bám sát chủ đề và dạng toán thể hiện trong PDF; không giả vờ rằng câu đó có trong PDF. Đặt origin="ai_generated", sourcePage=0 cho câu AI tự biên soạn.\n4. Không tự bịa đáp án chính thức. Nếu có đáp án cuối PDF và đọc rõ, answerSource="answer_key"; nếu AI tự giải, answerSource="ai_solved" và needsReview=true; nếu chưa chắc, để correctAnswer="" và answerSource="unknown". Tất cả câu mới phải needsReview=true để admin duyệt.\n5. Mỗi câu trắc nghiệm phải có 4 lựa chọn A–D (cho phép E nếu nguồn có 5 lựa chọn). Nếu một đáp án đúng thì dùng type=mcq và correctAnswer; nếu nhiều đáp án đúng thì dùng type=multi_select và correctAnswers là mảng. Câu không có lựa chọn là essay. Có thể gắn distractorMap (mã L01–L09), skillCode (KT01–KT07) và parallelKey khi có bằng chứng; không bịa mã lỗi hoặc nhóm tương đương. Giữ đúng thứ tự bài thi đã được chọn. Tối đa 100 câu.\n6. Công thức dùng LaTeX hợp lệ: inline \\( ... \\), display \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.\n7. Không bỏ dữ kiện/ý nhỏ quan trọng. Câu có hình thì đánh dấu hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] từ 0–1000 nếu đủ chắc chắn; nếu không chắc để null và mô tả.\n8. Mọi câu đều có solution hoặc rubric tham khảo khi có thể. Không đưa đáp án/lời giải vào prompt hiển thị cho học sinh; đó là trường chấm kín.\nChuyên đề: ${row.title}. Mô tả: ${row.description || 'Không có'}. Thời gian dự kiến: ${row.duration_minutes} phút.`;
+    const prompt = `Bạn đang xử lý PDF nguồn để tạo bài luyện theo chuyên đề trên MathSpark. Đọc PDF theo đúng thứ tự trang/vị trí và làm theo YÊU CẦU CỤ THỂ CỦA QUẢN TRỊ VIÊN.
+
+YÊU CẦU CỦA QUẢN TRỊ VIÊN:
+${aiRequest}
+
+Trả duy nhất JSON object {"questions":[...]} hợp lệ, không Markdown bên ngoài. Mỗi câu có cấu trúc {"number":1,"sourceQuestionNumber":"số/nhãn gốc nếu đọc được","type":"mcq | multi_select | short_answer | essay","prompt":"nội dung câu hỏi nguyên vẹn","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D cho câu một đáp án","correctAnswers":["A","C"],"expectedAnswer":"đáp án ngắn tham chiếu","answerKeywords":["cách trả lời tương đương"],"answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải/hướng dẫn chấm","rubric":"thang điểm từng ý","points":1,"partialCredit":false,"distractorMap":{"B":"L04"},"skillCode":"KT03","parallelKey":"stable-format-key","sourcePage":1,"origin":"source hoặc ai_generated","hasDiagram":false,"diagramBbox":null,"diagramDescription":""}.
+
+QUY TẮC:
+1. Tuân thủ số lượng câu mà quản trị viên yêu cầu. Ưu tiên chọn/lọc và đánh máy lại câu có trong PDF, giữ nguyên dữ kiện, số liệu, ký hiệu, đơn vị, các ý con và thứ tự xuất hiện. Không sắp xếp lại theo độ khó. Câu lấy từ PDF dùng origin="source" và sourcePage từ 1; câu tự biên soạn mới dùng origin="ai_generated", sourcePage=0.
+2. type=mcq khi học sinh chỉ được chọn đúng một phương án; lưu một nhãn vào correctAnswer. type=multi_select khi đề yêu cầu chọn nhiều/tất cả phương án đúng; lưu mảng correctAnswers. Không chỉ dựa vào số lượng mệnh đề để quyết định kiểu câu.
+3. type=short_answer cho câu điền/trả lời ngắn bằng chữ, số, biểu thức hoặc kết quả mà học sinh sẽ làm trên giấy rồi chụp ảnh; không tạo options, điền expectedAnswer khi xác minh được và answerKeywords nếu có câu trả lời tương đương. type=essay cho câu cần trình bày lời giải/chứng minh nhiều bước và nộp ảnh một hay nhiều trang. Cả hai loại không có options.
+4. Không tự bịa đáp án chính thức. Nếu có đáp án cuối PDF và đọc rõ, answerSource="answer_key"; nếu AI tự giải, answerSource="ai_solved" và needsReview=true; nếu chưa chắc, answerSource="unknown" và cần admin xác minh. Tất cả câu mới cần needsReview=true.
+5. Mỗi câu trắc nghiệm có 4 lựa chọn A–D (cho phép E nếu nguồn có 5). Có thể gắn distractorMap L01–L09, skillCode KT01–KT07 và parallelKey khi có bằng chứng; không bịa metadata.
+6. Công thức dùng LaTeX hợp lệ: inline \\( ... \\), display \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.
+7. Không bỏ dữ kiện/ý nhỏ quan trọng. Câu có hình thì đánh dấu hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] từ 0–1000 nếu đủ chắc chắn; nếu không chắc để null và mô tả. Mọi câu đều có solution/rubric tham khảo khi có thể; không đưa đáp án/lời giải lên giao diện làm bài.
+Chuyên đề: ${row.title}. Mô tả: ${row.description || 'Không có'}. Thời gian dự kiến: ${row.duration_minutes} phút.`;
     const output = await callOpenAI({
       instructions:'Bạn là chuyên viên số hóa và biên soạn học liệu Toán. Tuân thủ chặt yêu cầu của quản trị viên, trung thực với PDF, đánh máy chính xác, không bịa nguồn. Chỉ trả JSON hợp lệ.',
       input:[{ role:'user', content:[{type:'input_text',text:prompt},{type:'input_file',filename:row.source_file_name||'specialty.pdf',file_data:dataUrl,detail:'high'}]}],
@@ -775,7 +815,7 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
           essayInputs.push({ q, files:questionFiles });
           attemptedEssayIds.add(String(q.id));
         } else {
-          results.push({ questionId:q.id, number:q.number, type:'essay', score:0, maxScore:q.points, feedback:'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '', mistakes:[], correctedApproach:'' });
+          results.push({ questionId:q.id, number:q.number, type:q.type, score:0, maxScore:q.points, feedback:q.type==='short_answer'?'Chưa nộp ảnh câu trả lời ngắn.':'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '', mistakes:[], correctedApproach:'' });
         }
       }
     }
@@ -830,7 +870,11 @@ CHẨN ĐOÁN NỘI BỘ: Với lỗi có bằng chứng rõ, trả về diagnos
 
 Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ, không markdown bên ngoài, đúng dạng: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"...","solutionMethodAssessment":"STANDARD|ACCEPTED_CREATIVE|NEEDS_REVIEW","teacherFeedback":{"praise":"...","spotLight":"...","socraticPrompt":"...","actionGuide":"..."},"diagnostics":[{"errorCode":"L06","skillCode":"KT04","evidence":"..."}]}]}. Mã lỗi chỉ là dữ liệu backend và không được nhắc trong lời nhận xét.` }];
       for (const {q,files:questionFiles} of essayInputs) {
-        content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm; parallelKey=${q.parallelKey || 'chưa gán'}; skillCode=${q.skillCode || 'chưa gán'})\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh theo thứ tự Trang 1 đến Trang ${questionFiles.length}; đọc các trang như một bài giải liên tục.` });
+        const shortAnswerMode = q.type === 'short_answer';
+        const modeInstructions = shortAnswerMode
+          ? 'ĐÂY LÀ CÂU TRẢ LỜI NGẮN: ưu tiên đọc đúng đáp án chữ/số/biểu thức ngắn trên giấy và so với expectedAnswer/answerKeywords. Không bắt buộc trình bày lời giải dài nếu đề không yêu cầu; vẫn công nhận cách ghi tương đương đúng về toán học. Nếu câu hỏi yêu cầu lập luận, chấm phần lập luận theo rubric.'
+          : 'ĐÂY LÀ CÂU TỰ LUẬN: chấm quá trình lập luận theo từng bước và rubric; giữ điểm từng phần cho bước đúng.';
+        content.push({ type:'input_text', text:`\nCÂU ${q.number} · ${shortAnswerMode ? 'TRẢ LỜI NGẮN BẰNG ẢNH' : 'TỰ LUẬN BẰNG ẢNH'} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm; parallelKey=${q.parallelKey || 'chưa gán'}; skillCode=${q.skillCode || 'chưa gán'})\nĐề: ${q.prompt}\n${modeInstructions}\nĐáp án ngắn tham chiếu (nếu có): ${q.expectedAnswer || 'Chưa có đáp án ngắn đã xác minh; tự giải và nói rõ độ chắc chắn.'}\nTừ khóa/cách ghi tương đương có thể chấp nhận: ${(q.answerKeywords || []).join('; ') || 'Đánh giá theo ý nghĩa toán học, không chỉ so khớp chuỗi.'}\nRubric: ${q.rubric || 'Chấm theo yêu cầu câu hỏi, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh theo thứ tự Trang 1 đến Trang ${questionFiles.length}; đọc các trang như một bài làm liên tục.` });
         for (let pageIndex=0; pageIndex<questionFiles.length; pageIndex++) {
           const file=questionFiles[pageIndex];
           content.push({ type:'input_text', text:`CÂU ${q.number} — Ảnh trang ${pageIndex+1}/${questionFiles.length}. Đọc tiếp mạch lời giải ở trang trước nếu có; không tự sửa lỗi toán của học sinh.` });
@@ -867,7 +911,7 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
         const solutionMethodAssessment = ['STANDARD','ACCEPTED_CREATIVE','NEEDS_REVIEW'].includes(String(item?.solutionMethodAssessment || '').toUpperCase())
           ? String(item.solutionMethodAssessment).toUpperCase() : 'STANDARD';
         results.push({
-          questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points,
+          questionId:q.id, number:q.number, type:q.type, score, maxScore:q.points,
           correct: item ? score >= q.points - 0.001 : null,
           confidence:['high','medium','low'].includes(item?.confidence) ? item.confidence : 'low',
           feedback:safeText(item?.feedback || fallbackFeedback, 6000),

@@ -1521,7 +1521,7 @@
   @media(max-width:700px){#view-schedule .calendar-head-actions{gap:8px}}
 </style>
 
-</head>
+<style id="exam-short-answer-style">.exam-short-answer-frame,.exam-essay-answer-frame{border:1px solid #e5d9ca;background:#fffaf2;border-radius:13px;padding:15px 16px;margin:8px 0 14px;color:#1d2b50}.exam-short-answer-frame strong,.exam-essay-answer-frame strong{display:block;margin-bottom:6px;font-size:15px}.exam-short-answer-frame p,.exam-essay-answer-frame p{margin:0;line-height:1.6;color:#687083;font-size:14px}@media(max-width:650px){.exam-short-answer-frame,.exam-essay-answer-frame{padding:13px}}</style></head>
 <body>
 <div class="app">
   <header class="topbar">
@@ -3634,7 +3634,7 @@ async function renderActiveExamQuestion(){
   if(!activeExam)return;const q=activeExam.questions[activeExamIndex];if(!q)return;
   document.getElementById('examQuestionNumber').textContent=`Câu ${q.number}`;
   document.getElementById('examQuestionPoints').textContent=`${Number(q.points)||1} điểm`;
-  document.getElementById('examQuestionType').textContent=q.type==='multi_select'?'Trắc nghiệm nhiều đáp án':q.type==='mcq'?'Trắc nghiệm':'Tự luận';
+  document.getElementById('examQuestionType').textContent=q.type==='multi_select'?'Trắc nghiệm nhiều đáp án':q.type==='mcq'?'Trắc nghiệm một đáp án':q.type==='short_answer'?'Trả lời ngắn · chụp ảnh':'Tự luận · chụp ảnh';
   document.getElementById('examQuestionPosition').textContent=`${activeExamIndex+1}/${activeExam.questions.length}`;
   document.getElementById('examPrevQuestion').disabled=activeExamIndex===0;
   document.getElementById('examNextQuestion').disabled=activeExamIndex===activeExam.questions.length-1;
@@ -3652,7 +3652,18 @@ async function renderActiveExamQuestion(){
     const buttons=[...optionsHost.querySelectorAll('[data-answer]')];
     for(let i=0;i<buttons.length;i++){const op=(q.options||[])[i];await renderGradingMarkdown(typeof op==='string'?op:(op?.text||''),buttons[i].querySelector('.exam-option-text'),{normalizeUnwrappedMath:true});buttons[i].addEventListener('click',()=>{if(activeExamFinished)return;const label=buttons[i].dataset.answer;if(q.type==='multi_select'){const selected=new Set(Array.isArray(activeExamAnswers[q.id])?activeExamAnswers[q.id]:[]);selected.has(label)?selected.delete(label):selected.add(label);activeExamAnswers[q.id]=[...selected].sort()}else{activeExamAnswers[q.id]=label}renderActiveExamQuestion()})}
   }else{
-    optionsHost.innerHTML='<p class="small">Trình bày lời giải ra vở rồi chụp hoặc thêm tất cả các trang của riêng câu này. Ảnh được gửi cùng thứ tự đã chọn khi nộp đề.</p>';
+    const shortAnswerMode=q.type==='short_answer';
+    const uploadTitle=essayHost.querySelector('strong');
+    const uploadHelp=essayHost.querySelector('p.small');
+    const captureButton=document.getElementById('examCaptureEssayPhoto');
+    const chooseButton=document.getElementById('examChooseEssayPhotos');
+    if(uploadTitle)uploadTitle.textContent=shortAnswerMode?'Khung trả lời ngắn · chụp ảnh đáp án':'Ảnh bài tự luận · có thể nhiều trang';
+    if(uploadHelp)uploadHelp.textContent=shortAnswerMode?'Viết đáp án ngắn ra giấy thật rõ ràng, sau đó chụp ảnh. Nếu cần nhiều dòng hoặc có nhiều phần, có thể thêm nhiều ảnh theo đúng thứ tự.':'Trình bày lời giải đầy đủ ra vở rồi chụp hoặc thêm tất cả các trang của riêng câu này. Ảnh được gửi cùng thứ tự đã chọn khi nộp đề.';
+    if(captureButton)captureButton.textContent=shortAnswerMode?'Chụp câu trả lời':'Chụp thêm một trang';
+    if(chooseButton)chooseButton.textContent=shortAnswerMode?'Chọn ảnh câu trả lời':'Chọn nhiều ảnh';
+    optionsHost.innerHTML=shortAnswerMode
+      ?'<div class="exam-short-answer-frame"><strong>Yêu cầu trả lời ngắn</strong><p>Hãy tự làm ra giấy rồi chụp ảnh bài làm để nộp. Không nhập đáp án vào ô văn bản trên website.</p></div>'
+      :'<div class="exam-essay-answer-frame"><strong>Yêu cầu tự luận</strong><p>Trình bày lời giải theo các bước trên giấy. Có thể chụp nhiều trang và sắp xếp đúng thứ tự trước khi nộp.</p></div>';
     essayHost.classList.remove('hidden');fileInput.value='';fileInput.multiple=true;cameraInput.value='';
     const acceptChosenFiles=input=>{const chosen=Array.from(input.files||[]);input.value='';examPhotoPickerOpen=false;if(!examPhotoPickerHidPage)examPhotoPickerHidPage=false;if(chosen.length)addExamEssayFiles(q.id,chosen)};
     fileInput.onchange=()=>acceptChosenFiles(fileInput);cameraInput.onchange=()=>acceptChosenFiles(cameraInput);
@@ -3750,9 +3761,10 @@ async function renderExamResult(data){
       :unknownChoice
         ?`<p class="exam-answer-summary"><strong>Kết quả:</strong> Đáp án chưa được xác minh chính thức; câu này cần giáo viên kiểm tra.</p>`
         :`<p class="exam-answer-summary"><strong>Kết quả:</strong> Chưa chính xác · <strong>Bạn chọn:</strong> ${examEscape(selected)} · <strong>Đáp án đúng:</strong> ${examEscape(correctAnswer)}</p>`):'';
+    const solutionHeading=item.type==='short_answer'?'Đáp án / hướng dẫn:':'Lời giải tham khảo:';
     const solutionMarkup=isChoice&&wrongChoice&&item.solution
       ?`<div class="exam-result-solution"><strong>Hướng dẫn giải:</strong><div data-result-solution="${examEscape(item.questionId)}"></div></div>`
-      :(!isChoice&&item.solution?`<div class="exam-result-solution"><strong>Lời giải tham khảo:</strong><div data-result-solution="${examEscape(item.questionId)}"></div></div>`:'');
+      :(!isChoice&&item.solution?`<div class="exam-result-solution"><strong>${solutionHeading}</strong><div data-result-solution="${examEscape(item.questionId)}"></div></div>`:'');
     const unavailableMarkup=isChoice&&wrongChoice&&item.explanationUnavailable
       ?'<p class="exam-review-needed">Chưa tạo được hướng dẫn giải tự động cho câu này; đáp án và điểm vẫn đã được ghi nhận.</p>':'';
     const diagnosticMarkup=item.diagnosticFeedback&&(!isChoice||wrongChoice)
@@ -3775,7 +3787,7 @@ async function renderExamResult(data){
     if(item.parallelFeedback&&sel('result-parallel'))await renderGradingMarkdown(item.parallelFeedback,sel('result-parallel'));
     if(item.mistakes?.length&&sel('result-mistakes'))await renderGradingMarkdown(item.mistakes.map(x=>`- ${x}`).join('\n'),sel('result-mistakes'));
     if(item.correctedApproach&&sel('result-approach'))await renderGradingMarkdown(item.correctedApproach,sel('result-approach'));
-    if(item.solution&&sel('result-solution')&&(item.type==='essay'||item.correct===false))await renderGradingMarkdown(item.solution,sel('result-solution'));
+    if(item.solution&&sel('result-solution')&&(item.type==='essay'||item.type==='short_answer'||item.correct===false))await renderGradingMarkdown(item.solution,sel('result-solution'));
   }
 }
 function backToExamBank(){activeExamFinished=true;leaveExamFullscreenMode();document.getElementById('examResultPanel').classList.add('hidden');document.getElementById('examRunnerPanel').classList.add('hidden');showActiveExamBank()}
