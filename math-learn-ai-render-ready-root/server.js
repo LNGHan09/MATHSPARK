@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 const { PDFDocument } = require('pdf-lib');
+const MathSparkDiagnosticEngine = require('./mathspark-diagnostic-engine');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -206,7 +207,7 @@ function examStudentView(row) {
   return {
     id: String(row.id), title: row.title, description: row.description || '', bankType: row.bank_type || 'exam',
     durationMinutes: Number(row.duration_minutes || 120), questionCount: Array.isArray(row.questions) ? row.questions.length : 0,
-    questionTypes: [...new Set((row.questions || []).map(q => q.type === 'mcq' ? 'Trắc nghiệm' : 'Tự luận'))],
+    questionTypes: [...new Set((row.questions || []).map(q => ['multi_select','multiple_select','multiple_choice_multiple_answers','multiple-choice-multiple-answers'].includes(String(q.type || '').toLowerCase()) || /nhiều.*đáp án|multiple.*answers/i.test(String(q.type || '')) ? 'Trắc nghiệm nhiều đáp án' : (['mcq','multiple_choice','multiple-choice','trắc nghiệm'].includes(String(q.type || '').toLowerCase()) || (Array.isArray(q.options) && q.options.length >= 4) ? 'Trắc nghiệm' : 'Tự luận')))],
     createdAt: row.created_at
   };
 }
@@ -237,42 +238,123 @@ function normalizeExamQuestions(input) {
   if (!Array.isArray(input)) throw new Error('Danh sách câu hỏi phải là một mảng.');
   if (input.length > 100) throw new Error('Một đề tối đa 100 câu trong bản hiện tại.');
   const usedQuestionIds = new Set();
+  const normalizeChoiceLabels = value => {
+    const raw = Array.isArray(value) ? value : (value == null || value === '' ? [] : String(value).split(/[;,\s]+/));
+    const mapped = raw.map(item => {
+      const text = String(item ?? '').trim().toUpperCase();
+      if (/^[0-4]$/.test(text)) return ['A','B','C','D','E'][Number(text)];
+      const match = text.match(/^(?:OPTION\s*)?([A-E])(?:[).:]|\s|$)/);
+      return match ? match[1] : '';
+    }).filter(Boolean);
+    return [...new Set(mapped)].sort();
+  };
+  const explicitMultiTypes = new Set(['multi_select','multi-select','multiple_select','multiple-select','multiple_answers','multiple-answers','multiple_choice_multiple_answers','multiple-choice-multiple-answers','trắc nghiệm nhiều đáp án','trac nghiem nhieu dap an']);
+  const explicitSingleTypes = new Set(['mcq','multiple_choice','multiple-choice','single_choice','single-choice','trắc nghiệm','trac nghiem','trắc nghiệm một đáp án','trac nghiem mot dap an']);
+  const explicitEssayTypes = new Set(['essay','short_answer','short-answer','written','tự luận','tu luan']);
+
   return input.map((raw, index) => {
     const q = raw && typeof raw === 'object' ? raw : {};
-    const number = index + 1; // The parsed JSON array is the authoritative PDF reading order.
-    const qType = String(q.type || '').toLowerCase();
-    const type = qType === 'mcq' || qType === 'multiple_choice' || qType === 'multiple-choice' || qType === 'trắc nghiệm' || (Array.isArray(q.options) && q.options.length === 4) ? 'mcq' : 'essay';
-    let options = Array.isArray(q.options) ? q.options.slice(0, 4).map((op, j) => {
-      if (typeof op === 'string') return { label: ['A','B','C','D'][j], text: normalizeExamMathText(safeText(op, 1600)) };
-      return { label: String(op?.label || ['A','B','C','D'][j]).toUpperCase(), text: normalizeExamMathText(safeText(op?.text, 1600)) };
-    }) : [];
-    if (type === 'mcq') options = ['A','B','C','D'].map(label => options.find(o => o.label === label) || { label, text: '' });
+    const number = index + 1; // The parsed JSON array preserves source/PDF order.
+    const qType = String(q.type || '').trim().toLocaleLowerCase('vi');
+    const rawOptions = Array.isArray(q.options) ? q.options.slice(0, 5) : [];
+    const labelsInOptions = rawOptions.map((op, j) => {
+      if (typeof op === 'string') return ['A','B','C','D','E'][j];
+      const rawLabel = String(op?.label || ['A','B','C','D','E'][j]).trim().toUpperCase();
+      return /^[A-E]$/.test(rawLabel) ? rawLabel : ['A','B','C','D','E'][j];
+    });
+    const hasCorrectAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers.length > 0 : (q.correctAnswers != null && String(q.correctAnswers).trim() !== '');
+    const rawCorrectValue = hasCorrectAnswers ? q.correctAnswers : q.correctAnswer;
+    const correctLabels = normalizeChoiceLabels(rawCorrectValue);
+    const hasChoiceOptions = rawOptions.length >= 2;
+    const explicitlyMulti = explicitMultiTypes.has(qType) || /nhiều.*đáp án|multiple.*answers/.test(qType);
+    const explicitlyEssay = explicitEssayTypes.has(qType);
+    let type;
+    if (explicitlyEssay) type = 'essay';
+    else if (explicitlyMulti || correctLabels.length > 1) type = 'multi_select';
+    else if (explicitSingleTypes.has(qType) || hasChoiceOptions) type = 'mcq';
+    else type = 'essay';
+
+    const hasOptionE = rawOptions.length > 4 || labelsInOptions.includes('E') || correctLabels.includes('E');
+    const optionLabels = hasOptionE ? ['A','B','C','D','E'] : ['A','B','C','D'];
+    let options = rawOptions.map((op, j) => {
+      if (typeof op === 'string') return { label: optionLabels[j] || ['A','B','C','D','E'][j], text: normalizeExamMathText(safeText(op, 1600)) };
+      const label = String(op?.label || ['A','B','C','D','E'][j]).trim().toUpperCase();
+      const safeLabel = /^[A-E]$/.test(label) ? label : (optionLabels[j] || ['A','B','C','D','E'][j]);
+      const errorCode = MathSparkDiagnosticEngine.validErrorCode(op?.errorCode || op?.error_code || op?.diagnosticCode);
+      return {
+        label: safeLabel,
+        text: normalizeExamMathText(safeText(op?.text ?? op?.content ?? '', 1600)),
+        ...(errorCode ? { errorCode } : {})
+      };
+    });
+    if (type === 'mcq' || type === 'multi_select') {
+      // Keep a stable A-D/A-E option layout for the student UI, without exposing diagnostic metadata.
+      const byLabel = new Map(options.map(option => [option.label, option]));
+      options = optionLabels.map(label => byLabel.get(label) || { label, text: '' });
+    } else options = [];
+
     const rawBox = Array.isArray(q.diagramBbox) ? q.diagramBbox : null;
     const diagramBbox = rawBox && rawBox.length === 4 && rawBox.every(v => Number.isFinite(Number(v)))
       ? rawBox.map(v => Math.max(0, Math.min(1000, Math.round(Number(v))))) : null;
     const sourcePage = Math.max(0, Math.min(500, Number(q.sourcePage) || 0));
-    const rawAnswer = String(q.correctAnswer ?? '').trim().toUpperCase();
-    const answerMap = { '0':'A', '1':'B', '2':'C', '3':'D' };
-    const normalizedAnswer = answerMap[rawAnswer] || rawAnswer;
-    const correctAnswer = ['A','B','C','D'].includes(normalizedAnswer) ? normalizedAnswer : '';
-    const answerSource = ['answer_key','ai_solved','unknown','admin_verified'].includes(q.answerSource) ? q.answerSource : (correctAnswer ? 'ai_solved' : 'unknown');
+    const correctAnswer = type === 'mcq' ? (correctLabels[0] || normalizeChoiceLabels(q.correctAnswer)[0] || '') : '';
+    const correctAnswers = type === 'multi_select'
+      ? correctLabels
+      : (type === 'mcq' ? (correctAnswer ? [correctAnswer] : []) : []);
+    const providedAnswerSource = String(q.answerSource || '').trim();
+    const answerSource = ['answer_key','ai_solved','unknown','admin_verified'].includes(providedAnswerSource)
+      ? providedAnswerSource
+      : ((correctAnswers.length || correctAnswer) ? 'ai_solved' : 'unknown');
     const baseId = safeText(q.id || `q${number}`, 50).replace(/[^A-Za-z0-9_-]/g, '') || `q${number}`;
     let uniqueId = baseId, suffix = 2;
     while (usedQuestionIds.has(uniqueId)) uniqueId = `${baseId}_${suffix++}`;
     usedQuestionIds.add(uniqueId);
+    let distractorMap = {};
+    try {
+      const rawMap = q.distractorMap && typeof q.distractorMap === 'object' && !Array.isArray(q.distractorMap) ? q.distractorMap : {};
+      for (const [label, value] of Object.entries(rawMap)) {
+        const key = normalizeChoiceLabels(label)[0];
+        const code = MathSparkDiagnosticEngine.validErrorCode(typeof value === 'object' ? value?.errorCode || value?.code : value);
+        if (key && code) distractorMap[key] = code;
+      }
+    } catch {}
+    const skillCode = MathSparkDiagnosticEngine.validSkillCode(q.skillCode || q.skill_code);
+    const parallelKey = safeText(q.parallelKey || q.parallel_key || '', 120).replace(/[\r\n\t]/g, ' ').trim();
     return {
-      id: uniqueId,
-      number, type, prompt: normalizeExamMathText(safeText(q.prompt, 9000)), options,
-      correctAnswer: type === 'mcq' ? correctAnswer : '',
-      answerSource, needsReview: q.needsReview !== false,
-      solution: normalizeExamMathText(safeText(q.solution, 4000)), rubric: normalizeExamMathText(safeText(q.rubric, 3000)),
-      points: Math.max(0, Math.min(100, Number(q.points) || (type === 'mcq' ? 1 : 2))),
+      id: uniqueId, number, type,
+      prompt: normalizeExamMathText(safeText(q.prompt, 9000)), options,
+      correctAnswer, correctAnswers, answerSource,
+      needsReview: q.needsReview !== false,
+      solution: normalizeExamMathText(safeText(q.solution, 4000)),
+      rubric: normalizeExamMathText(safeText(q.rubric, 3000)),
+      points: Math.max(0, Math.min(100, Number(q.points) || (type === 'mcq' || type === 'multi_select' ? 1 : 2))),
+      partialCredit: q.partialCredit === true,
+      distractorMap, skillCode, parallelKey,
       sourcePage, hasDiagram: Boolean(q.hasDiagram || diagramBbox), diagramBbox,
       origin: q.origin === 'ai_generated' ? 'ai_generated' : (q.origin === 'source' ? 'source' : (sourcePage > 0 ? 'source' : '')),
       diagramDescription: safeText(q.diagramDescription, 1000)
     };
   });
 }
+function examQuestionPublishValidationError(q) {
+  if (!q || !['mcq','multi_select'].includes(q.type)) return '';
+  const options = new Map((Array.isArray(q.options) ? q.options : []).map(option => [String(option.label || '').toUpperCase(), String(option.text || '').trim()]));
+  const required = ['A','B','C','D'];
+  if (options.has('E')) required.push('E');
+  const missing = required.filter(label => !options.get(label));
+  if (missing.length) return `Câu ${q.number} cần nội dung cho các lựa chọn ${missing.join(', ')}.`;
+  const available = new Set(required);
+  if (q.answerSource === 'unknown') return `Câu ${q.number} chưa có đáp án đã xác minh.`;
+  if (q.type === 'mcq' && (!q.correctAnswer || !available.has(q.correctAnswer))) {
+    return `Câu ${q.number} cần một đáp án đúng thuộc các lựa chọn ${required.join(', ')}.`;
+  }
+  if (q.type === 'multi_select') {
+    const correct = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+    if (!correct.length || correct.some(label => !available.has(label))) return `Câu ${q.number} cần ít nhất một đáp án đúng hợp lệ trong ${required.join(', ')}.`;
+  }
+  return '';
+}
+
 async function getExamRow(id, { publishedOnly = false } = {}) {
   if (!supabaseAdmin) throw new Error('Supabase chưa được cấu hình.');
   let query = supabaseAdmin.from('learning_exams').select('*').eq('id', String(id)).maybeSingle();
@@ -330,15 +412,15 @@ app.post('/api/admin/exams/:id/analyze', requireAdmin, requireSupabase, aiRateLi
     if (!buffer.length) return res.status(400).json({ error: 'Tệp PDF rỗng.' });
     const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
     const prompt = `Bạn đang phân tích một đề Toán Việt Nam để đưa vào kho thi thử trực tuyến MathSpark. Hãy đọc PDF theo đúng thứ tự trang và tách thành từng câu độc lập, kể cả câu có các ý nhỏ a), b), c) thì giữ ý nhỏ bên trong câu chính. Trả duy nhất một JSON object có trường questions là mảng; không thêm Markdown bên ngoài JSON.
-Mỗi câu có cấu trúc: {"number":1,"type":"mcq hoặc essay","prompt":"nội dung câu hỏi, bảo toàn dữ kiện và ý nhỏ","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải hoặc giải thích đáp án","rubric":"thang điểm từng ý cho câu tự luận","points":1,"sourcePage":1,"hasDiagram":false,"diagramBbox":[100,200,800,900] hoặc null,"diagramDescription":"mô tả hình nếu có"}.
+Mỗi câu có cấu trúc: {"number":1,"type":"mcq, multi_select hoặc essay","prompt":"nội dung câu hỏi, bảo toàn dữ kiện và ý nhỏ","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D cho câu một đáp án hoặc chuỗi rỗng","correctAnswers":["A","C"],"answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải hoặc giải thích đáp án","rubric":"thang điểm từng ý cho câu tự luận","points":1,"partialCredit":false,"distractorMap":{"B":"L04"},"skillCode":"KT03","parallelKey":"stable-format-key","sourcePage":1,"hasDiagram":false,"diagramBbox":[100,200,800,900] hoặc null,"diagramDescription":"mô tả hình nếu có"}.
 QUY TẮC QUAN TRỌNG:
 1) Giữ chính xác dữ kiện, ký hiệu, số liệu, đơn vị, cấu trúc và thứ tự câu. Mảng questions phải theo đúng thứ tự đọc PDF từ trang đầu đến trang cuối, trên xuống dưới. Không sắp xếp lại theo số câu AI tự nhận diện; number là thứ tự 1,2,3,... theo vị trí trong mảng. Không tự thêm đề hoặc bỏ ý.
-2) Trường type là mcq khi đề có các lựa chọn A/B/C/D; nếu không thì essay. Với hệ phương trình, dùng đúng môi trường LaTeX \begin{cases}...\\...\end{cases}; mọi dấu gạch chéo ngược phải được escape đúng trong JSON. Không được bỏ dấu \ hoặc dấu ngoặc nhọn của begin/end.
+2) Trường type là mcq khi chỉ có một đáp án đúng; dùng multi_select khi đề yêu cầu chọn nhiều đáp án hoặc có từ hai phương án đúng; nếu không có lựa chọn thì essay. Với multi_select, điền correctAnswers là mảng nhãn đáp án đúng và để correctAnswer rỗng. Với hệ phương trình, dùng đúng môi trường LaTeX \begin{cases}...\\...\end{cases}; mọi dấu gạch chéo ngược phải được escape đúng trong JSON. Không được bỏ dấu \ hoặc dấu ngoặc nhọn của begin/end.
 3) Với mọi công thức trong prompt và options, dùng LaTeX hợp lệ và luôn bọc công thức inline bằng \\( ... \\), công thức riêng dòng bằng \\[ ... \\]. Trong JSON, escape dấu gạch chéo ngược đúng. Viết số mũ x^{2}, m^{2}; phân số \\frac{a}{b}; căn \\sqrt{...}; đơn vị trong toán dùng \\text{...}. Không để mã LaTeX thô ngoài dấu phân cách.
-4) correctAnswer chỉ được lấy từ đáp án chính thức/đáp án cuối của đề nếu thấy rõ. Nếu đề không có đáp án, hãy tự giải để đề xuất A/B/C/D và đặt answerSource="ai_solved", needsReview=true để admin xác minh. Nếu không chắc, để correctAnswer="", answerSource="unknown", needsReview=true. Không đoán mơ hồ.
+4) Chỉ lấy đáp án từ đáp án chính thức/đáp án cuối nếu thấy rõ. Nếu đề không có đáp án, có thể tự giải để đề xuất correctAnswer hoặc correctAnswers, đặt answerSource="ai_solved", needsReview=true để admin xác minh. Nếu không chắc, để đáp án rỗng, answerSource="unknown", needsReview=true. Không đoán mơ hồ.
 5) Với câu tự luận, tạo rubric theo các bước hợp lý và giải thích tham khảo. needsReview=true để admin duyệt trước khi đăng.
 6) sourcePage là số trang PDF, bắt đầu từ 1. Nếu câu có hình, đặt hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] là hình chữ nhật CHỈ BAO QUANH HÌNH vẽ trên trang, tọa độ nguyên từ 0 đến 1000 theo [trái,trên,phải,dưới]; nếu không có hình thì null. Nếu không chắc bbox, để null và mô tả hình.
-7) Mỗi câu trắc nghiệm có đúng 4 options theo thứ tự A,B,C,D. Không đưa correctAnswer/solution vào prompt hiển thị cho học sinh sau này; các trường đó là dữ liệu chấm kín.
+7) Câu trắc nghiệm có 4 options A–D (cho phép E nếu PDF có 5 lựa chọn). Nếu có nhiều đáp án đúng, type=multi_select và dùng correctAnswers. Gắn distractorMap theo nhãn và mã L01–L09 chỉ khi có căn cứ; gắn skillCode KT01–KT07 khi xác định được. Gắn cùng parallelKey cho câu tương đương cùng dạng/kỹ năng nhưng khác số liệu. Không bịa mã và không đưa các metadata này lên giao diện học sinh.
 8) Không quá 100 câu. Nếu PDF có đáp án ở cuối, đối chiếu theo đúng số câu. Không suy diễn nếu ký hiệu/hình không đọc rõ.
 Đề: ${row.title}. Thời gian: ${row.duration_minutes} phút. Nếu có thể, dựa vào đề để suy ra môn/lớp/chuyên đề nhưng đừng thay nội dung gốc.`;
     const output = await callOpenAI({
@@ -416,7 +498,7 @@ app.post('/api/admin/specialty-exams/:id/analyze', requireAdmin, requireSupabase
     const buffer = Buffer.from(await blob.arrayBuffer());
     if (!buffer.length) return res.status(400).json({ error:'PDF rỗng.' });
     const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
-    const prompt = `Bạn đang xử lý PDF nguồn để tạo một bài luyện theo chuyên đề cho học sinh Toán 9 trên MathSpark. Đọc nội dung PDF và làm theo YÊU CẦU CỤ THỂ CỦA QUẢN TRỊ VIÊN dưới đây.\n\nYÊU CẦU CỦA QUẢN TRỊ VIÊN:\n${aiRequest}\n\nTrả duy nhất JSON object {"questions":[...]} hợp lệ, không Markdown bên ngoài. Mỗi câu có cấu trúc {"number":1,"type":"mcq hoặc essay","prompt":"nội dung câu hỏi","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải tham khảo","rubric":"thang điểm tự luận","points":1,"sourcePage":1,"origin":"source hoặc ai_generated","hasDiagram":false,"diagramBbox":null,"diagramDescription":""}.\n\nQUY TẮC:\n1. Phải ưu tiên đúng số lượng câu trắc nghiệm/tự luận, chủ đề, mức độ và phạm vi mà quản trị viên yêu cầu. Nếu ghi 2–3 câu tự luận thì tạo trong khoảng đó.\n2. Ưu tiên chọn/lọc và đánh máy lại câu có trong PDF; giữ đúng dữ kiện, số liệu, ký hiệu, đơn vị và ý nhỏ. Với câu lấy từ nguồn, đặt origin="source", sourcePage là trang PDF bắt đầu từ 1.\n3. Nếu quản trị viên yêu cầu số lượng nhưng PDF không đủ câu phù hợp, chỉ soạn câu bổ sung bám sát chủ đề và dạng toán thể hiện trong PDF; không giả vờ rằng câu đó có trong PDF. Đặt origin="ai_generated", sourcePage=0 cho câu AI tự biên soạn.\n4. Không tự bịa đáp án chính thức. Nếu có đáp án cuối PDF và đọc rõ, answerSource="answer_key"; nếu AI tự giải, answerSource="ai_solved" và needsReview=true; nếu chưa chắc, để correctAnswer="" và answerSource="unknown". Tất cả câu mới phải needsReview=true để admin duyệt.\n5. Mỗi câu trắc nghiệm phải có đủ 4 lựa chọn A–D; correctAnswer chỉ là A/B/C/D. Câu không có lựa chọn là essay. Giữ đúng thứ tự bài thi đã được chọn. Tối đa 100 câu.\n6. Công thức dùng LaTeX hợp lệ: inline \\( ... \\), display \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.\n7. Không bỏ dữ kiện/ý nhỏ quan trọng. Câu có hình thì đánh dấu hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] từ 0–1000 nếu đủ chắc chắn; nếu không chắc để null và mô tả.\n8. Mọi câu đều có solution hoặc rubric tham khảo khi có thể. Không đưa đáp án/lời giải vào prompt hiển thị cho học sinh; đó là trường chấm kín.\nChuyên đề: ${row.title}. Mô tả: ${row.description || 'Không có'}. Thời gian dự kiến: ${row.duration_minutes} phút.`;
+    const prompt = `Bạn đang xử lý PDF nguồn để tạo một bài luyện theo chuyên đề cho học sinh Toán 9 trên MathSpark. Đọc nội dung PDF và làm theo YÊU CẦU CỤ THỂ CỦA QUẢN TRỊ VIÊN dưới đây.\n\nYÊU CẦU CỦA QUẢN TRỊ VIÊN:\n${aiRequest}\n\nTrả duy nhất JSON object {"questions":[...]} hợp lệ, không Markdown bên ngoài. Mỗi câu có cấu trúc {"number":1,"type":"mcq, multi_select hoặc essay","prompt":"nội dung câu hỏi","options":[{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}],"correctAnswer":"A/B/C/D hoặc chuỗi rỗng","correctAnswers":["A","C"],"answerSource":"answer_key/ai_solved/unknown","needsReview":true,"solution":"lời giải tham khảo","rubric":"thang điểm tự luận","points":1,"partialCredit":false,"distractorMap":{"B":"L04"},"skillCode":"KT03","parallelKey":"stable-format-key","sourcePage":1,"origin":"source hoặc ai_generated","hasDiagram":false,"diagramBbox":null,"diagramDescription":""}.\n\nQUY TẮC:\n1. Phải ưu tiên đúng số lượng câu trắc nghiệm/tự luận, chủ đề, mức độ và phạm vi mà quản trị viên yêu cầu. Nếu ghi 2–3 câu tự luận thì tạo trong khoảng đó.\n2. Ưu tiên chọn/lọc và đánh máy lại câu có trong PDF; giữ đúng dữ kiện, số liệu, ký hiệu, đơn vị và ý nhỏ. Với câu lấy từ nguồn, đặt origin="source", sourcePage là trang PDF bắt đầu từ 1.\n3. Nếu quản trị viên yêu cầu số lượng nhưng PDF không đủ câu phù hợp, chỉ soạn câu bổ sung bám sát chủ đề và dạng toán thể hiện trong PDF; không giả vờ rằng câu đó có trong PDF. Đặt origin="ai_generated", sourcePage=0 cho câu AI tự biên soạn.\n4. Không tự bịa đáp án chính thức. Nếu có đáp án cuối PDF và đọc rõ, answerSource="answer_key"; nếu AI tự giải, answerSource="ai_solved" và needsReview=true; nếu chưa chắc, để correctAnswer="" và answerSource="unknown". Tất cả câu mới phải needsReview=true để admin duyệt.\n5. Mỗi câu trắc nghiệm phải có 4 lựa chọn A–D (cho phép E nếu nguồn có 5 lựa chọn). Nếu một đáp án đúng thì dùng type=mcq và correctAnswer; nếu nhiều đáp án đúng thì dùng type=multi_select và correctAnswers là mảng. Câu không có lựa chọn là essay. Có thể gắn distractorMap (mã L01–L09), skillCode (KT01–KT07) và parallelKey khi có bằng chứng; không bịa mã lỗi hoặc nhóm tương đương. Giữ đúng thứ tự bài thi đã được chọn. Tối đa 100 câu.\n6. Công thức dùng LaTeX hợp lệ: inline \\( ... \\), display \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.\n7. Không bỏ dữ kiện/ý nhỏ quan trọng. Câu có hình thì đánh dấu hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] từ 0–1000 nếu đủ chắc chắn; nếu không chắc để null và mô tả.\n8. Mọi câu đều có solution hoặc rubric tham khảo khi có thể. Không đưa đáp án/lời giải vào prompt hiển thị cho học sinh; đó là trường chấm kín.\nChuyên đề: ${row.title}. Mô tả: ${row.description || 'Không có'}. Thời gian dự kiến: ${row.duration_minutes} phút.`;
     const output = await callOpenAI({
       instructions:'Bạn là chuyên viên số hóa và biên soạn học liệu Toán. Tuân thủ chặt yêu cầu của quản trị viên, trung thực với PDF, đánh máy chính xác, không bịa nguồn. Chỉ trả JSON hợp lệ.',
       input:[{ role:'user', content:[{type:'input_text',text:prompt},{type:'input_file',filename:row.source_file_name||'specialty.pdf',file_data:dataUrl,detail:'high'}]}],
@@ -453,7 +535,7 @@ app.post('/api/admin/specialty-exams/:id/publish', requireAdmin, requireSupabase
     if(!row||row.bank_type!=='specialty')return res.status(404).json({error:'Không tìm thấy chuyên đề.'});
     const questions=normalizeExamQuestions(row.questions);
     if(!questions.length)return res.status(400).json({error:'Chuyên đề chưa có câu hỏi. Hãy chạy AI trước.'});
-    for(const q of questions){if(!q.prompt)return res.status(400).json({error:`Câu ${q.number} chưa có nội dung.`});if(q.needsReview)return res.status(400).json({error:`Câu ${q.number} còn cần duyệt.`});if(q.type==='mcq'&&(!['A','B','C','D'].includes(q.correctAnswer)||q.options.some(o=>!o.text)))return res.status(400).json({error:`Câu ${q.number} cần đủ 4 lựa chọn và đáp án A/B/C/D.`});}
+    for(const q of questions){if(!q.prompt)return res.status(400).json({error:`Câu ${q.number} chưa có nội dung.`});if(q.needsReview)return res.status(400).json({error:`Câu ${q.number} còn cần duyệt.`});const choiceError=examQuestionPublishValidationError(q);if(choiceError)return res.status(400).json({error:choiceError});}
     const {data,error}=await supabaseAdmin.from('learning_exams').update({status:'published',questions,updated_at:new Date().toISOString()}).eq('id',String(req.params.id)).select('*').single();
     if(error)throw error;res.json({ok:true,exam:examAdminView(data),message:'Đã đăng chuyên đề lên Kho chuyên đề.'});
   }catch(err){res.status(400).json({error:err.message||'Không đăng được chuyên đề.'})}
@@ -493,7 +575,8 @@ app.post('/api/admin/exams/:id/publish', requireAdmin, requireSupabase, async (r
     for (const q of questions) {
       if (!q.prompt) return res.status(400).json({ error: `Câu ${q.number} chưa có nội dung.` });
       if (q.needsReview) return res.status(400).json({ error: `Câu ${q.number} còn cần duyệt. Hãy kiểm tra lại đáp án/hình/LaTeX rồi bỏ chọn “Cần duyệt” trước khi đăng.` });
-      if (q.type === 'mcq' && (!['A','B','C','D'].includes(q.correctAnswer) || q.options.some(o => !o.text))) return res.status(400).json({ error: `Câu ${q.number} cần đủ 4 lựa chọn và đáp án đúng A/B/C/D.` });
+      const choiceError = examQuestionPublishValidationError(q);
+      if (choiceError) return res.status(400).json({ error: choiceError });
     }
     const { data, error } = await supabaseAdmin.from('learning_exams').update({ status: 'published', questions, updated_at: new Date().toISOString() }).eq('id', String(req.params.id)).select('*').single();
     if (error) throw error;
@@ -535,7 +618,7 @@ app.get('/api/exams/:id', requireSupabase, async (req, res) => {
     const row = await getExamRow(req.params.id, { publishedOnly: true });
     if (!row) return res.status(404).json({ error: 'Không tìm thấy đề hoặc đề chưa được đăng.' });
     const questions = normalizeExamQuestions(row.questions).map(q => ({
-      id:q.id, number:q.number, type:q.type, prompt:q.prompt, options:q.options,
+      id:q.id, number:q.number, type:q.type, prompt:q.prompt, options:q.options.map(option=>({label:option.label,text:option.text})),
       points:q.points, sourcePage:q.sourcePage, hasDiagram:q.hasDiagram,
       diagramBbox:q.diagramBbox, diagramDescription:q.diagramDescription
     }));
@@ -597,85 +680,171 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
     try { answers = JSON.parse(String(req.body.answers || '{}')); } catch { return res.status(400).json({ error: 'Dữ liệu đáp án không hợp lệ.' }); }
     let rawIntegrity = {};
     try { rawIntegrity = JSON.parse(String(req.body.integrity || '{}')); } catch {}
+    let freeSlots = [];
+    try { const parsedSlots = JSON.parse(String(req.body.freeSlots || '[]')); if (Array.isArray(parsedSlots)) freeSlots = parsedSlots.slice(0, 350); } catch {}
     const integrity = {
       visibilityHidden: Math.max(0, Math.min(1000, Number(rawIntegrity.visibilityHidden) || 0)),
       fullscreenExits: Math.max(0, Math.min(1000, Number(rawIntegrity.fullscreenExits) || 0)),
       violations: Math.max(0, Math.min(2000, Number(rawIntegrity.violations) || 0))
     };
+
+    const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+    let studentId = null;
+    if (bearer && supabaseAdmin) {
+      try {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearer);
+        if (!authError && authData?.user?.id) studentId = authData.user.id;
+      } catch (authError) { console.warn('Could not identify student for diagnosis history:', String(authError?.message || authError).slice(0, 180)); }
+    }
+
     const files = Array.isArray(req.files) ? req.files : [];
     const byQuestionFile = new Map();
     for (const q of questions) {
       const exactLegacy = `essay_${q.id}`;
       const orderedPrefix = `essay_${q.id}__`;
-      const questionFiles = files.filter(f => { const field = String(f.fieldname || ''); return field === exactLegacy || field.startsWith(orderedPrefix); }).sort((a,b) => { const getOrder = f => { const field = String(f.fieldname || ''); if (field === exactLegacy) return 1; return Number(field.slice(orderedPrefix.length)) || 0; }; return getOrder(a)-getOrder(b); });
+      const questionFiles = files.filter(f => {
+        const field = String(f.fieldname || '');
+        return field === exactLegacy || field.startsWith(orderedPrefix);
+      }).sort((a,b) => {
+        const getOrder = f => {
+          const field = String(f.fieldname || '');
+          if (field === exactLegacy) return 1;
+          return Number(field.slice(orderedPrefix.length)) || 0;
+        };
+        return getOrder(a)-getOrder(b);
+      });
       if (questionFiles.length) byQuestionFile.set(String(q.id), questionFiles);
     }
+
+    // The diagnostic-event table is private and optional during rollout. If its migration has not
+    // been run yet, the current submission is still scored and saved; long-term diagnostics wait.
+    const parallelKeys = [...new Set(questions.map(q => q.parallelKey).filter(Boolean))];
+    let previousByParallelKey = new Map();
+    if (studentId && parallelKeys.length) {
+      try {
+        const { data, error } = await supabaseAdmin.from('mathspark_diagnostic_events')
+          .select('parallel_key,is_correct,skill_code,error_code,created_at')
+          .eq('user_id', studentId).in('parallel_key', parallelKeys)
+          .order('created_at', { ascending: false }).limit(200);
+        if (error) throw error;
+        previousByParallelKey = MathSparkDiagnosticEngine.normalizePreviousEvents(data || []);
+      } catch (historyError) {
+        console.warn('Diagnostic history unavailable; current grading continues:', String(historyError?.message || historyError).slice(0, 250));
+      }
+    }
+
     const results = [];
     const essayInputs = [];
     const mcqNeedingExplanation = [];
+    const choiceAnalysisByQuestion = new Map();
+    const essayModelDiagnostics = new Map();
+    const attemptedEssayIds = new Set();
+
     for (const q of questions) {
-      if (q.type === 'mcq') {
-        const picked = String(answers[q.id] || '').trim().toUpperCase();
-        const correct = Boolean(picked && q.correctAnswer && picked === q.correctAnswer);
-        const resultItem = { questionId:q.id, number:q.number, type:'mcq', answer:picked, correctAnswer:q.correctAnswer, correct, score:correct?q.points:0, maxScore:q.points, feedback:correct?'Chính xác.':(picked?`Bạn chọn ${picked} chưa chính xác. Đáp án đúng là ${q.correctAnswer || 'cần giáo viên xác minh'}.`:`Bạn chưa chọn đáp án. Đáp án đúng là ${q.correctAnswer || 'cần giáo viên xác minh'}.`), solution:q.solution || '' };
+      if (q.type === 'mcq' || q.type === 'multi_select') {
+        const rawPicked = answers[q.id];
+        const analysisQuestion = q.answerSource === 'unknown' ? { ...q, correctAnswer: '', correctAnswers: [] } : q;
+        const rawAnalysis = MathSparkDiagnosticEngine.analyzeMultiOptionResponse(analysisQuestion, rawPicked);
+        // A single-answer MCQ has one correct option, not an omission checklist. Reserve
+        // selected-vs-omitted diagnostics for explicit multi-select questions.
+        const analysis = q.type === 'mcq'
+          ? { ...rawAnalysis, omittedCorrect: [], status: rawAnalysis.selectedOptions.length ? (rawAnalysis.isFullCorrect ? 'FULL_CORRECT' : 'SELECTED_DISTRACTOR') : 'NO_ANSWER' }
+          : rawAnalysis;
+        const hasKnownAnswer = analysis.knownAnswer && q.answerSource !== 'unknown';
+        const isCorrect = hasKnownAnswer ? analysis.isFullCorrect : null;
+        const pickedForStudent = q.type === 'multi_select' ? analysis.selectedOptions : (analysis.selectedOptions[0] || '');
+        const correctForStudent = q.type === 'multi_select' ? analysis.correctAnswers : (analysis.correctAnswers[0] || q.correctAnswer || '');
+        const score = hasKnownAnswer ? analysis.score : 0;
+        const resultItem = {
+          questionId:q.id, number:q.number, type:q.type,
+          answer:pickedForStudent, correctAnswer:correctForStudent, correct:isCorrect,
+          score, maxScore:q.points,
+          feedback: isCorrect === true ? 'Chính xác.' : MathSparkDiagnosticEngine.studentSafeChoiceFeedback({ ...analysis, knownAnswer:hasKnownAnswer }),
+          solution: q.solution || '',
+          selectionAnalysis: { status: analysis.status, wrongSelected: analysis.wrongSelected, omittedCorrect: analysis.omittedCorrect },
+          diagnosticFeedback: '',
+          needsTeacherReview: !hasKnownAnswer || q.needsReview === true,
+          ...(analysis.parallelKey ? { parallelFeedback: '' } : {})
+        };
         results.push(resultItem);
-        if (!correct && q.correctAnswer && !resultItem.solution) mcqNeedingExplanation.push({ q, picked, resultItem });
+        choiceAnalysisByQuestion.set(String(q.id), { analysis, attempted: analysis.selectedOptions.length > 0, hasKnownAnswer, isCorrect, resultItem });
+        if (hasKnownAnswer && isCorrect !== true) mcqNeedingExplanation.push({ q, analysis, resultItem });
       } else {
         const questionFiles = byQuestionFile.get(String(q.id)) || [];
-        if (questionFiles.length) essayInputs.push({ q, files:questionFiles });
-        else results.push({ questionId:q.id, number:q.number, type:'essay', score:0, maxScore:q.points, feedback:'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '' });
+        if (questionFiles.length) {
+          essayInputs.push({ q, files:questionFiles });
+          attemptedEssayIds.add(String(q.id));
+        } else {
+          results.push({ questionId:q.id, number:q.number, type:'essay', score:0, maxScore:q.points, feedback:'Chưa nộp ảnh lời giải cho câu này.', needsTeacherReview:false, solution:q.solution || '', mistakes:[], correctedApproach:'' });
+        }
       }
     }
+
     if (mcqNeedingExplanation.length) {
       try {
-        const questionPayload = mcqNeedingExplanation.map(({q,picked}) => ({
-          questionId:q.id, number:q.number, prompt:q.prompt,
+        const questionPayload = mcqNeedingExplanation.map(({q,analysis}) => ({
+          questionId:q.id, number:q.number, type:q.type, prompt:q.prompt,
           options:(q.options||[]).map(option=>({label:option.label,text:option.text})),
-          studentAnswer:picked||'Chưa chọn', correctAnswer:q.correctAnswer
+          studentSelected:analysis.selectedOptions,
+          correctOptions:analysis.correctAnswers,
+          selectedWrong:analysis.wrongSelected,
+          omittedCorrect:analysis.omittedCorrect,
+          diagnosis:analysis.status,
+          mappedErrorNames:analysis.errorCodes.map(code => MathSparkDiagnosticEngine.ERROR_NAMES[code]).filter(Boolean),
+          skillName:MathSparkDiagnosticEngine.SKILL_NAMES[analysis.skillCode] || ''
         }));
         const rawExplanations = await callOpenAI({
-          instructions:'Bạn là giáo viên Toán THCS. Với từng câu trắc nghiệm học sinh làm sai hoặc bỏ trống, hãy viết hướng dẫn giải rõ ràng theo từng bước, giải thích vì sao đáp án đúng là hợp lý và chỉ ra ngắn gọn vì sao lựa chọn của học sinh không đúng (nếu đã chọn). Không đoán dữ kiện ngoài đề. Công thức dùng LaTeX hợp lệ. Trả về duy nhất JSON hợp lệ, không markdown, theo mẫu {"results":[{"questionId":"...","explanation":"..."}]} .',
-          input:[{role:'user',content:[{type:'input_text',text:'Hãy giải thích các câu trắc nghiệm sau. Mỗi kết quả phải giữ nguyên questionId. Nếu đề thiếu dữ kiện khiến không thể kết luận, nêu rõ điều đó.\n'+JSON.stringify(questionPayload)}]}],
-          maxOutputTokens:Math.min(9000,1500+mcqNeedingExplanation.length*650), reasoningEffort:'low'
+          instructions:'Bạn là giáo viên Toán THCS và trợ lý chẩn đoán sư phạm MathSpark. Chỉ giải thích những câu sai, bỏ trống hoặc chọn thiếu; không viết lời giải cho câu đúng. Phân biệt rõ phương án sai đã chọn với phương án đúng bị bỏ sót. Dùng giọng động viên tự nhiên, không nhắc tới mã lỗi nội bộ L01-L09/KT01-KT07. Không suy đoán động cơ hoặc kết luận lỗ hổng kiến thức chỉ từ một câu. Với câu đầu tiên gặp dạng bài, xem chẩn đoán như giả thuyết cần kiểm tra. Công thức dùng LaTeX hợp lệ. Trả duy nhất JSON hợp lệ theo mẫu {"results":[{"questionId":"...","explanation":"...","praise":"...","spotLight":"...","socraticPrompt":"...","actionGuide":"..."}]} .',
+          input:[{role:'user',content:[{type:'input_text',text:'Phân tích từng câu trong dữ liệu sau. Giữ nguyên questionId. Nếu đề hoặc đáp án chưa đủ căn cứ thì nêu rõ, không bịa lời giải.\n'+JSON.stringify(questionPayload)}]}],
+          maxOutputTokens:Math.min(12000,1800+mcqNeedingExplanation.length*950), reasoningEffort:'medium'
         });
         const parsedExplanations = parseModelJson(rawExplanations);
         const byQuestion = new Map((Array.isArray(parsedExplanations.results)?parsedExplanations.results:[]).map(item=>[String(item.questionId),item]));
-        for (const {q,resultItem} of mcqNeedingExplanation) {
-          const explanation = safeText(byQuestion.get(String(q.id))?.explanation || '',5000);
+        for (const {q,analysis,resultItem} of mcqNeedingExplanation) {
+          const generated = byQuestion.get(String(q.id)) || {};
+          const explanation = safeText(generated.explanation || '', 6500);
+          const coaching = [generated.praise, generated.spotLight, generated.socraticPrompt, generated.actionGuide].map(value=>safeText(value,1200)).filter(Boolean);
+          resultItem.diagnosticFeedback = coaching.join('\n\n');
           if (explanation) resultItem.solution = explanation;
           else resultItem.explanationUnavailable = true;
+          if (!resultItem.diagnosticFeedback) resultItem.diagnosticFeedback = MathSparkDiagnosticEngine.studentSafeChoiceFeedback(analysis);
         }
       } catch (explanationError) {
-        console.warn('Could not generate missing MCQ explanations; submission will continue:',String(explanationError?.message||explanationError).slice(0,300));
-        for (const {resultItem} of mcqNeedingExplanation) resultItem.explanationUnavailable = true;
+        console.warn('Could not generate diagnostic MCQ explanations; submission continues:',String(explanationError?.message||explanationError).slice(0,300));
+        for (const {analysis,resultItem} of mcqNeedingExplanation) {
+          resultItem.diagnosticFeedback = MathSparkDiagnosticEngine.studentSafeChoiceFeedback(analysis);
+          resultItem.explanationUnavailable = true;
+        }
       }
     }
+
     if (essayInputs.length) {
       const dataUrl = f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
-      const content = [{ type:'input_text', text:`Bạn là giáo viên chấm bài Toán lớp 9 kỹ lưỡng và công bằng. Chấm độc lập từng câu tự luận dựa trên đề, bài làm trong toàn bộ ảnh theo thứ tự trang, rubric và lời giải tham khảo. Thang điểm phải từ 0 đến maxScore; chấm theo quá trình, giữ điểm cho các bước đúng dù đáp số cuối sai, không trừ hai lần cho cùng một lỗi.
+      const content = [{ type:'input_text', text:`Bạn là giáo viên chấm Toán lớp 9 và chuyên gia chẩn đoán sư phạm của MathSpark. Hãy chấm độc lập từng câu tự luận theo đề, tất cả ảnh theo thứ tự trang, rubric và lời giải tham khảo. Thang điểm từ 0 đến maxScore; công nhận các bước đúng dù đáp số cuối sai; không trừ hai lần cho cùng một lỗi.
 
-YÊU CẦU NHẬN XÉT: Nếu bài làm có lỗi, hãy chỉ rõ lỗi ở bước nào hoặc phép biến đổi nào của học sinh, viết lại ngắn gọn phần học sinh đã làm sai, giải thích vì sao sai, hậu quả đối với các bước sau và cách sửa đúng. Không nhận xét chung chung như 'cần cẩn thận'. Phân biệt lỗi khái niệm, lập luận, dấu, tính toán, điều kiện và trình bày. Mảng mistakes phải chứa từng lỗi cụ thể, mỗi lỗi một mục. correctedApproach phải hướng dẫn sửa theo trình tự từng bước, dẫn tới kết quả đúng; feedback phải nêu căn cứ chấm điểm và phần làm đúng/sai. Nếu bài hoàn toàn đúng, mistakes để mảng rỗng và feedback chỉ cần xác nhận điểm mạnh/căn cứ điểm, không bịa lỗi. Nếu ảnh hoặc nét viết không đọc được, nêu rõ giới hạn và hạ confidence.
+NGUYÊN TẮC ĐỌC BÀI: Trước khi chấm, đọc đúng những gì học sinh đã viết. Không tự sửa dấu, phép tính hay thêm bước giải. Nếu chữ/ký hiệu không rõ, nêu rõ vùng chưa chắc chắn và hạ confidence. Không dùng đáp án mẫu để sửa nội dung bài làm trong đầu; đối chiếu riêng sau khi đã đọc bài làm.
 
-Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ, không markdown bên ngoài, đúng dạng: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"..."}]}. Không làm tròn điểm quá mức và không được vượt điểm tối đa.` }];
+YÊU CẦU NHẬN XÉT: Nếu có lỗi, chỉ rõ bước/phép biến đổi sai, trích ngắn nội dung đó, giải thích vì sao sai, ảnh hưởng của nó và cách sửa đúng. Phân biệt lỗi đọc dữ kiện, đặt ẩn/điều kiện, mô hình hóa/lập phương trình, biến đổi đại số, tính toán, kiểm tra nghiệm và kết luận. Mảng mistakes có từng lỗi cụ thể. correctedApproach hướng dẫn theo thứ tự. Nếu bài đúng, mistakes để mảng rỗng và không bịa lỗi. Sinh teacherFeedback theo giọng sư phạm tự nhiên gồm praise, spotLight, socraticPrompt, actionGuide; không nhắc mã lỗi cho học sinh. Nếu lời giải dùng phương pháp khác đáp án mẫu nhưng các bước hợp lệ và cho kết quả tương đương, vẫn phải công nhận, không trừ điểm; khi đã kiểm chứng được, đặt solutionMethodAssessment="ACCEPTED_CREATIVE". Chỉ dùng "NEEDS_REVIEW" nếu ảnh hoặc lập luận chưa đủ chắc để kết luận.
+
+CHẨN ĐOÁN NỘI BỘ: Với lỗi có bằng chứng rõ, trả về diagnostics gồm errorCode là một trong L01-L09, skillCode là KT01-KT07 và evidence trích dẫn ngắn; nếu không đủ căn cứ, để diagnostics=[] chứ không đoán. Không đưa mã lỗi vào feedback/teacherFeedback cho học sinh.
+
+Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả duy nhất JSON hợp lệ, không markdown bên ngoài, đúng dạng: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"...","solutionMethodAssessment":"STANDARD|ACCEPTED_CREATIVE|NEEDS_REVIEW","teacherFeedback":{"praise":"...","spotLight":"...","socraticPrompt":"...","actionGuide":"..."},"diagnostics":[{"errorCode":"L06","skillCode":"KT04","evidence":"..."}]}]}. Mã lỗi chỉ là dữ liệu backend và không được nhắc trong lời nhận xét.` }];
       for (const {q,files:questionFiles} of essayInputs) {
-        content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm)\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh được gửi theo thứ tự Trang 1 đến Trang ${questionFiles.length}; hãy ghép chúng thành một bài giải liên tục.` });
+        content.push({ type:'input_text', text:`\nCÂU ${q.number} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm; parallelKey=${q.parallelKey || 'chưa gán'}; skillCode=${q.skillCode || 'chưa gán'})\nĐề: ${q.prompt}\nRubric: ${q.rubric || 'Chấm theo từng bước hợp lý, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh theo thứ tự Trang 1 đến Trang ${questionFiles.length}; đọc các trang như một bài giải liên tục.` });
         for (let pageIndex=0; pageIndex<questionFiles.length; pageIndex++) {
           const file=questionFiles[pageIndex];
-          content.push({ type:'input_text', text:`CÂU ${q.number} — Ảnh trang ${pageIndex+1}/${questionFiles.length}. Đọc tiếp mạch lời giải ở trang trước nếu có.` });
+          content.push({ type:'input_text', text:`CÂU ${q.number} — Ảnh trang ${pageIndex+1}/${questionFiles.length}. Đọc tiếp mạch lời giải ở trang trước nếu có; không tự sửa lỗi toán của học sinh.` });
           content.push({ type:'input_image', image_url:dataUrl(file), detail:'high' });
         }
       }
       const raw = await callOpenAI({
-        instructions:'Bạn là giáo viên chấm tự luận Toán 9. Chấm theo rubric, không chỉ so đáp số, không cho điểm vượt điểm tối đa. Kết quả là gợi ý AI; tránh khẳng định quá mức nếu ảnh mờ.',
-        input:[{ role:'user', content }], maxOutputTokens:10000, reasoningEffort:'medium'
+        instructions:'Bạn là giáo viên chấm tự luận Toán 9. Chấm theo rubric, phân tích đúng bằng chứng, không cho điểm vượt điểm tối đa. Mã lỗi là dữ liệu nội bộ; không hiển thị mã cho học sinh. Kết quả AI là gợi ý cần kiểm tra khi ảnh mờ hoặc confidence thấp.',
+        input:[{ role:'user', content }], maxOutputTokens:Math.min(14000,7000+essayInputs.length*1300), reasoningEffort:'medium'
       });
       let parsed = null;
       let gradingJsonFallback = false;
-      try {
-        parsed = parseModelJson(raw);
-      } catch (parseErr) {
-        // Never block submission of a student's work solely because the model emitted malformed JSON.
-        // Save the objective answers and mark affected essays for review instead of making the student re-upload images.
+      try { parsed = parseModelJson(raw); }
+      catch (parseErr) {
         gradingJsonFallback = true;
         console.error('Essay grading JSON parse failed; preserving submission and flagging essays for review:', String(parseErr?.message || parseErr).slice(0, 300));
         parsed = { results: [] };
@@ -687,23 +856,107 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
         const fallbackFeedback = gradingJsonFallback
           ? 'Bài làm đã được nhận, nhưng AI trả kết quả không đúng định dạng nên câu này đang chờ chấm lại/giáo viên kiểm tra. Bạn không cần tải lại ảnh.'
           : 'AI chưa trả về nhận xét riêng cho câu này.';
-        results.push({ questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points, confidence:item?.confidence || 'low', feedback:safeText(item?.feedback || fallbackFeedback, 6000), mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,400)):[], correctedApproach:safeText(item?.correctedApproach || '',5000), needsTeacherReview:!item || item?.confidence === 'low', solution:q.solution || '' });
+        const teacher = item?.teacherFeedback && typeof item.teacherFeedback === 'object' ? item.teacherFeedback : {};
+        const teacherFeedback = [teacher.praise, teacher.spotLight, teacher.socraticPrompt, teacher.actionGuide].map(value=>safeText(value,1200)).filter(Boolean).join('\n\n');
+        const diagnostics = Array.isArray(item?.diagnostics) ? item.diagnostics.slice(0, 8).map(d => ({
+          errorCode:MathSparkDiagnosticEngine.validErrorCode(d?.errorCode),
+          skillCode:MathSparkDiagnosticEngine.validSkillCode(d?.skillCode),
+          evidence:safeText(d?.evidence,500)
+        })).filter(d=>d.errorCode || d.skillCode) : [];
+        essayModelDiagnostics.set(String(q.id), diagnostics);
+        const solutionMethodAssessment = ['STANDARD','ACCEPTED_CREATIVE','NEEDS_REVIEW'].includes(String(item?.solutionMethodAssessment || '').toUpperCase())
+          ? String(item.solutionMethodAssessment).toUpperCase() : 'STANDARD';
+        results.push({
+          questionId:q.id, number:q.number, type:'essay', score, maxScore:q.points,
+          correct: item ? score >= q.points - 0.001 : null,
+          confidence:['high','medium','low'].includes(item?.confidence) ? item.confidence : 'low',
+          feedback:safeText(item?.feedback || fallbackFeedback, 6000),
+          teacherFeedback,
+          solutionMethodAssessment,
+          mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,500)):[],
+          correctedApproach:safeText(item?.correctedApproach || '',5000),
+          needsTeacherReview:!item || item?.confidence === 'low' || solutionMethodAssessment === 'NEEDS_REVIEW', solution:q.solution || ''
+        });
       }
     }
+
     results.sort((a,b)=>a.number-b.number);
+    const resultById = new Map(results.map(item=>[String(item.questionId),item]));
+    const internalEvents = [];
+    const diagnosticEvidence = [];
+    for (const q of questions) {
+      const resultItem = resultById.get(String(q.id));
+      if (!resultItem) continue;
+      let attempted = false;
+      let isCorrect = resultItem.correct === true;
+      let errorCode = '';
+      let skillCode = q.skillCode || '';
+      let selectedOptions = [];
+      let omittedCorrectOptions = [];
+      let diagnosticEvidenceText = '';
+      if (q.type === 'mcq' || q.type === 'multi_select') {
+        const choice = choiceAnalysisByQuestion.get(String(q.id));
+        if (!choice || !choice.hasKnownAnswer) continue;
+        attempted = true;
+        isCorrect = choice.isCorrect === true;
+        errorCode = choice.analysis.primaryErrorCode || '';
+        skillCode = skillCode || choice.analysis.skillCode || '';
+        selectedOptions = choice.analysis.selectedOptions;
+        omittedCorrectOptions = choice.analysis.omittedCorrect;
+        diagnosticEvidenceText = [selectedOptions.length ? `Đã chọn: ${selectedOptions.join(', ')}` : 'Không chọn phương án', choice.analysis.wrongSelected.length ? `Chọn sai: ${choice.analysis.wrongSelected.join(', ')}` : '', omittedCorrectOptions.length ? `Bỏ sót đáp án đúng: ${omittedCorrectOptions.join(', ')}` : ''].filter(Boolean).join('; ');
+      } else {
+        if (!attemptedEssayIds.has(String(q.id)) || (resultItem.correct !== true && resultItem.correct !== false)) continue;
+        attempted = true;
+        const modelDiags = essayModelDiagnostics.get(String(q.id)) || [];
+        errorCode = modelDiags.find(d=>d.errorCode)?.errorCode || '';
+        skillCode = modelDiags.find(d=>d.skillCode)?.skillCode || skillCode;
+        diagnosticEvidenceText = modelDiags.find(d=>d.evidence)?.evidence || '';
+      }
+      if (!attempted) continue;
+      const previous = q.parallelKey ? previousByParallelKey.get(q.parallelKey) : null;
+      const parallelStatus = MathSparkDiagnosticEngine.classifyParallelAttempt(previous?.is_correct, isCorrect);
+      const currentDiag = { questionId:q.id, parallelKey:q.parallelKey, isCorrect, parallelStatus, errorCode, skillCode };
+      diagnosticEvidence.push(currentDiag);
+      const parallelFeedback = MathSparkDiagnosticEngine.studentSafeParallelNote(parallelStatus, currentDiag);
+      if (parallelFeedback) resultItem.parallelFeedback = parallelFeedback;
+      internalEvents.push({
+        user_id:studentId, exam_id:Number(row.id)||null, question_id:String(q.id), parallel_key:q.parallelKey || null,
+        skill_code:skillCode || null, error_code:errorCode || null, evidence:safeText(diagnosticEvidenceText,1000) || null, is_correct:Boolean(isCorrect),
+        selected_options:selectedOptions, omitted_correct_options:omittedCorrectOptions, is_repeat_attempt:Boolean(q.parallelKey && previous),
+        diagnosis_status:parallelStatus, created_at:new Date().toISOString()
+      });
+    }
+
     const maxScore = results.reduce((sum,item)=>sum+Number(item.maxScore||0),0);
     const score = Math.round(results.reduce((sum,item)=>sum+Number(item.score||0),0)*100)/100;
-    const resultJson = { examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString() };
+    const adaptiveSchedule = studentId ? MathSparkDiagnosticEngine.buildAdaptiveSessions({ diagnostics:diagnosticEvidence, freeSlots, now:new Date(), maxSessions:2 }) : null;
+    const persistentGapCount = diagnosticEvidence.filter(item=>item.parallelStatus==='PERSISTENT_GAP').length;
+    const resolvedSlipCount = diagnosticEvidence.filter(item=>item.parallelStatus==='SLIP_RESOLVED').length;
+    const diagnosticSummary = persistentGapCount
+      ? `MathSpark nhận thấy ${persistentGapCount} dạng bài em từng làm sai vẫn còn khó ở lần làm tương đương. Hãy xem nhận xét từng câu và lịch ôn tập gợi ý.`
+      : resolvedSlipCount
+        ? 'Em đã sửa được ít nhất một lỗi từng gặp ở câu tương đương. Hãy tiếp tục duy trì cách kiểm tra lại bài.'
+        : '';
+    const resultJson = { diagnosticEngineVersion:'7.0-core', examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString(), diagnosticSummary, adaptiveSchedule };
     let saved = false;
-    const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-    if (bearer && supabaseAdmin) {
+    let savedAttemptId = null;
+    if (studentId && supabaseAdmin) {
       try {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearer);
-        if (!authError && authData?.user?.id) {
-          const { error: insertError } = await supabaseAdmin.from('exam_attempts').insert({ user_id:authData.user.id, exam_id:row.id, exam_title:row.title, score, max_score:maxScore, result_json:resultJson, submitted_at:new Date().toISOString() });
-          if (!insertError) saved = true; else console.warn('Exam attempt not saved:', insertError.message);
-        }
+        const { data: inserted, error: insertError } = await supabaseAdmin.from('exam_attempts').insert({ user_id:studentId, exam_id:row.id, exam_title:row.title, score, max_score:maxScore, result_json:resultJson, submitted_at:new Date().toISOString() }).select('id').single();
+        if (!insertError) { saved = true; savedAttemptId = inserted?.id || null; }
+        else console.warn('Exam attempt not saved:', insertError.message);
       } catch (saveErr) { console.warn('Exam attempt save failed:', saveErr.message); }
+    }
+    if (saved && savedAttemptId && internalEvents.length) {
+      try {
+        const rowsToInsert = internalEvents.filter(item=>item.user_id).map(item=>({ ...item, exam_attempt_id:savedAttemptId }));
+        if (rowsToInsert.length) {
+          const { error } = await supabaseAdmin.from('mathspark_diagnostic_events').insert(rowsToInsert);
+          if (error) throw error;
+        }
+      } catch (logErr) {
+        console.warn('Private diagnostic history not saved. Run supabase/mathspark-diagnostic-engine.sql:', String(logErr?.message || logErr).slice(0, 260));
+      }
     }
     res.json({ ok:true, ...resultJson, savedToAccount:saved });
   } catch (err) {
