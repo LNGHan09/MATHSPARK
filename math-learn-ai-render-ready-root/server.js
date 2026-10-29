@@ -511,17 +511,45 @@ app.post('/api/admin/specialty-exams', requireAdmin, requireSupabase, upload.sin
     res.status(500).json({ error:`Không lưu được chuyên đề: ${err.message}` });
   }
 });
-app.post('/api/admin/specialty-exams/:id/analyze', requireAdmin, requireSupabase, aiRateLimit(3,10*60*1000), ensureOpenAI, async (req,res) => {
+// Specialty PDF analysis is a background job: the browser request returns immediately,
+// so a large PDF does not hit the web request/proxy timeout while the model is working.
+const specialtyAnalysisJobs = new Map();
+const activeSpecialtyAnalysisByExam = new Map();
+const SPECIALTY_ANALYSIS_TIMEOUT_MS = 240000;
+const SPECIALTY_ANALYSIS_JOB_TTL_MS = 2 * 60 * 60 * 1000;
+function pruneSpecialtyAnalysisJobs() {
+  const now = Date.now();
+  for (const [jobId, job] of specialtyAnalysisJobs) {
+    if (job.finishedAt && now - job.finishedAt > SPECIALTY_ANALYSIS_JOB_TTL_MS) {
+      specialtyAnalysisJobs.delete(jobId);
+      if (activeSpecialtyAnalysisByExam.get(String(job.examId)) === jobId) activeSpecialtyAnalysisByExam.delete(String(job.examId));
+    }
+  }
+}
+function publicSpecialtyAnalysisJob(job) {
+  return {
+    jobId: job.jobId, examId: String(job.examId), status: job.status,
+    progress: job.progress, message: job.message,
+    error: job.error || '', result: job.result || null,
+    startedAt: job.startedAt, finishedAt: job.finishedAt || null
+  };
+}
+function specialtyAnalysisFailureMessage(err) {
+  const message = String(err?.message || err || 'lỗi không xác định');
+  if (/timed?\s*out|timeout|ETIMEDOUT|ECONNRESET|ECONNABORTED|APIConnectionTimeoutError/i.test(message)) {
+    return 'AI mất quá 4 phút để xử lý PDF này nên đã hết thời gian chờ. PDF gốc và bản nháp vẫn được giữ nguyên. Hãy thử lại; nếu vẫn lỗi, xuất PDF nhẹ hơn hoặc chia tài liệu thành các phần nhỏ hơn.';
+  }
+  if (err?.status) return providerError(err).message;
+  return `Chưa xử lý được PDF chuyên đề: ${message.slice(0, 450)}`;
+}
+async function runSpecialtyAnalysisJob(job, row, aiRequest) {
   try {
-    const row = await getExamRow(req.params.id);
-    if (!row || row.bank_type !== 'specialty') return res.status(404).json({ error:'Không tìm thấy chuyên đề.' });
-    if (!row.source_file_path) return res.status(400).json({ error:'Chuyên đề chưa có PDF gốc.' });
-    const aiRequest = safeText(req.body?.aiRequest || row.ai_request || '',3000);
-    if (!aiRequest) return res.status(400).json({ error:'Chuyên đề chưa có yêu cầu AI.' });
-    const { data:blob, error:downloadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
+    job.status = 'downloading'; job.progress = 8; job.message = 'Đang tải PDF nguồn từ kho lưu trữ…';
+    const { data: blob, error: downloadError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(row.source_file_path);
     if (downloadError) throw downloadError;
     const buffer = Buffer.from(await blob.arrayBuffer());
-    if (!buffer.length) return res.status(400).json({ error:'PDF rỗng.' });
+    if (!buffer.length) throw new Error('PDF rỗng. Hãy tải lại tệp PDF nguồn.');
+    job.status = 'processing'; job.progress = 18; job.message = `Đã tải PDF (${(buffer.length / (1024 * 1024)).toFixed(1)} MB). AI đang đọc tài liệu và trích câu hỏi; bước này có thể mất vài phút…`;
     const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
     const prompt = `Bạn đang xử lý PDF nguồn để tạo bài luyện theo chuyên đề trên MathSpark. Đọc PDF theo đúng thứ tự trang/vị trí và làm theo YÊU CẦU CỤ THỂ CỦA QUẢN TRỊ VIÊN.
 
@@ -539,23 +567,69 @@ QUY TẮC:
 6. Công thức dùng LaTeX hợp lệ: inline \\( ... \\), display \\[ ... \\]; escape dấu gạch chéo ngược đúng trong JSON. Dùng \\begin{cases}...\\\\...\\end{cases} cho hệ phương trình.
 7. Không bỏ dữ kiện/ý nhỏ quan trọng. Câu có hình thì đánh dấu hasDiagram=true và ước lượng diagramBbox=[x0,y0,x1,y1] từ 0–1000 nếu đủ chắc chắn; nếu không chắc để null và mô tả. Mọi câu đều có solution/rubric tham khảo khi có thể; không đưa đáp án/lời giải lên giao diện làm bài.
 Chuyên đề: ${row.title}. Mô tả: ${row.description || 'Không có'}. Thời gian dự kiến: ${row.duration_minutes} phút.`;
+    job.progress = 28; job.message = 'Đã chuẩn bị PDF và yêu cầu. Đang gửi tài liệu cho AI…';
     const output = await callOpenAI({
-      instructions:'Bạn là chuyên viên số hóa và biên soạn học liệu Toán. Tuân thủ chặt yêu cầu của quản trị viên, trung thực với PDF, đánh máy chính xác, không bịa nguồn. Chỉ trả JSON hợp lệ.',
-      input:[{ role:'user', content:[{type:'input_text',text:prompt},{type:'input_file',filename:row.source_file_name||'specialty.pdf',file_data:dataUrl,detail:'high'}]}],
-      maxOutputTokens:14000, reasoningEffort:'high'
+      instructions: 'Bạn là chuyên viên số hóa và biên soạn học liệu Toán. Tuân thủ chặt yêu cầu của quản trị viên, trung thực với PDF, đánh máy chính xác, không bịa nguồn. Chỉ trả JSON hợp lệ.',
+      input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, { type: 'input_file', filename: row.source_file_name || 'specialty.pdf', file_data: dataUrl, detail: 'high' }] }],
+      maxOutputTokens: 14000,
+      reasoningEffort: 'medium',
+      timeoutMs: SPECIALTY_ANALYSIS_TIMEOUT_MS,
+      maxRetries: 0
     });
+    job.status = 'validating'; job.progress = 83; job.message = 'AI đã trả nội dung. Đang kiểm tra cấu trúc câu hỏi, đáp án và lưu bản nháp…';
     const parsed = parseModelJson(output);
     if (!Array.isArray(parsed.questions) || !parsed.questions.length) throw new Error('AI chưa tạo được câu hỏi phù hợp. Hãy làm rõ yêu cầu hoặc dùng PDF rõ hơn.');
     const questions = normalizeExamQuestions(parsed.questions);
-    if (questions.some(q=>!q.prompt)) throw new Error('Có câu bị rỗng sau khi trích xuất. Hãy chạy lại hoặc chỉnh trong phần duyệt.');
-    const { data, error } = await supabaseAdmin.from('learning_exams').update({ questions, ai_request:aiRequest, status:'draft', updated_at:new Date().toISOString() }).eq('id',String(req.params.id)).select('*').single();
+    if (questions.some(q => !q.prompt)) throw new Error('Có câu bị rỗng sau khi trích xuất. Bản nháp cũ được giữ nguyên. Hãy chạy lại hoặc chỉnh trong phần duyệt.');
+    const { data, error } = await supabaseAdmin.from('learning_exams').update({ questions, ai_request: aiRequest, status: 'draft', updated_at: new Date().toISOString() }).eq('id', String(row.id)).eq('bank_type', 'specialty').select('*').single();
     if (error) throw error;
-    res.json({ ok:true, exam:examAdminView(data), reviewRequired:questions.filter(q=>q.needsReview).length, message:`AI đã đánh máy/tạo ${questions.length} câu theo yêu cầu. ${questions.filter(q=>q.origin==='ai_generated').length} câu được AI biên soạn bổ sung; hãy kiểm tra nội dung, nguồn, công thức và đáp án trước khi đăng.` });
+    job.result = { ok: true, exam: examAdminView(data), reviewRequired: questions.filter(q => q.needsReview).length, message: `AI đã xử lý ${questions.length} câu theo yêu cầu. ${questions.filter(q => q.origin === 'ai_generated').length} câu được AI biên soạn bổ sung; hãy kiểm tra nội dung, nguồn, công thức và đáp án trước khi đăng.` };
+    job.status = 'completed'; job.progress = 100; job.message = 'Đã xử lý PDF thành công. Đang mở phần duyệt câu hỏi…';
   } catch (err) {
-    console.error('Specialty analysis failed:',{message:String(err?.message||err).slice(0,500),status:err?.status||0});
-    if (err?.status) return aiEndpointError(res,err);
-    res.status(502).json({ error:`Chưa xử lý được PDF chuyên đề: ${err.message||'lỗi không xác định'}` });
+    console.error('Specialty analysis job failed:', { examId: String(row.id), jobId: job.jobId, message: String(err?.message || err).slice(0, 500), status: err?.status || 0 });
+    job.status = 'failed'; job.progress = 100; job.error = specialtyAnalysisFailureMessage(err); job.message = 'Không xử lý được PDF.';
+  } finally {
+    job.finishedAt = Date.now();
+    if (activeSpecialtyAnalysisByExam.get(String(row.id)) === job.jobId) activeSpecialtyAnalysisByExam.delete(String(row.id));
   }
+}
+app.post('/api/admin/specialty-exams/:id/analyze', requireAdmin, requireSupabase, aiRateLimit(3,10*60*1000), ensureOpenAI, async (req,res) => {
+  try {
+    pruneSpecialtyAnalysisJobs();
+    const examId = String(req.params.id);
+    const activeJobId = activeSpecialtyAnalysisByExam.get(examId);
+    const activeJob = activeJobId ? specialtyAnalysisJobs.get(activeJobId) : null;
+    if (activeJob && ['queued','downloading','processing','validating'].includes(activeJob.status)) {
+      return res.status(202).set('Cache-Control','no-store').json({ ok:true, ...publicSpecialtyAnalysisJob(activeJob), message:'PDF này đang được xử lý. Đang tiếp tục theo dõi tác vụ hiện tại.' });
+    }
+    const row = await getExamRow(examId);
+    if (!row || row.bank_type !== 'specialty') return res.status(404).json({ error:'Không tìm thấy chuyên đề.' });
+    if (!row.source_file_path) return res.status(400).json({ error:'Chuyên đề chưa có PDF gốc.' });
+    const aiRequest = safeText(req.body?.aiRequest || row.ai_request || '',3000);
+    if (!aiRequest) return res.status(400).json({ error:'Chuyên đề chưa có yêu cầu AI.' });
+    const jobId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+    const job = { jobId, examId, status:'queued', progress:2, message:'Đã nhận yêu cầu. Đang xếp hàng xử lý PDF…', error:'', result:null, startedAt:Date.now(), finishedAt:null };
+    specialtyAnalysisJobs.set(jobId, job);
+    activeSpecialtyAnalysisByExam.set(examId, jobId);
+    res.status(202).set('Cache-Control','no-store').json({ ok:true, ...publicSpecialtyAnalysisJob(job) });
+    setImmediate(() => { runSpecialtyAnalysisJob(job, row, aiRequest).catch(err => {
+      console.error('Uncaught specialty background job failure:', err);
+      job.status='failed'; job.progress=100; job.error=specialtyAnalysisFailureMessage(err); job.message='Không xử lý được PDF.'; job.finishedAt=Date.now();
+      if(activeSpecialtyAnalysisByExam.get(examId)===jobId)activeSpecialtyAnalysisByExam.delete(examId);
+    }); });
+  } catch (err) {
+    console.error('Specialty analysis queue failed:', { message:String(err?.message||err).slice(0,500), status:err?.status||0 });
+    if (err?.status) return aiEndpointError(res,err);
+    res.status(502).json({ error:`Không thể bắt đầu xử lý PDF chuyên đề: ${err.message||'lỗi không xác định'}` });
+  }
+});
+app.get('/api/admin/specialty-exams/:id/analyze/:jobId', requireAdmin, requireSupabase, (req,res) => {
+  res.set('Cache-Control','no-store');
+  const job = specialtyAnalysisJobs.get(String(req.params.jobId));
+  if (!job || String(job.examId) !== String(req.params.id)) {
+    return res.json({ status:'interrupted', progress:100, error:'Không tìm thấy trạng thái tác vụ này. Có thể máy chủ vừa khởi động lại. PDF gốc và bản nháp vẫn được giữ; hãy chạy AI lại.' });
+  }
+  res.json(publicSpecialtyAnalysisJob(job));
 });
 app.put('/api/admin/specialty-exams/:id', requireAdmin, requireSupabase, async (req,res) => {
   try {
@@ -1112,10 +1186,15 @@ function providerError(err) {
   if (status === 400) return { status: 400, message: 'Yêu cầu gửi đến AI chưa hợp lệ. Hãy thử lại với ảnh rõ hơn hoặc nội dung ngắn hơn.' };
   return { status: 502, message: 'OpenAI chưa xử lý được yêu cầu lúc này. Vui lòng thử lại sau.' };
 }
-async function callOpenAI({ instructions, input, maxOutputTokens = 1800, reasoningEffort }) {
+async function callOpenAI({ instructions, input, maxOutputTokens = 1800, reasoningEffort, timeoutMs, maxRetries }) {
   const params = { model: OPENAI_MODEL, instructions, input, max_output_tokens: maxOutputTokens };
   if (reasoningEffort) params.reasoning = { effort: reasoningEffort };
-  const response = await openai.responses.create(params);
+  const requestOptions = {};
+  if (Number.isFinite(Number(timeoutMs)) && Number(timeoutMs) > 0) requestOptions.timeout = Number(timeoutMs);
+  if (Number.isInteger(Number(maxRetries)) && Number(maxRetries) >= 0) requestOptions.maxRetries = Number(maxRetries);
+  const response = Object.keys(requestOptions).length
+    ? await openai.responses.create(params, requestOptions)
+    : await openai.responses.create(params);
   return responseText(response);
 }
 function aiEndpointError(res, err) {

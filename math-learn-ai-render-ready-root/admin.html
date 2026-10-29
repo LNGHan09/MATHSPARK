@@ -32,7 +32,69 @@ function renderAdminExams(){renderAdminExamList($('adminExamsList'),exams,'exam'
 function renderAdminSpecialtyExams(){renderAdminExamList($('adminSpecialtyExamsList'),specialtyExams,'specialty')}
 $('examUploadForm').addEventListener('submit',async e=>{e.preventDefault();const file=$('examPdfFile').files[0];if(!file){$('examUploadStatus').textContent='Hãy chọn PDF trước.';return}if(file.size>20*1024*1024){$('examUploadStatus').textContent='PDF vượt quá 20 MB.';return}const fd=new FormData();fd.append('title',$('examUploadTitle').value);fd.append('durationMinutes',$('examDuration').value);fd.append('description',$('examUploadDescription').value);fd.append('file',file);$('examUploadBtn').disabled=true;$('examUploadStatus').textContent='Đang tải PDF lên Supabase…';try{const data=await api('/api/admin/exams',{method:'POST',body:fd});$('examUploadStatus').textContent=data.message||'Đã tải đề lên.';$('examUploadForm').reset();$('examDuration').value='120';await loadExams();if(data.exam)openExamEditor(data.exam.id,'exam')}catch(err){$('examUploadStatus').textContent=err.message}finally{$('examUploadBtn').disabled=false}});
 $('specialtyUploadForm').addEventListener('submit',async e=>{e.preventDefault();const file=$('specialtyPdfFile').files[0];if(!file){$('specialtyUploadStatus').textContent='Hãy chọn PDF trước.';return}if(file.size>20*1024*1024){$('specialtyUploadStatus').textContent='PDF vượt quá 20 MB.';return}const fd=new FormData();fd.append('title',$('specialtyUploadTitle').value);fd.append('durationMinutes',$('specialtyDuration').value);fd.append('description',$('specialtyUploadDescription').value);fd.append('aiRequest',$('specialtyAiRequest').value);fd.append('file',file);$('specialtyUploadBtn').disabled=true;$('specialtyUploadStatus').textContent='Đang tải PDF và lưu yêu cầu AI…';try{const data=await api('/api/admin/specialty-exams',{method:'POST',body:fd});$('specialtyUploadStatus').textContent=data.message||'Đã tải chuyên đề lên.';$('specialtyUploadForm').reset();$('specialtyDuration').value='60';await loadSpecialtyExams();$('specialtyAdminListCard').scrollIntoView({behavior:'smooth',block:'start'})}catch(err){$('specialtyUploadStatus').textContent=err.message}finally{$('specialtyUploadBtn').disabled=false}});
-async function analyzeExam(id,bankType='exam'){const base=examAdminApiBase(bankType);const item=(bankType==='specialty'?specialtyExams:exams).find(ex=>String(ex.id)===String(id));const note=bankType==='specialty'?'AI sẽ lọc và đánh máy theo ô yêu cầu đã lưu. Câu tự biên soạn sẽ được gắn nhãn để phân biệt nguồn.':'AI sẽ đọc PDF, tách câu và giải/đối chiếu đáp án.';if(!confirm(`${note} Việc này sử dụng token API. Tiếp tục?`))return;const host=$(bankType==='specialty'?'adminSpecialtyExamsList':'adminExamsList');host.insertAdjacentHTML('afterbegin','<p class="status">AI đang đọc PDF, xử lý yêu cầu và tạo câu hỏi. Tệp dài có thể mất một lúc…</p>');try{const data=await api(base+'/'+encodeURIComponent(id)+'/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({aiRequest:item?.aiRequest||''})});if(bankType==='specialty')await loadSpecialtyExams();else await loadExams();openExamEditor(id,bankType);$('examEditStatus').textContent=data.message+(data.reviewRequired?` Còn ${data.reviewRequired} câu cần kiểm tra.`:'')}catch(err){alert(err.message)}finally{if(bankType==='specialty')await loadSpecialtyExams();else await loadExams()}}
+async function analyzeExam(id,bankType='exam'){
+  const base=examAdminApiBase(bankType);
+  const item=(bankType==='specialty'?specialtyExams:exams).find(ex=>String(ex.id)===String(id));
+  const note=bankType==='specialty'?'AI sẽ lọc và đánh máy theo ô yêu cầu đã lưu. Câu tự biên soạn sẽ được gắn nhãn để phân biệt nguồn.':'AI sẽ đọc PDF, tách câu và giải/đối chiếu đáp án.';
+  if(!confirm(`${note} Việc này sử dụng token API. Tiếp tục?`))return;
+  const host=$(bankType==='specialty'?'adminSpecialtyExamsList':'adminExamsList');
+  const analyzeBtn=Array.from(host.querySelectorAll('[data-exam-action="analyze"]')).find(btn=>String(btn.dataset.examId)===String(id));
+  const originalButtonText=analyzeBtn?.textContent||'';
+  if(analyzeBtn){analyzeBtn.disabled=true;analyzeBtn.textContent='Đang xử lý…'}
+  const statusLine=document.createElement('p');
+  statusLine.className='status';
+  statusLine.setAttribute('role','status');
+  statusLine.setAttribute('aria-live','polite');
+  statusLine.style.cssText='padding:10px 12px;border:1px solid #e7e0d6;border-radius:10px;background:#fffdf9;line-height:1.5';
+  statusLine.textContent=bankType==='specialty'?'Đang xếp hàng xử lý PDF… Tệp dài có thể mất vài phút.':'AI đang đọc PDF, tách câu và giải/đối chiếu đáp án…';
+  host.prepend(statusLine);
+  let completedData=null;
+  let failure='';
+  try{
+    let data=await api(base+'/'+encodeURIComponent(id)+'/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({aiRequest:item?.aiRequest||''})});
+    if(bankType==='specialty'&&data.jobId){
+      const deadline=Date.now()+8*60*1000;
+      let done=false;
+      while(Date.now()<deadline){
+        await new Promise(resolve=>setTimeout(resolve,2000));
+        let state;
+        try{
+          state=await api(base+'/'+encodeURIComponent(id)+'/analyze/'+encodeURIComponent(data.jobId),{method:'GET',headers:{'Cache-Control':'no-cache'}});
+        }catch(pollError){
+          statusLine.textContent='Đang chờ phản hồi từ máy chủ AI… PDF và bản nháp vẫn được giữ nguyên.';
+          continue;
+        }
+        if(state.status==='completed'){
+          completedData=state.result;
+          done=true;
+          break;
+        }
+        if(state.status==='failed'||state.status==='interrupted')throw new Error(state.error||'Không xử lý được PDF. PDF gốc và bản nháp vẫn được giữ nguyên.');
+        statusLine.textContent=`${Math.max(0,Math.min(99,Number(state.progress)||0))}% · ${state.message||'AI đang xử lý PDF…'}`;
+      }
+      if(!done)throw new Error('Tác vụ vẫn chưa trả kết quả sau 8 phút. PDF gốc và bản nháp vẫn được giữ nguyên. Hãy chờ thêm rồi tải lại danh sách để kiểm tra trước khi chạy lại AI.');
+      if(!completedData)throw new Error('AI đã kết thúc nhưng không có dữ liệu kết quả. PDF gốc và bản nháp vẫn được giữ nguyên.');
+      data=completedData;
+    }
+    await (bankType==='specialty'?loadSpecialtyExams():loadExams());
+    openExamEditor(id,bankType);
+    $('examEditStatus').textContent=(data.message||'Đã phân tích xong.')+(data.reviewRequired?` Còn ${data.reviewRequired} câu cần kiểm tra.`:'');
+  }catch(err){
+    failure=err?.message||'Không xử lý được PDF.';
+  }finally{
+    if(bankType==='specialty')await loadSpecialtyExams();else await loadExams();
+    if(failure){
+      const freshHost=$(bankType==='specialty'?'adminSpecialtyExamsList':'adminExamsList');
+      const errorLine=document.createElement('p');
+      errorLine.className='status';
+      errorLine.setAttribute('role','alert');
+      errorLine.style.cssText='padding:10px 12px;border:1px solid #e7c8cb;border-radius:10px;background:#fff6f6;line-height:1.5';
+      errorLine.textContent=failure;
+      freshHost.prepend(errorLine);
+    }
+    if(analyzeBtn){analyzeBtn.disabled=false;analyzeBtn.textContent=originalButtonText}
+  }
+}
 function optionEditorMarkup(q,i){return (Array.isArray(q.options)&&q.options.length>4?['A','B','C','D','E']:['A','B','C','D']).map(letter=>{const option=(q.options||[]).find(o=>(typeof o==='string'?letter:o.label)===letter);const val=typeof option==='string'?option:(option?.text||'');return `<div class="field"><label>${letter}</label><textarea data-qfield="option-${letter}" data-qindex="${i}" rows="2">${esc(val)}</textarea></div>`}).join('')}
 function openExamEditor(id,bankType='exam'){editingExam=(bankType==='specialty'?specialtyExams:exams).find(ex=>String(ex.id)===String(id));if(!editingExam)return;$('examEditCard').classList.remove('hidden');$('specialtyRequestEditor').classList.toggle('hidden',bankType!=='specialty');$('specialtyAiRequestEdit').value=editingExam.aiRequest||'';$('examEditHeading').textContent=`Duyệt ${editingExam.title} · ${editingExam.questions.length} câu`;$('examEditStatus').textContent='Sửa trực tiếp những trường cần sửa. Công thức để ở dạng LaTeX, ví dụ \\(x^{2}\\), \\frac{a}{b}. Đánh dấu bỏ “Cần duyệt” chỉ sau khi đã kiểm tra.';renderExamEditorQuestions();$('examEditCard').scrollIntoView({behavior:'smooth',block:'start'})}
 const examMathScriptPromises={};
