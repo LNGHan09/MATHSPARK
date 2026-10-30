@@ -1538,7 +1538,28 @@
   @media(max-width:700px){#view-schedule .calendar-head-actions{gap:8px}}
 </style>
 
-<style id="exam-short-answer-style">.exam-short-answer-frame,.exam-essay-answer-frame{border:1px solid #e5d9ca;background:#fffaf2;border-radius:13px;padding:15px 16px;margin:8px 0 14px;color:#1d2b50}.exam-short-answer-frame strong,.exam-essay-answer-frame strong{display:block;margin-bottom:6px;font-size:15px}.exam-short-answer-frame p,.exam-essay-answer-frame p{margin:0;line-height:1.6;color:#687083;font-size:14px}@media(max-width:650px){.exam-short-answer-frame,.exam-essay-answer-frame{padding:13px}}</style></head>
+<style id="exam-short-answer-style">.exam-short-answer-frame,.exam-essay-answer-frame{border:1px solid #e5d9ca;background:#fffaf2;border-radius:13px;padding:15px 16px;margin:8px 0 14px;color:#1d2b50}.exam-short-answer-frame strong,.exam-essay-answer-frame strong{display:block;margin-bottom:6px;font-size:15px}.exam-short-answer-frame p,.exam-essay-answer-frame p{margin:0;line-height:1.6;color:#687083;font-size:14px}@media(max-width:650px){.exam-short-answer-frame,.exam-essay-answer-frame{padding:13px}}</style><style id="exam-attempt-review-styles">
+  .exam-attempt-history-panel{margin-top:18px}
+  .exam-attempt-history-head{align-items:center;gap:12px}
+  .exam-attempt-history-list{display:grid;gap:10px}
+  .exam-attempt-history-card{border:1px solid var(--line);border-radius:14px;background:#fffdf9;padding:14px;display:grid;gap:9px}
+  .exam-attempt-history-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .exam-attempt-history-title{font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+  .exam-attempt-history-meta{font-size:12px;color:var(--muted);line-height:1.5}
+  .exam-attempt-history-score{flex-shrink:0;border-radius:999px;background:#e8f2e9;color:#236a47;padding:6px 10px;font-weight:700;font-size:12px}
+  .exam-attempt-history-summary{margin:0;color:#596171;font-size:13px;line-height:1.55}
+  .exam-attempt-history-actions{display:flex;justify-content:flex-end;gap:8px}
+  .exam-result-question-snapshot{margin:8px 0 12px;padding:12px 13px;border:1px solid #e8e2d8;border-radius:12px;background:#fffdf9}
+  .exam-result-question-snapshot>strong{display:block;margin-bottom:7px;color:var(--ink)}
+  .exam-result-question-text{line-height:1.65;color:#293956}
+  .exam-result-options{display:grid;gap:5px;margin-top:8px}
+  .exam-result-option{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.55}
+  .exam-result-option>strong{flex:0 0 22px;color:#314a76}
+  .exam-result-photo-note{margin:8px 0 0;color:#687083;font-size:12px}
+  .exam-result-dual-status{margin:7px 0;padding:7px 10px;border-radius:9px;background:#f1f4f8;color:#43536d;font-size:12px;line-height:1.5}
+  .exam-result-dual-status.review{background:#fff5e5;color:#8a5b16}
+  @media(max-width:600px){.exam-attempt-history-card{padding:12px}.exam-attempt-history-actions .btn{width:100%;justify-content:center}.exam-attempt-history-card-top{gap:8px}}
+</style></head>
 <body>
 <div class="app">
   <header class="topbar">
@@ -1625,8 +1646,9 @@
         <div class="page-head"><div><p class="eyebrow">Đánh giá & rèn luyện</p><h1>Luyện thi Toán 9</h1><p>Hai chế độ chính: đánh giá năng lực để xác định phần cần cải thiện, hoặc luyện câu hỏi theo chuyên đề và dạng đề thi vào lớp 10.</p></div></div>
         <div class="panel exam-bank-panel" id="examBankPanel"><div class="section-head"><div><h2>Kho đề luyện thi</h2><p>Thi thử theo từng câu, lưu kết quả sau khi nộp và chấm tự luận bằng ảnh.</p></div><span class="pill neutral" id="examBankCount">Đang tải đề…</span></div><div class="exam-bank-tools"><input id="examBankSearch" type="search" placeholder="Tìm tên đề…" oninput="renderPublicExams()"><select id="examBankType" onchange="renderPublicExams()"><option value="all">Tất cả dạng đề</option><option value="Trắc nghiệm">Có trắc nghiệm</option><option value="Tự luận">Có tự luận</option></select><button class="btn btn-light" type="button" onclick="loadPublishedExams()"><i data-lucide="refresh-cw"></i> Làm mới</button></div><div id="examBankStatus" class="status-line"></div><div id="publicExamList" class="exam-bank-grid"><div class="empty">Đang tải kho đề…</div></div></div>
 <div class="panel exam-bank-panel" id="specialtyBankPanel"><div class="section-head"><div><h2>Kho chuyên đề</h2><p>Luyện tập theo từng chuyên đề, làm bài như một đề thi và nộp tự luận bằng ảnh.</p></div><span class="pill neutral" id="specialtyBankCount">Đang tải chuyên đề…</span></div><div class="exam-bank-tools"><input id="specialtyBankSearch" type="search" placeholder="Tìm tên chuyên đề…" oninput="renderPublicSpecialtyExams()"><select id="specialtyBankType" onchange="renderPublicSpecialtyExams()"><option value="all">Tất cả dạng câu</option><option value="Trắc nghiệm">Có trắc nghiệm</option><option value="Tự luận">Có tự luận</option></select><button class="btn btn-light" type="button" onclick="loadPublishedSpecialtyExams()"><i data-lucide="refresh-cw"></i> Làm mới</button></div><div id="specialtyBankStatus" class="status-line"></div><div id="publicSpecialtyList" class="exam-bank-grid"><div class="empty">Đang tải kho chuyên đề…</div></div></div>
+<div class="panel exam-attempt-history-panel" id="examAttemptHistoryPanel"><div class="section-head exam-attempt-history-head"><div><h2>Lịch sử bài thi đã làm</h2><p id="examAttemptHistorySubtitle">Xem lại đề bài, câu trả lời và toàn bộ nhận xét AI sau mỗi lần nộp.</p></div><button class="btn btn-light" type="button" id="refreshExamAttemptHistoryBtn" onclick="loadExamAttemptHistory(true)"><i data-lucide="refresh-cw"></i> Làm mới</button></div><div id="examAttemptHistoryList" class="exam-attempt-history-list"><div class="empty">Đăng nhập để tải lịch sử bài thi đã lưu.</div></div></div>
 <div id="examRunnerPanel" class="panel exam-runner hidden"><div id="examIntegrityNotice" class="exam-integrity-notice hidden" role="status" aria-live="polite"><p id="examIntegrityNoticeText"></p><button type="button" class="btn btn-light hidden" id="examReenterFullscreenBtn">Vào lại toàn màn hình</button></div><div class="exam-runner-top"><div><p class="eyebrow">THI THỬ · MATHSPARK</p><h2 id="examRunnerTitle">Đề thi</h2><p id="examRunnerMeta" class="panel-desc"></p></div><div class="exam-timer" id="examRunnerTimer">--:--</div></div><div class="exam-progress"><span id="examRunnerProgressBar"></span></div><div class="exam-runner-layout"><aside class="exam-question-nav"><div class="exam-nav-title">Phiếu trả lời · Chọn câu</div><div id="examQuestionNav"></div><p class="small">Chấm bài chỉ thực hiện sau khi bấm nộp bài.</p></aside><div class="exam-question-main"><div class="exam-question-meta"><span id="examQuestionNumber" class="pill gold">Câu 1</span><span id="examQuestionPoints" class="pill neutral">1 điểm</span><span id="examQuestionType" class="pill neutral">Trắc nghiệm</span></div><div id="examQuestionText" class="exam-question-text"></div><div id="examQuestionDiagram" class="exam-question-diagram"></div><div id="examQuestionOptions" class="exam-question-options"></div><div id="examEssayUpload" class="exam-essay-upload hidden"><strong>Ảnh lời giải của câu này · có thể nhiều trang</strong><div class="exam-essay-upload-actions"><button id="examCaptureEssayPhoto" type="button" class="btn btn-light">Chụp thêm một trang</button><button id="examChooseEssayPhotos" type="button" class="btn btn-light">Chọn nhiều ảnh</button></div><input id="examEssayCamera" class="hidden" type="file" accept="image/*" capture="environment"><input id="examEssayFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" multiple><p class="small">Chụp từng trang bằng camera hoặc chọn nhiều ảnh từ thư viện. Có thể thêm ảnh nhiều lần; dùng nút ↑ ↓ để sắp xếp đúng thứ tự trước khi nộp. Tối đa 8 ảnh/câu, 20 ảnh/đề, mỗi ảnh không quá 7 MB. AI đọc tất cả ảnh khi nộp nên thời gian và chi phí có thể tăng theo số trang.</p><div id="examEssayPages" class="exam-essay-pages"></div><p id="examEssayUploadStatus" class="small" aria-live="polite"></p></div><div class="exam-question-controls"><button class="btn btn-light" id="examPrevQuestion" type="button" onclick="moveExamQuestion(-1)"><i data-lucide="arrow-left"></i> Câu trước</button><span id="examQuestionPosition" class="small"></span><button class="btn btn-primary" id="examNextQuestion" type="button" onclick="moveExamQuestion(1)">Câu tiếp <i data-lucide="arrow-right"></i></button></div></div></div><div class="exam-submit-row"><button class="btn btn-light" type="button" onclick="exitExamRunner()">Thoát đề</button><button class="btn btn-primary" id="examSubmitBtn" type="button" onclick="submitActiveExam()"><i data-lucide="check-circle"></i> Nộp bài</button></div><div id="examSubmitStatus" class="status-line"></div></div>
-<div id="examResultPanel" class="panel hidden"><div class="section-head"><div><h2>Kết quả thi thử</h2><p id="examResultSubheading"></p></div><span id="examResultScore" class="pill green"></span></div><div id="examAdaptiveSchedule" class="exam-adaptive-schedule hidden"></div><div id="examResultDetails" class="exam-result-details"></div><div class="button-row"><button class="btn btn-primary" type="button" onclick="backToExamBank()">Quay về kho đề</button><button class="btn btn-light" type="button" onclick="retakeActiveExam()">Làm lại đề</button></div></div>
+<div id="examResultPanel" class="panel hidden"><div class="section-head"><div><h2>Kết quả thi thử</h2><p id="examResultSubheading"></p></div><span id="examResultScore" class="pill green"></span></div><div id="examAdaptiveSchedule" class="exam-adaptive-schedule hidden"></div><div id="examResultDetails" class="exam-result-details"></div><div class="button-row"><button class="btn btn-primary" type="button" onclick="backToExamBank()">Quay về kho đề</button><button class="btn btn-light" id="examRetakeBtn" type="button" onclick="retakeActiveExam()">Làm lại đề</button></div></div>
 
         <div class="grid practice-cards">
           <div class="feature-card"><div class="feature-icon"><i data-lucide="chart-no-axes-combined"></i></div><h3>Test năng lực</h3><p>Bài trắc nghiệm ngắn gồm các kiến thức trọng tâm. Kết quả giúp ước lượng mức hiện tại và gợi ý chủ đề nên ôn thêm.</p><button class="btn btn-primary" onclick="startQuiz('diagnostic')"><i data-lucide="play"></i> Bắt đầu test</button></div>
@@ -1893,7 +1915,7 @@
       }else{
         const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const ready=await activateStudent(data.user||data.session?.user);if(ready)status.textContent='Đăng nhập thành công.';
       }
-      if(currentStudent){syncAccountButton();refreshAfterStudentStateLoad();}
+      if(currentStudent){syncAccountButton();refreshAfterStudentStateLoad();if(document.getElementById('view-practice')?.classList.contains('active'))loadExamAttemptHistory(true);}
     }catch(err){status.textContent=err.message||'Không thể đăng nhập. Hãy thử lại.';}
     finally{submit.disabled=false;}
   }
@@ -1901,7 +1923,7 @@
     if(!supabaseClient)return;const oldId=currentStudent?.id;clearTimeout(cloudSaveTimer);
     try{const {error}=await supabaseClient.auth.signOut();if(error)throw error;}catch(err){document.getElementById('accountStatus').textContent='Không đăng xuất được: '+err.message;return;}
     currentStudent=null;applyingCloudState=true;state=freshStudentState();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch{}applyingCloudState=false;
-    if(oldId)localStorage.setItem(ACCOUNT_OWNER_KEY,oldId);refreshAfterStudentStateLoad();syncAccountButton();document.getElementById('accountStatus').textContent='Đã đăng xuất. Dữ liệu tài khoản sẽ được tải lại khi chủ tài khoản đăng nhập.';showToast('Đã đăng xuất khỏi MathSpark.');
+    if(oldId)localStorage.setItem(ACCOUNT_OWNER_KEY,oldId);refreshAfterStudentStateLoad();syncAccountButton();if(document.getElementById('view-practice')?.classList.contains('active'))loadExamAttemptHistory(true);document.getElementById('accountStatus').textContent='Đã đăng xuất. Dữ liệu tài khoản sẽ được tải lại khi chủ tài khoản đăng nhập.';showToast('Đã đăng xuất khỏi MathSpark.');
   }
   async function initializeSupabaseAuth(){
     try{
@@ -1910,8 +1932,9 @@
       if(!window.supabase||typeof window.supabase.createClient!=='function')throw new Error('Không tải được thư viện Supabase JS.');
       supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
       const {data,error}=await supabaseClient.auth.getSession();if(error)throw error;if(data.session?.user)await activateStudent(data.session.user);
-      supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'&&currentStudent){currentStudent=null;clearTimeout(cloudSaveTimer);applyingCloudState=true;state=freshStudentState();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch{}applyingCloudState=false;refreshAfterStudentStateLoad();syncAccountButton();} });
+      supabaseClient.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'&&currentStudent){currentStudent=null;clearTimeout(cloudSaveTimer);applyingCloudState=true;state=freshStudentState();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch{}applyingCloudState=false;refreshAfterStudentStateLoad();syncAccountButton();if(document.getElementById('view-practice')?.classList.contains('active'))loadExamAttemptHistory(true);}else if(event==='SIGNED_IN'&&document.getElementById('view-practice')?.classList.contains('active'))setTimeout(()=>loadExamAttemptHistory(true),0);});
       syncAccountButton();
+      if(document.getElementById('view-practice')?.classList.contains('active'))loadExamAttemptHistory(true);
     }catch(err){console.warn('Supabase Auth initialization failed:',err.message);}
   }
 
@@ -2008,12 +2031,16 @@
     document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===navName));
     if(name==='schedule')renderCalendar();
     if(name==='home')renderLessons();
+    if(name==='practice')loadExamAttemptHistory();
     // Whenever the user returns to Luyện thi outside an active test, restore both banks.
     // This prevents the last-used bank (especially Kho chuyên đề) from leaving Kho đề hidden.
     if(name==='practice' && document.getElementById('examRunnerPanel')?.classList.contains('hidden')){
       document.getElementById('examResultPanel')?.classList.add('hidden');
       document.getElementById('examBankPanel')?.classList.remove('hidden');
       document.getElementById('specialtyBankPanel')?.classList.remove('hidden');
+      document.getElementById('examAttemptHistoryPanel')?.classList.remove('hidden');
+      document.getElementById('examRetakeBtn')?.classList.remove('hidden');
+      viewingSavedExamAttempt=false;
     }
     if(name==='settings'){document.getElementById('settingsTarget').value=state.targetScore;syncApiStatus()}
     if(!options.keepScroll)window.scrollTo({top:0,behavior:'smooth'});
@@ -3525,7 +3552,7 @@
   if(state.examDate)document.getElementById('examDate').value=state.examDate;else{let dt=new Date();dt.setMonth(dt.getMonth()+7);document.getElementById('examDate').value=dateKey(dt)}document.getElementById('examName').value=state.examName||'';document.getElementById('targetScore').value=state.targetScore||'8';document.getElementById('settingsTarget').value=state.targetScore||'8';document.getElementById('studyIntensity').value=state.studyIntensity||'balanced';const availabilityMigrated=migrateLegacyAvailability();if(availabilityMigrated)saveState();setupCalendarInteraction();renderLessons();updateStats();renderCalendar();renderGradingHistory();icons();renderStudyStreak();setInterval(renderStudyStreak,60000);renderCountdowns();setInterval(renderCountdowns,1000);const requestedView=location.hash.match(/^#(?:view-)?(home|schedule|practice|grade|settings)$/)?.[1];if(requestedView)switchView(requestedView);checkApiHealth();loadSharedDocuments();connectSharedDocumentUpdates();loadPublishedExams();loadPublishedSpecialtyExams();initializeSupabaseAuth();syncAccountButton();
 
 // ---------- Published exam bank / one question at a time ----------
-let publishedExams=[];let publishedSpecialtyExams=[];let activeExam=null;let activeExamIndex=0;let activeExamAnswers={};let activeExamEssayFiles={};let activeExamEssayPreviewUrls={};let activeExamIntegrity={visibilityHidden:0,fullscreenExits:0,violations:0};let examGuardHooksInstalled=false;let examPhotoPickerOpen=false;let examPhotoPickerHidPage=false;let activeExamStartedAt=0;let activeExamTimer=null;let activeExamFinished=false;let activeExamLastResult=null;let examPdfCache=null;let examPdfCacheId=null;
+let publishedExams=[];let publishedSpecialtyExams=[];let examAttemptRecords=[];let examAttemptHistoryLoading=false;let viewingSavedExamAttempt=false;let activeExam=null;let activeExamIndex=0;let activeExamAnswers={};let activeExamEssayFiles={};let activeExamEssayPreviewUrls={};let activeExamIntegrity={visibilityHidden:0,fullscreenExits:0,violations:0};let examGuardHooksInstalled=false;let examPhotoPickerOpen=false;let examPhotoPickerHidPage=false;let activeExamStartedAt=0;let activeExamTimer=null;let activeExamFinished=false;let activeExamLastResult=null;let examPdfCache=null;let examPdfCacheId=null;
 function examEscape(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function fetchPublicBank(url,listId,countId,bankLabel){const list=document.getElementById(listId);if(!list)return [];list.innerHTML='<div class="empty">Đang tải…</div>';try{const response=await fetch(url,{cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`Không tải được ${bankLabel}.`);return Array.isArray(data)?data:[]}catch(err){list.innerHTML=`<div class="empty">${examEscape(err.message)}<br><small>Quản trị viên cần chạy migration Supabase và đăng ít nhất một bài đã duyệt.</small></div>`;const count=document.getElementById(countId);if(count)count.textContent='Chưa tải được';return null}}
 async function loadPublishedExams(){const list=document.getElementById('publicExamList');if(!list)return;const status=document.getElementById('examBankStatus');if(status)status.textContent='';const data=await fetchPublicBank('/api/exams','publicExamList','examBankCount','Kho đề luyện thi');if(data===null){document.getElementById('examBankCount').textContent='Chưa tải được';return}publishedExams=data;renderPublicExams()}
@@ -3639,8 +3666,63 @@ function leaveExamFullscreenMode(){
   clearAllExamEssayPreviewUrls();
   if(document.fullscreenElement&&typeof document.exitFullscreen==='function'){try{const result=document.exitFullscreen();result?.catch?.(()=>{})}catch{}}
 }
-async function startPublishedExam(id){const bank=document.getElementById('examBankPanel'),specialtyBank=document.getElementById('specialtyBankPanel'),runner=document.getElementById('examRunnerPanel'),result=document.getElementById('examResultPanel');try{const r=await fetch('/api/exams/'+encodeURIComponent(id),{cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Không mở được bài.');if(!Array.isArray(d.questions)||!d.questions.length)throw new Error('Bài chưa có câu hỏi.');clearAllExamEssayPreviewUrls();activeExam=d;activeExamIndex=0;activeExamAnswers={};activeExamEssayFiles={};activeExamIntegrity={visibilityHidden:0,fullscreenExits:0,violations:0};activeExamStartedAt=Date.now();activeExamFinished=false;activeExamLastResult=null;examPdfCache=null;examPdfCacheId=null;bank.classList.add('hidden');specialtyBank?.classList.add('hidden');result.classList.add('hidden');runner.classList.remove('hidden');document.body.classList.add('exam-session-active');installExamIntegrityMonitoring();document.getElementById('examRunnerTitle').textContent=d.title;document.getElementById('examRunnerMeta').textContent=`${d.questions.length} câu · ${d.durationMinutes} phút · Chấm trắc nghiệm tự động và hỗ trợ chấm tự luận bằng nhiều ảnh`;document.getElementById('examSubmitStatus').textContent='';document.getElementById('examSubmitBtn').disabled=false;updateExamIntegrityNotice();const end=activeExamStartedAt+(Number(d.durationMinutes)||120)*60000;const updateTimer=()=>{const remain=Math.max(0,Math.ceil((end-Date.now())/1000));const mm=String(Math.floor(remain/60)).padStart(2,'0'),ss=String(remain%60).padStart(2,'0');document.getElementById('examRunnerTimer').textContent=`${mm}:${ss}`;if(remain<=0&&!activeExamFinished){clearInterval(activeExamTimer);activeExamTimer=null;submitActiveExam(true)}};clearInterval(activeExamTimer);updateTimer();activeExamTimer=setInterval(updateTimer,1000);await renderActiveExamQuestion();runner.scrollIntoView({behavior:'smooth',block:'start'})}catch(err){activeExamFinished=true;leaveExamFullscreenMode();showToast(err.message||'Không mở được bài.')}}
-function showActiveExamBank(){const examBank=document.getElementById('examBankPanel'),specialtyBank=document.getElementById('specialtyBankPanel'),runner=document.getElementById('examRunnerPanel'),result=document.getElementById('examResultPanel');runner?.classList.add('hidden');result?.classList.add('hidden');examBank?.classList.remove('hidden');specialtyBank?.classList.remove('hidden');renderPublicExams();renderPublicSpecialtyExams();(examBank||specialtyBank)?.scrollIntoView({behavior:'smooth',block:'start'})}
+async function loadExamAttemptHistory(force=false){
+  const list=document.getElementById('examAttemptHistoryList');
+  const subtitle=document.getElementById('examAttemptHistorySubtitle');
+  const refresh=document.getElementById('refreshExamAttemptHistoryBtn');
+  if(!list||examAttemptHistoryLoading)return;
+  if(!supabaseClient){list.innerHTML='<div class="empty">Chưa kết nối tài khoản. Hãy đăng nhập sau khi cấu hình Supabase để xem lịch sử bài thi.</div>';if(subtitle)subtitle.textContent='Lịch sử bài thi được lưu an toàn theo tài khoản.';return;}
+  examAttemptHistoryLoading=true;if(refresh)refresh.disabled=true;
+  if(force||!examAttemptRecords.length)list.innerHTML='<div class="empty">Đang tải lịch sử bài thi…</div>';
+  try{
+    const sessionResult=await supabaseClient.auth.getSession();
+    const token=sessionResult?.data?.session?.access_token;
+    if(!token){examAttemptRecords=[];list.innerHTML='<div class="empty">Đăng nhập để lưu và xem lại đề bài, câu trả lời cùng nhận xét AI của các lần thi.</div>';if(subtitle)subtitle.textContent='Mỗi tài khoản chỉ xem được lịch sử bài thi của chính mình.';return;}
+    const response=await fetch('/api/exam-attempts',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(payload.error||'Không tải được lịch sử bài thi.');
+    examAttemptRecords=Array.isArray(payload)?payload:[];
+    renderExamAttemptHistory();
+  }catch(error){
+    list.innerHTML=`<div class="empty">${examEscape(error.message||'Không tải được lịch sử bài thi.')} <button type="button" class="btn btn-light" onclick="loadExamAttemptHistory(true)">Thử lại</button></div>`;
+  }finally{examAttemptHistoryLoading=false;if(refresh)refresh.disabled=false;icons();}
+}
+function renderExamAttemptHistory(){
+  const list=document.getElementById('examAttemptHistoryList');
+  const subtitle=document.getElementById('examAttemptHistorySubtitle');
+  if(!list)return;
+  if(subtitle)subtitle.textContent=`${examAttemptRecords.length} bài thi đã lưu · xem lại đề, đáp án, điểm và nhận xét AI.`;
+  if(!examAttemptRecords.length){list.innerHTML='<div class="empty">Chưa có bài thi nào được lưu vào tài khoản. Hãy đăng nhập rồi hoàn thành một bài thi để bắt đầu lưu lịch sử.</div>';return;}
+  list.innerHTML=examAttemptRecords.map(record=>{
+    const result=record.result_json&&typeof record.result_json==='object'?record.result_json:{};
+    const score=Number(record.score??result.score),max=Number(record.max_score??result.maxScore);
+    const date=record.submitted_at||result.submittedAt;
+    const summary=String(result.diagnosticSummary||'Chưa có tổng hợp chẩn đoán.').slice(0,220);
+    const count=Array.isArray(result.results)?result.results.length:0;
+    return `<article class="exam-attempt-history-card"><div class="exam-attempt-history-card-top"><div><div class="exam-attempt-history-title">${examEscape(record.exam_title||result.examTitle||'Bài thi MathSpark')}</div><div class="exam-attempt-history-meta">${examEscape(date?new Date(date).toLocaleString('vi-VN'):'Không rõ thời gian')} · ${count} câu</div></div><span class="exam-attempt-history-score">${Number.isFinite(score)?score:'—'}/${Number.isFinite(max)?max:'—'}</span></div><p class="exam-attempt-history-summary">${examEscape(summary)}</p><div class="exam-attempt-history-actions"><button type="button" class="btn btn-primary" data-open-exam-attempt="${examEscape(record.id)}"><i data-lucide="file-search"></i> Xem lại bài và nhận xét AI</button></div></article>`;
+  }).join('');
+  list.querySelectorAll('[data-open-exam-attempt]').forEach(button=>button.addEventListener('click',()=>openSavedExamAttempt(button.dataset.openExamAttempt)));
+  icons();
+}
+async function openSavedExamAttempt(id){
+  const record=examAttemptRecords.find(item=>String(item.id)===String(id));
+  if(!record)return showToast('Không tìm thấy bài thi trong lịch sử.');
+  const saved=record.result_json&&typeof record.result_json==='object'?record.result_json:{};
+  if(!Array.isArray(saved.results))return showToast('Bản lưu này chưa có dữ liệu kết quả chi tiết.');
+  const data={...saved,examTitle:saved.examTitle||record.exam_title||'Bài thi MathSpark',submittedAt:saved.submittedAt||record.submitted_at,score:saved.score??record.score,maxScore:saved.maxScore??record.max_score};
+  viewingSavedExamAttempt=true;activeExamFinished=true;leaveExamFullscreenMode();
+  document.getElementById('examBankPanel')?.classList.add('hidden');
+  document.getElementById('specialtyBankPanel')?.classList.add('hidden');
+  document.getElementById('examAttemptHistoryPanel')?.classList.add('hidden');
+  document.getElementById('examRunnerPanel')?.classList.add('hidden');
+  document.getElementById('examRetakeBtn')?.classList.add('hidden');
+  const panel=document.getElementById('examResultPanel');panel.classList.remove('hidden');
+  await renderExamResult(data);
+  requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'start'}));
+}
+
+async function startPublishedExam(id){const bank=document.getElementById('examBankPanel'),specialtyBank=document.getElementById('specialtyBankPanel'),runner=document.getElementById('examRunnerPanel'),result=document.getElementById('examResultPanel');try{const r=await fetch('/api/exams/'+encodeURIComponent(id),{cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Không mở được bài.');if(!Array.isArray(d.questions)||!d.questions.length)throw new Error('Bài chưa có câu hỏi.');clearAllExamEssayPreviewUrls();activeExam=d;activeExamIndex=0;activeExamAnswers={};activeExamEssayFiles={};activeExamIntegrity={visibilityHidden:0,fullscreenExits:0,violations:0};activeExamStartedAt=Date.now();activeExamFinished=false;activeExamLastResult=null;examPdfCache=null;examPdfCacheId=null;bank.classList.add('hidden');specialtyBank?.classList.add('hidden');document.getElementById('examAttemptHistoryPanel')?.classList.add('hidden');result.classList.add('hidden');runner.classList.remove('hidden');viewingSavedExamAttempt=false;document.getElementById('examRetakeBtn')?.classList.remove('hidden');document.body.classList.add('exam-session-active');installExamIntegrityMonitoring();document.getElementById('examRunnerTitle').textContent=d.title;document.getElementById('examRunnerMeta').textContent=`${d.questions.length} câu · ${d.durationMinutes} phút · Chấm trắc nghiệm tự động và hỗ trợ chấm tự luận bằng nhiều ảnh`;document.getElementById('examSubmitStatus').textContent='';document.getElementById('examSubmitBtn').disabled=false;updateExamIntegrityNotice();const end=activeExamStartedAt+(Number(d.durationMinutes)||120)*60000;const updateTimer=()=>{const remain=Math.max(0,Math.ceil((end-Date.now())/1000));const mm=String(Math.floor(remain/60)).padStart(2,'0'),ss=String(remain%60).padStart(2,'0');document.getElementById('examRunnerTimer').textContent=`${mm}:${ss}`;if(remain<=0&&!activeExamFinished){clearInterval(activeExamTimer);activeExamTimer=null;submitActiveExam(true)}};clearInterval(activeExamTimer);updateTimer();activeExamTimer=setInterval(updateTimer,1000);await renderActiveExamQuestion();runner.scrollIntoView({behavior:'smooth',block:'start'})}catch(err){activeExamFinished=true;leaveExamFullscreenMode();showToast(err.message||'Không mở được bài.')}}
+function showActiveExamBank(){const examBank=document.getElementById('examBankPanel'),specialtyBank=document.getElementById('specialtyBankPanel'),history=document.getElementById('examAttemptHistoryPanel'),runner=document.getElementById('examRunnerPanel'),result=document.getElementById('examResultPanel');runner?.classList.add('hidden');result?.classList.add('hidden');examBank?.classList.remove('hidden');specialtyBank?.classList.remove('hidden');history?.classList.remove('hidden');document.getElementById('examRetakeBtn')?.classList.remove('hidden');viewingSavedExamAttempt=false;renderPublicExams();renderPublicSpecialtyExams();loadExamAttemptHistory();(examBank||specialtyBank)?.scrollIntoView({behavior:'smooth',block:'start'})}
 function examQuestionHasAnswer(q){
   if(q?.type==='mcq')return typeof activeExamAnswers[q.id]==='string'&&Boolean(activeExamAnswers[q.id]);
   if(q?.type==='multi_select')return Array.isArray(activeExamAnswers[q.id])&&activeExamAnswers[q.id].length>0;
@@ -3718,31 +3800,46 @@ async function submitActiveExam(auto=false){
     const headers={};if(supabaseClient){const sessionResult=await supabaseClient.auth.getSession();const token=sessionResult?.data?.session?.access_token;if(token)headers.Authorization=`Bearer ${token}`}
     const r=await fetch(`/api/exams/${encodeURIComponent(activeExam.id)}/submit`,{method:'POST',headers,body:fd});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Không nộp được đề');
     activeExamFinished=true;activeExamLastResult=data;clearInterval(activeExamTimer);activeExamTimer=null;leaveExamFullscreenMode();
-    state.examAttemptHistory=Array.isArray(state.examAttemptHistory)?state.examAttemptHistory:[];state.examAttemptHistory.unshift({examId:data.examId,title:data.examTitle,score:data.score,maxScore:data.maxScore,submittedAt:data.submittedAt});state.examAttemptHistory=state.examAttemptHistory.slice(0,30);if(data.adaptiveSchedule?.sessions?.length)applyExamAdaptiveSchedule(data.adaptiveSchedule);recordStudyActivity('published-exam-submit');saveState();
-    await renderExamResult(data);document.getElementById('examRunnerPanel').classList.add('hidden');document.getElementById('examResultPanel').classList.remove('hidden');hideExamGradingOverlay();requestAnimationFrame(()=>document.getElementById('examResultPanel').scrollIntoView({behavior:'smooth',block:'start'}));
-    showToast(data.savedToAccount?'Đã lưu kết quả thi vào tài khoản.':'Đã chấm xong. Đăng nhập để đồng bộ kết quả giữa các thiết bị.');
+    state.examAttemptHistory=Array.isArray(state.examAttemptHistory)?state.examAttemptHistory:[];state.examAttemptHistory.unshift({examId:data.examId,title:data.examTitle,score:data.score,maxScore:data.maxScore,submittedAt:data.submittedAt});state.examAttemptHistory=state.examAttemptHistory.slice(0,30);if(data.adaptiveSchedule?.sessions?.length){data.adaptiveScheduleApplication=applyExamAdaptiveSchedule(data.adaptiveSchedule);data.adaptiveScheduleApplied=Number(data.adaptiveScheduleApplication?.added||0)+Number(data.adaptiveScheduleApplication?.updated||0)>0;}recordStudyActivity('published-exam-submit');saveState();
+    await renderExamResult(data);document.getElementById('examRunnerPanel').classList.add('hidden');document.getElementById('examAttemptHistoryPanel')?.classList.add('hidden');document.getElementById('examResultPanel').classList.remove('hidden');hideExamGradingOverlay();requestAnimationFrame(()=>document.getElementById('examResultPanel').scrollIntoView({behavior:'smooth',block:'start'}));
+    if(data.savedToAccount)await loadExamAttemptHistory(true);
+    showToast(data.adaptiveScheduleApplied?'Đã chấm xong và tự động cập nhật Lịch trình học.':(data.savedToAccount?'Đã lưu kết quả thi vào tài khoản.':'Đã chấm xong. Đăng nhập để đồng bộ kết quả giữa các thiết bị.'));
   }catch(e){document.getElementById('examSubmitStatus').textContent=e.message||'Có lỗi khi nộp bài.';showToast('Chưa nộp được bài thi.')}finally{hideExamGradingOverlay();btn.disabled=false;}
 }
 function applyExamAdaptiveSchedule(schedule){
-  if(!Array.isArray(schedule?.sessions)||!schedule.sessions.length)return;
+  if(!Array.isArray(schedule?.sessions)||!schedule.sessions.length)return {added:0,updated:0,conflicts:0};
   const plan=Array.isArray(state.plan)&&state.plan.length?state.plan:buildLocalPlan(availableSlots());
   const planByDate=new Map(plan.map(day=>[String(day.date),day]));
   const weekdayShort=['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+  const minute=value=>{const match=String(value||'').match(/^(\d{1,2}):(\d{2})$/);return match?Number(match[1])*60+Number(match[2]):NaN};
+  let added=0,updated=0,conflicts=0;
   for(const session of schedule.sessions){
     const date=String(session.date||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
     let day=planByDate.get(date);
     if(!day){const dateObj=new Date(`${date}T12:00:00`);day={id:`day_${date}`,date,day:weekdayShort[dateObj.getDay()],blocks:[]};plan.push(day);planByDate.set(date,day)}
     if(!Array.isArray(day.blocks))day.blocks=[];
-    const topic=String(session.topic||'Củng cố lỗi sai lặp lại');
+    const start=minute(session.start),end=minute(session.end);
+    if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)continue;
+    const exact=day.blocks.find(block=>String(block.start||'')===String(session.start)&&String(block.end||'')===String(session.end));
+    const existing=exact&&exact.kind==='diagnostic-repair'?exact:null;
+    const overlap=day.blocks.some(block=>{
+      if(block===existing)return false;
+      const blockStart=minute(block.start||String(block.time||'').split(/[–-]/)[0]);
+      const blockEnd=minute(block.end||String(block.time||'').split(/[–-]/)[1]);
+      return Number.isFinite(blockStart)&&Number.isFinite(blockEnd)&&start<blockEnd&&end>blockStart;
+    });
+    if(overlap){conflicts++;continue;}
     const time=`${session.start}–${session.end}`;
-    const existing=day.blocks.find(block=>String(block.start||'')===String(session.start)&&String(block.end||'')===String(session.end));
-    const blockData={id:existing?.id||`diagnostic_${String(session.date).replace(/\W/g,'')}_${String(session.start).replace(':','')}`,date,day:day.day,start:session.start,end:session.end,session:time,time,duration:Number(session.durationMinutes)||30,slotIds:existing?.slotIds||[],topic,task:String(session.task||'Ôn lại quy tắc và giải một câu tương đương.'),level:'Củng cố trọng tâm',questionCount:3,kind:'diagnostic-repair'};
-    if(existing)Object.assign(existing,blockData);else day.blocks.push(blockData);
+    const blockData={id:existing?.id||`diagnostic_${date.replace(/\W/g,'')}_${String(session.start).replace(':','')}`,date,day:day.day,start:session.start,end:session.end,session:time,time,duration:Number(session.durationMinutes)||30,slotIds:existing?.slotIds||[],topic:String(session.topic||'Củng cố lỗi sai lặp lại'),task:String(session.task||'Ôn lại quy tắc và giải một câu tương đương.'),level:'Củng cố trọng tâm',questionCount:3,kind:'diagnostic-repair'};
+    if(existing){Object.assign(existing,blockData);updated++;}else{day.blocks.push(blockData);added++;}
     day.blocks.sort((a,b)=>String(a.start||a.time||'').localeCompare(String(b.start||b.time||'')));
   }
   state.plan=plan.sort((a,b)=>String(a.date).localeCompare(String(b.date)));state.planSource='adaptive';
-  const status=document.getElementById('planStatus');if(status)status.innerHTML=`<span class="dot live"></span> Đã thêm ${schedule.sessions.length} buổi ôn tập thích ứng từ kết quả bài thi.`;
+  const total=added+updated;
+  const status=document.getElementById('planStatus');
+  if(status)status.innerHTML=`<span class="dot live"></span> Đã tự động ${added?`thêm ${added} buổi`:''}${added&&updated?' và ':''}${updated?`cập nhật ${updated} buổi`:''}${!total?'chưa thêm được buổi mới':''}${conflicts?`; ${conflicts} khung giờ trùng lịch cũ nên được giữ nguyên`:''}.`;
   renderCalendar();renderPlan();saveState();
+  return {added,updated,conflicts};
 }
 async function renderExamResult(data){
   document.getElementById('examResultSubheading').textContent=`${data.examTitle} · ${new Date(data.submittedAt).toLocaleString('vi-VN')}`;
@@ -3759,21 +3856,20 @@ async function renderExamResult(data){
       const report=data.diagnosticReport;
       if(report){
         const reportWrap=document.createElement('section');reportWrap.className='exam-diagnostic-report';
-        const reportHeading=document.createElement('h4');reportHeading.textContent='Tổng hợp mã lỗi trong bài';reportWrap.appendChild(reportHeading);
+        const reportHeading=document.createElement('h4');reportHeading.textContent='Tổng hợp lỗi cần củng cố';reportWrap.appendChild(reportHeading);
         const reportIntro=document.createElement('p');
         reportIntro.className='exam-diagnostic-report-intro';
         reportIntro.textContent=report.totalWrongQuestions
-          ? `Có ${report.totalWrongQuestions} câu cần củng cố trong bài này. Các mã dưới đây được tổng hợp từ phương án sai và phần chẩn đoán có bằng chứng.`
-          : 'Không ghi nhận câu sai có đủ bằng chứng để gắn mã lỗi trong bài này.';
+          ? `Có ${report.totalWrongQuestions} câu cần củng cố trong bài này. Các nhận xét dưới đây được tổng hợp từ lựa chọn và phần chẩn đoán có bằng chứng.`
+          : 'Không phát hiện lỗi có đủ bằng chứng để xác định mảng kiến thức cần củng cố.';
         reportWrap.appendChild(reportIntro);
         if(Array.isArray(report.errorCodes)&&report.errorCodes.length){
           const codeGrid=document.createElement('div');codeGrid.className='exam-error-code-grid';
           report.errorCodes.forEach(entry=>{
             const card=document.createElement('article');card.className='exam-error-code-card';
             const top=document.createElement('div');top.className='exam-error-code-top';
-            const badge=document.createElement('span');badge.className='exam-error-code-badge';badge.textContent=String(entry.code||'');
-            const label=document.createElement('strong');label.textContent=String(entry.label||'Lỗi cần xem lại');
-            top.append(badge,label);
+            const label=document.createElement('strong');label.textContent=String(entry.label||'Nội dung cần củng cố');
+            top.append(label);
             const frequency=document.createElement('p');frequency.textContent=`Ghi nhận ${Number(entry.count)||0} lượt · ${Array.isArray(entry.questionNumbers)&&entry.questionNumbers.length?`Câu ${entry.questionNumbers.join(', ')}`:'chưa xác định câu cụ thể'}.`;
             card.append(top,frequency);
             if(Array.isArray(entry.skillNames)&&entry.skillNames.length){const skill=document.createElement('small');skill.textContent=`Kỹ năng liên quan: ${entry.skillNames.join(', ')}`;card.appendChild(skill)}
@@ -3788,19 +3884,23 @@ async function renderExamResult(data){
           report.weakAreas.slice(0,3).forEach(area=>{
             const row=document.createElement('div');row.className='exam-weak-area-row';
             const title=document.createElement('strong');title.textContent=String(area.name||area.skillCode||'Kỹ năng cần củng cố');
-            const meta=document.createElement('span');meta.textContent=`${Number(area.count)||0} câu${Array.isArray(area.questionNumbers)&&area.questionNumbers.length?` · Câu ${area.questionNumbers.join(', ')}`:''}${Array.isArray(area.errorCodes)&&area.errorCodes.length?` · ${area.errorCodes.join(', ')}`:''}`;
+            const meta=document.createElement('span');meta.textContent=`${Number(area.count)||0} câu${Array.isArray(area.questionNumbers)&&area.questionNumbers.length?` · Câu ${area.questionNumbers.join(', ')}`:''}`;
             row.append(title,meta);weakList.appendChild(row);
           });
           reportWrap.appendChild(weakList);
         }
         if(Number(report.omissionQuestionCount)>0){const omission=document.createElement('p');omission.className='exam-diagnostic-report-note';omission.textContent=`Ngoài ra, có ${Number(report.omissionQuestionCount)} câu nhiều đáp án bị bỏ sót ít nhất một phương án đúng.`;reportWrap.appendChild(omission)}
-        if(Number(report.uncodedWrongQuestionCount)>0){const uncoded=document.createElement('p');uncoded.className='exam-diagnostic-report-note';uncoded.textContent=`${Number(report.uncodedWrongQuestionCount)} câu chưa đủ bằng chứng để gắn mã lỗi cụ thể; các câu này vẫn được tính vào phần cần xem lại.`;reportWrap.appendChild(uncoded)}
+        if(Number(report.uncodedWrongQuestionCount)>0){const uncoded=document.createElement('p');uncoded.className='exam-diagnostic-report-note';uncoded.textContent=`${Number(report.uncodedWrongQuestionCount)} câu chưa đủ căn cứ để xác định nguyên nhân cụ thể; các câu này vẫn được tính vào phần cần xem lại.`;reportWrap.appendChild(uncoded)}
         if(report.confidenceNote){const confidence=document.createElement('p');confidence.className='exam-diagnostic-confidence';confidence.textContent=String(report.confidenceNote);reportWrap.appendChild(confidence)}
         adaptiveHost.appendChild(reportWrap);
       }
       const schedule=data.adaptiveSchedule;
       if(schedule?.sessions?.length){
-        const message=document.createElement('p');message.textContent=schedule.message||'Đã gợi ý các buổi ôn vào khung giờ rảnh.';adaptiveHost.appendChild(message);
+        const message=document.createElement('p');
+        if(data.adaptiveScheduleApplied===true)message.textContent=`Đã tự động cập nhật ${Number(data.adaptiveScheduleApplication?.added||0)+Number(data.adaptiveScheduleApplication?.updated||0)} buổi ôn vào Lịch trình tự học. ${data.adaptiveScheduleApplication?.conflicts?`${data.adaptiveScheduleApplication.conflicts} khung giờ trùng lịch cũ nên được giữ nguyên. `:''}${schedule.message||''}`;
+        else if(data.adaptiveScheduleApplied===false&&data.adaptiveScheduleApplication?.conflicts)message.textContent='Đã tìm được lịch ôn nhưng chưa thêm vì các khung giờ đều trùng với hoạt động đã có. Lịch hiện tại được giữ nguyên; hãy chỉnh giờ rảnh để hệ thống xếp lại.';
+        else message.textContent=schedule.message||'Đã gợi ý các buổi ôn vào khung giờ rảnh.';
+        adaptiveHost.appendChild(message);
         const list=document.createElement('div');list.className='exam-adaptive-session-list';
         schedule.sessions.forEach(session=>{const article=document.createElement('article');article.className='exam-adaptive-session';const time=document.createElement('time');time.textContent=`${session.date} · ${session.start}–${session.end}`;const content=document.createElement('div');const title=document.createElement('strong');title.textContent=session.title||session.topic||'Buổi ôn tập';const task=document.createElement('small');task.textContent=session.task||'Ôn lại lỗi sai và làm câu tương đương.';content.append(title,task);article.append(time,content);list.appendChild(article)});adaptiveHost.appendChild(list);
       }else if(schedule?.requiresMoreAvailability){const note=document.createElement('p');note.textContent=schedule.message||'Hãy đánh dấu thêm thời gian rảnh để xếp buổi ôn tập.';adaptiveHost.appendChild(note)}
@@ -3812,10 +3912,15 @@ async function renderExamResult(data){
     const correctChoice=isChoice&&item.correct===true;
     const wrongChoice=isChoice&&item.correct===false;
     const unknownChoice=isChoice&&item.correct===null;
-    const feedbackMarkup=isChoice?'':`<div data-result-feedback="${examEscape(item.questionId)}"></div>`;
+    const feedbackMarkup=isChoice?'':`<div class="exam-diagnostic-feedback"><strong>Nhận xét từ AI:</strong><div data-result-feedback="${examEscape(item.questionId)}"></div></div>`;
     const teacherFeedbackMarkup=!isChoice&&item.teacherFeedback?`<div class="exam-teacher-feedback" data-result-teacher-feedback="${examEscape(item.questionId)}"></div>`:'';
     const creativeMethodMarkup=!isChoice&&item.solutionMethodAssessment==='ACCEPTED_CREATIVE'?'<p class="exam-creative-method-note">Cách giải của em khác đáp án mẫu nhưng lập luận hợp lệ nên vẫn được công nhận.</p>':'';
     const gradingStatusMarkup=!isChoice&&item.gradingNote?`<p class="exam-grading-status ${item.needsTeacherReview?'review':''}">${examEscape(item.gradingNote)}</p>`:'';
+    const auditOutcome=String(item.gradingAudit?.outcome||'').toUpperCase();
+    const auditLabels={AGREED:'Hai lượt AI chấm độc lập thống nhất.',ADJUDICATED:'Kết quả đã được AI giám khảo thứ ba phân xử.',ADJUDICATED_REVIEW:'Đã phân xử nhưng vẫn cần giáo viên kiểm tra.',UNRESOLVED_REVIEW:'Hai lượt chấm còn bất đồng; cần giáo viên kiểm tra.',SINGLE_PASS_REVIEW:'Chỉ có một lượt chấm khả dụng; cần giáo viên kiểm tra.',UNAVAILABLE:'AI chưa thể đưa ra kết luận đáng tin cậy.'};
+    const dualStatusMarkup=!isChoice&&item.gradingAudit?.outcome?`<p class="exam-result-dual-status ${item.needsTeacherReview?'review':''}">${examEscape(auditLabels[auditOutcome]||'Đã xử lý theo quy trình chấm bài.')}</p>`:'';
+    const snapshot=item.questionSnapshot&&typeof item.questionSnapshot==='object'?item.questionSnapshot:null;
+    const questionSnapshotMarkup=snapshot?.prompt?`<div class="exam-result-question-snapshot"><strong>Đề bài</strong><div class="exam-result-question-text" data-result-question="${examEscape(item.questionId)}"></div>${Array.isArray(snapshot.options)&&snapshot.options.length?`<div class="exam-result-options">${snapshot.options.map((option,index)=>`<div class="exam-result-option"><strong>${examEscape(option.label||String.fromCharCode(65+index))}.</strong><div data-result-option="${examEscape(item.questionId)}" data-option-index="${index}"></div></div>`).join('')}</div>`:''}${snapshot.reconstructedFromCurrentExam?'<p class="exam-result-photo-note">Nội dung câu hỏi được đối chiếu từ phiên bản đề hiện đang lưu; đề có thể đã được quản trị viên chỉnh sửa sau lần thi này.</p>':''}${Number(item.submittedPhotoCount)>0?`<p class="exam-result-photo-note">Đã nộp ${Number(item.submittedPhotoCount)} ảnh bài làm cho câu này.</p>`:''}</div>`:'<p class="exam-review-needed">Bản lưu cũ chưa có nội dung đề bài gốc; nhận xét và kết quả AI vẫn được giữ lại bên dưới.</p>';
     const selected=Array.isArray(item.answer)?item.answer.join(', '):(item.answer||'Chưa chọn');
     const correctAnswer=Array.isArray(item.correctAnswer)?item.correctAnswer.join(', '):(item.correctAnswer||'Cần giáo viên xác minh');
     const answerMarkup=isChoice?(correctChoice
@@ -3834,7 +3939,7 @@ async function renderExamResult(data){
     const parallelMarkup=item.parallelFeedback
       ?`<div class="exam-parallel-feedback" data-result-parallel="${examEscape(item.questionId)}"></div>`:'';
     const resultClass=isChoice?(correctChoice?'correct':wrongChoice?'incorrect':'pending'):(item.needsTeacherReview?'pending':'');
-    return `<article class="exam-result-item ${resultClass}" id="examResult-${examEscape(item.questionId)}"><h4>Câu ${item.number} · ${Number(item.score)||0}/${Number(item.maxScore)||0} điểm</h4>${feedbackMarkup}${answerMarkup}${item.selectionAnalysis?.wrongSelected?.length?`<p class="small"><strong>Phương án chưa đúng:</strong> ${examEscape(item.selectionAnalysis.wrongSelected.join(', '))}</p>`:''}${item.selectionAnalysis?.omittedCorrect?.length&&wrongChoice?`<p class="small"><strong>Phương án đúng bị bỏ sót:</strong> ${examEscape(item.selectionAnalysis.omittedCorrect.join(', '))}</p>`:''}${teacherFeedbackMarkup}${creativeMethodMarkup}${gradingStatusMarkup}${diagnosticMarkup}${parallelMarkup}${item.mistakes?.length?`<div><strong>Lỗi cần sửa:</strong> <span data-result-mistakes="${examEscape(item.questionId)}"></span></div>`:''}${item.correctedApproach?`<div><strong>Hướng sửa:</strong> <span data-result-approach="${examEscape(item.questionId)}"></span></div>`:''}${solutionMarkup}${unavailableMarkup}${item.needsTeacherReview?'<p class="exam-review-needed">Độ chắc chắn thấp hoặc đáp án chưa được xác minh; nên nhờ giáo viên kiểm tra.</p>':''}</article>`;
+    return `<article class="exam-result-item ${resultClass}" id="examResult-${examEscape(item.questionId)}"><h4>Câu ${item.number} · ${Number(item.score)||0}/${Number(item.maxScore)||0} điểm</h4>${questionSnapshotMarkup}${feedbackMarkup}${answerMarkup}${item.selectionAnalysis?.wrongSelected?.length?`<p class="small"><strong>Phương án chưa đúng:</strong> ${examEscape(item.selectionAnalysis.wrongSelected.join(', '))}</p>`:''}${item.selectionAnalysis?.omittedCorrect?.length&&wrongChoice?`<p class="small"><strong>Phương án đúng bị bỏ sót:</strong> ${examEscape(item.selectionAnalysis.omittedCorrect.join(', '))}</p>`:''}${teacherFeedbackMarkup}${creativeMethodMarkup}${dualStatusMarkup}${gradingStatusMarkup}${diagnosticMarkup}${parallelMarkup}${item.mistakes?.length?`<div><strong>Lỗi cần sửa:</strong> <span data-result-mistakes="${examEscape(item.questionId)}"></span></div>`:''}${item.correctedApproach?`<div><strong>Hướng sửa:</strong> <span data-result-approach="${examEscape(item.questionId)}"></span></div>`:''}${solutionMarkup}${unavailableMarkup}${item.needsTeacherReview?'<p class="exam-review-needed">Độ chắc chắn thấp hoặc đáp án chưa được xác minh; nên nhờ giáo viên kiểm tra.</p>':''}</article>`;
   }).join('')||'<p class="empty">Không có kết quả chi tiết.</p>';
   if(data.integrity&&Number(data.integrity.violations)>0){
     const note=document.createElement('div');note.className='exam-integrity-notice warning';
@@ -3843,6 +3948,15 @@ async function renderExamResult(data){
   }
   for(const item of data.results||[]){
     const sel=(name)=>host.querySelector(`[data-${name}="${CSS.escape(String(item.questionId))}"]`);
+    const questionNode=sel('result-question');
+    if(item.questionSnapshot?.prompt&&questionNode)await renderGradingMarkdown(item.questionSnapshot.prompt,questionNode);
+    if(Array.isArray(item.questionSnapshot?.options)){
+      for(let index=0;index<item.questionSnapshot.options.length;index++){
+        const option=item.questionSnapshot.options[index];
+        const optionNode=host.querySelector(`[data-result-option="${CSS.escape(String(item.questionId))}"][data-option-index="${index}"]`);
+        if(optionNode)await renderGradingMarkdown(String(option.text||''),optionNode);
+      }
+    }
     if(item.feedback&&sel('result-feedback'))await renderGradingMarkdown(item.feedback,sel('result-feedback'));
     if(item.teacherFeedback&&sel('result-teacher-feedback'))await renderGradingMarkdown(item.teacherFeedback,sel('result-teacher-feedback'));
     if(item.diagnosticFeedback&&sel('result-diagnostic'))await renderGradingMarkdown(item.diagnosticFeedback,sel('result-diagnostic'));
@@ -3852,7 +3966,7 @@ async function renderExamResult(data){
     if(item.solution&&sel('result-solution')&&(item.type==='essay'||item.type==='short_answer'||item.correct===false))await renderGradingMarkdown(item.solution,sel('result-solution'));
   }
 }
-function backToExamBank(){activeExamFinished=true;leaveExamFullscreenMode();document.getElementById('examResultPanel').classList.add('hidden');document.getElementById('examRunnerPanel').classList.add('hidden');showActiveExamBank()}
+function backToExamBank(){activeExamFinished=true;leaveExamFullscreenMode();document.getElementById('examResultPanel').classList.add('hidden');document.getElementById('examRunnerPanel').classList.add('hidden');viewingSavedExamAttempt=false;showActiveExamBank()}
 function retakeActiveExam(){if(!activeExam)return;document.getElementById('examResultPanel').classList.add('hidden');requestExamFullscreenFromGesture();startPublishedExam(activeExam.id)}
 
 </script>

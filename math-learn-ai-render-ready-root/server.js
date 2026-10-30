@@ -1139,6 +1139,21 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
     }
 
     results.sort((a,b)=>a.number-b.number);
+    // Preserve a read-only snapshot of each question with the saved attempt so students can
+    // review the original prompt and the AI feedback later, even if the published exam changes.
+    const questionSnapshotById = new Map(questions.map(q => [String(q.id), {
+      type:q.type,
+      prompt:safeText(q.prompt, 8000),
+      options:Array.isArray(q.options) ? q.options.map(option => ({ label:safeText(option.label, 8), text:safeText(option.text, 1200) })) : [],
+      points:Number(q.points) || 0,
+      sourcePage:Number(q.sourcePage) || null,
+      diagramDescription:safeText(q.diagramDescription || '', 1200)
+    }]));
+    for (const item of results) {
+      const snapshot = questionSnapshotById.get(String(item.questionId));
+      if (snapshot) item.questionSnapshot = snapshot;
+      item.submittedPhotoCount = (byQuestionFile.get(String(item.questionId)) || []).length;
+    }
     const resultById = new Map(results.map(item=>[String(item.questionId),item]));
     const internalEvents = [];
     const diagnosticEvidence = [];
@@ -1215,7 +1230,7 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
     if (diagnosticReport.totalWrongQuestions > 0) {
       const topArea = diagnosticReport.topWeakArea;
       const lead = `Bài này có ${diagnosticReport.totalWrongQuestions} câu chưa chính xác hoặc cần củng cố.`;
-      const focus = topArea ? ` Mảng nổi bật cần xem lại là ${topArea.name}${topArea.errorCodes.length ? ` (${topArea.errorCodes.join(', ')})` : ''}, xuất hiện ở ${topArea.questionNumbers.length ? `câu ${topArea.questionNumbers.join(', ')}` : `${topArea.count} lượt lỗi`}.` : '';
+      const focus = topArea ? ` Mảng nổi bật cần xem lại là ${topArea.name}, xuất hiện ở ${topArea.questionNumbers.length ? `câu ${topArea.questionNumbers.join(', ')}` : `${topArea.count} lượt lỗi`}.` : '';
       const omission = diagnosticReport.omissionQuestionCount ? ` Có ${diagnosticReport.omissionQuestionCount} câu trắc nghiệm nhiều đáp án bị bỏ sót lựa chọn đúng.` : '';
       const history = persistentGapCount
         ? ` Có ${persistentGapCount} câu tương đương tiếp tục sai so với lần trước; đây là tín hiệu lặp lại cần ưu tiên ôn.`
@@ -1226,7 +1241,7 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
     } else if (results.some(item=>item.correct === null || item.needsTeacherReview)) {
       diagnosticSummary = 'Chưa đủ dữ liệu chắc chắn để phân loại lỗi ở một số câu. Hãy kiểm tra các câu được đánh dấu cần xem lại.';
     } else {
-      diagnosticSummary = 'Rất tốt! Không phát hiện mã lỗi cần ưu tiên ôn trong các câu đã chấm được.';
+      diagnosticSummary = 'Rất tốt! Không phát hiện lỗi có bằng chứng cần ưu tiên ôn trong các câu đã chấm được.';
     }
     const resultJson = { diagnosticEngineVersion:'7.2-dual-grading', dualGradingSummary, examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString(), diagnosticSummary, diagnosticReport, adaptiveSchedule };
     let saved = false;
@@ -1249,13 +1264,70 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
         console.warn('Private diagnostic history not saved. Run supabase/mathspark-diagnostic-engine.sql:', String(logErr?.message || logErr).slice(0, 260));
       }
     }
-    res.json({ ok:true, ...resultJson, savedToAccount:saved });
+    res.json({ ok:true, ...studentSafeExamResult(resultJson), savedToAccount:saved });
   } catch (err) {
     console.error('Exam submit failed:', { message:String(err?.message||err).slice(0,500), status:err?.status||0 });
     if (err?.status) return aiEndpointError(res, err);
     res.status(502).json({ error: `Chưa chấm/nộp được bài thi: ${err.message || 'lỗi không xác định'}` });
   }
 });
+function studentSafeExamResult(value) {
+  const result = value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : {};
+  const hideInternalCodes = value => String(value ?? '')
+    .replace(/\s*\((?:(?:L0[1-9]|KT0[1-7])(?:\s*,\s*)?)+\)\s*/gi, ' ')
+    .replace(/\b(?:L0[1-9]|KT0[1-7])\b/gi, '')
+    .replace(/[ \t]{2,}/g, ' ').trim();
+  if (result.diagnosticSummary) result.diagnosticSummary = hideInternalCodes(result.diagnosticSummary);
+  if (Array.isArray(result.results)) {
+    result.results = result.results.map(item => {
+      const safe = { ...item };
+      delete safe.diagnosticCodes;
+      delete safe.skillCodes;
+      delete safe.diagnosticEvidence;
+      for (const key of ['feedback','teacherFeedback','diagnosticFeedback','parallelFeedback','solution','correctedApproach','adjudicationNote']) {
+        if (typeof safe[key] === 'string') safe[key] = hideInternalCodes(safe[key]);
+      }
+      if (Array.isArray(safe.mistakes)) safe.mistakes = safe.mistakes.map(hideInternalCodes);
+      if (safe.gradingAudit && typeof safe.gradingAudit === 'object') {
+        safe.gradingAudit = { ...safe.gradingAudit };
+        delete safe.gradingAudit.disagreementReasons;
+      }
+      return safe;
+    });
+  }
+  if (result.diagnosticReport && typeof result.diagnosticReport === 'object') {
+    const report = { ...result.diagnosticReport };
+    report.errorCodes = Array.isArray(report.errorCodes) ? report.errorCodes.map(entry => ({
+      label:hideInternalCodes(safeText(entry?.label || MathSparkDiagnosticEngine.ERROR_NAMES[entry?.code] || 'Nội dung cần củng cố', 180)),
+      count:Number(entry?.count) || 0,
+      questionNumbers:Array.isArray(entry?.questionNumbers) ? entry.questionNumbers.map(Number).filter(n => Number.isFinite(n) && n > 0) : [],
+      skillNames:Array.isArray(entry?.skillNames) ? entry.skillNames.map(value => hideInternalCodes(safeText(value, 100))).filter(Boolean) : [],
+      confidence:entry?.confidence === 'repeated' ? 'repeated' : 'initial'
+    })) : [];
+    report.weakAreas = Array.isArray(report.weakAreas) ? report.weakAreas.map(area => ({
+      name:hideInternalCodes(safeText(area?.name || MathSparkDiagnosticEngine.SKILL_NAMES[area?.skillCode] || 'Kỹ năng cần củng cố', 180)),
+      count:Number(area?.count) || 0,
+      questionNumbers:Array.isArray(area?.questionNumbers) ? area.questionNumbers.map(Number).filter(n => Number.isFinite(n) && n > 0) : [],
+      confidence:area?.confidence === 'repeated' ? 'repeated' : 'initial'
+    })) : [];
+    if (report.topWeakArea) report.topWeakArea = {
+      name:hideInternalCodes(safeText(report.topWeakArea.name || 'Kỹ năng cần củng cố',180)),
+      count:Number(report.topWeakArea.count)||0,
+      questionNumbers:Array.isArray(report.topWeakArea.questionNumbers)?report.topWeakArea.questionNumbers.map(Number).filter(n=>Number.isFinite(n)&&n>0):[]
+    };
+    result.diagnosticReport = report;
+  }
+  if (result.adaptiveSchedule && Array.isArray(result.adaptiveSchedule.sessions)) {
+    result.adaptiveSchedule = { ...result.adaptiveSchedule, sessions:result.adaptiveSchedule.sessions.map(session => {
+      const safe = { ...session };
+      delete safe.errorCodes;
+      delete safe.skillCode;
+      return safe;
+    }) };
+  }
+  return result;
+}
+
 app.get('/api/exam-attempts', requireSupabase, async (req,res) => {
   const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
   if (!bearer) return res.status(401).json({ error:'Đăng nhập để xem lịch sử thi.' });
@@ -1264,7 +1336,37 @@ app.get('/api/exam-attempts', requireSupabase, async (req,res) => {
     if (authError || !authData?.user?.id) return res.status(401).json({ error:'Phiên đăng nhập không hợp lệ.' });
     const { data, error } = await supabaseAdmin.from('exam_attempts').select('id,exam_id,exam_title,score,max_score,submitted_at,result_json').eq('user_id',authData.user.id).order('submitted_at',{ascending:false}).limit(50);
     if (error) throw error;
-    res.set('Cache-Control','no-store').json(data || []);
+    const attempts = Array.isArray(data) ? data : [];
+    // Older attempts may not contain question snapshots. Enrich them from the saved exam row
+    // when it still exists; newer attempts remain reviewable even after an exam is edited.
+    const examIds = [...new Set(attempts.map(item => Number(item.exam_id)).filter(Number.isFinite))];
+    let examsById = new Map();
+    if (examIds.length) {
+      const { data:examRows, error:examError } = await supabaseAdmin.from('learning_exams').select('id,questions').in('id', examIds);
+      if (examError) console.warn('Could not enrich older exam attempts with question text:', examError.message);
+      else examsById = new Map((examRows || []).map(item => [String(item.id), normalizeExamQuestions(item.questions)]));
+    }
+    const response = attempts.map(attempt => {
+      const result = attempt.result_json && typeof attempt.result_json === 'object' ? JSON.parse(JSON.stringify(attempt.result_json)) : {};
+      const sourceQuestions = examsById.get(String(attempt.exam_id)) || [];
+      const sourceById = new Map(sourceQuestions.map(q => [String(q.id), q]));
+      if (Array.isArray(result.results)) {
+        result.results = result.results.map(item => {
+          if (item.questionSnapshot?.prompt) return item;
+          const source = sourceById.get(String(item.questionId));
+          if (!source) return item;
+          return { ...item, questionSnapshot:{
+            type:source.type, prompt:safeText(source.prompt,8000),
+            options:Array.isArray(source.options)?source.options.map(option=>({label:safeText(option.label,8),text:safeText(option.text,1200)})):[],
+            points:Number(source.points)||0, sourcePage:Number(source.sourcePage)||null,
+            diagramDescription:safeText(source.diagramDescription||'',1200),
+            reconstructedFromCurrentExam:true
+          }};
+        });
+      }
+      return { ...attempt, result_json:studentSafeExamResult(result) };
+    });
+    res.set('Cache-Control','no-store').json(response);
   } catch (err) { res.status(500).json({ error:`Không tải được lịch sử thi: ${err.message}` }); }
 });
 
