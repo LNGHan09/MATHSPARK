@@ -19,6 +19,10 @@ const SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'mathspark-documents';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
+// Optional separate models reduce correlated grading errors; all default to the existing configured model.
+const OPENAI_GRADER_A_MODEL = process.env.OPENAI_GRADER_A_MODEL || OPENAI_MODEL;
+const OPENAI_GRADER_B_MODEL = process.env.OPENAI_GRADER_B_MODEL || OPENAI_MODEL;
+const OPENAI_ADJUDICATOR_MODEL = process.env.OPENAI_ADJUDICATOR_MODEL || OPENAI_MODEL;
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY, timeout: 90000, maxRetries: 1 }) : null;
 const supabaseBrowserReady = Boolean(SUPABASE_URL && SUPABASE_PUBLIC_KEY);
 const supabaseStorageReady = Boolean(SUPABASE_URL && SUPABASE_SECRET_KEY);
@@ -953,8 +957,10 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
       }
     }
 
+    const dualGradingSummary = { essayQuestions: essayInputs.length, agreed: 0, adjudicated: 0, adjudicatedReview: 0, provisionalReview: 0, singlePassReview: 0, unavailable: 0 };
     if (essayInputs.length) {
       const dataUrl = f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
+      const contentByQuestion = new Map();
       const content = [{ type:'input_text', text:`Bạn là giáo viên chấm Toán lớp 9 và chuyên gia chẩn đoán sư phạm của MathSpark. Hãy chấm độc lập từng câu tự luận theo đề, tất cả ảnh theo thứ tự trang, rubric và lời giải tham khảo. Thang điểm từ 0 đến maxScore; công nhận các bước đúng dù đáp số cuối sai; không trừ hai lần cho cùng một lỗi.
 
 NGUYÊN TẮC ĐỌC BÀI: Trước khi chấm, đọc đúng những gì học sinh đã viết. Không tự sửa dấu, phép tính hay thêm bước giải. Nếu chữ/ký hiệu không rõ, nêu rõ vùng chưa chắc chắn và hạ confidence. Không dùng đáp án mẫu để sửa nội dung bài làm trong đầu; đối chiếu riêng sau khi đã đọc bài làm.
@@ -969,55 +975,165 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
         const modeInstructions = shortAnswerMode
           ? 'ĐÂY LÀ CÂU TRẢ LỜI NGẮN: ưu tiên đọc đúng đáp án chữ/số/biểu thức ngắn trên giấy và so với expectedAnswer/answerKeywords. Không bắt buộc trình bày lời giải dài nếu đề không yêu cầu; vẫn công nhận cách ghi tương đương đúng về toán học. Nếu câu hỏi yêu cầu lập luận, chấm phần lập luận theo rubric.'
           : 'ĐÂY LÀ CÂU TỰ LUẬN: chấm quá trình lập luận theo từng bước và rubric; giữ điểm từng phần cho bước đúng.';
-        content.push({ type:'input_text', text:`\nCÂU ${q.number} · ${shortAnswerMode ? 'TRẢ LỜI NGẮN BẰNG ẢNH' : 'TỰ LUẬN BẰNG ẢNH'} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm; parallelKey=${q.parallelKey || 'chưa gán'}; skillCode=${q.skillCode || 'chưa gán'})\nĐề: ${q.prompt}\n${modeInstructions}\nĐáp án ngắn tham chiếu (nếu có): ${q.expectedAnswer || 'Chưa có đáp án ngắn đã xác minh; tự giải và nói rõ độ chắc chắn.'}\nTừ khóa/cách ghi tương đương có thể chấp nhận: ${(q.answerKeywords || []).join('; ') || 'Đánh giá theo ý nghĩa toán học, không chỉ so khớp chuỗi.'}\nRubric: ${q.rubric || 'Chấm theo yêu cầu câu hỏi, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh theo thứ tự Trang 1 đến Trang ${questionFiles.length}; đọc các trang như một bài làm liên tục.` });
+        const questionContent = [];
+        questionContent.push({ type:'input_text', text:`\nCÂU ${q.number} · ${shortAnswerMode ? 'TRẢ LỜI NGẮN BẰNG ẢNH' : 'TỰ LUẬN BẰNG ẢNH'} (questionId=${q.id}; điểm tối đa=${q.points}; có ${questionFiles.length} trang ảnh bài làm; parallelKey=${q.parallelKey || 'chưa gán'}; skillCode=${q.skillCode || 'chưa gán'})\nĐề: ${q.prompt}\n${modeInstructions}\nĐáp án ngắn tham chiếu (nếu có): ${q.expectedAnswer || 'Chưa có đáp án ngắn đã xác minh; tự giải và nói rõ độ chắc chắn.'}\nTừ khóa/cách ghi tương đương có thể chấp nhận: ${(q.answerKeywords || []).join('; ') || 'Đánh giá theo ý nghĩa toán học, không chỉ so khớp chuỗi.'}\nRubric: ${q.rubric || 'Chấm theo yêu cầu câu hỏi, công nhận phần đúng.'}\nLời giải tham khảo: ${q.solution || 'Chưa có lời giải tham khảo; tự giải cẩn thận.'}\nẢnh theo thứ tự Trang 1 đến Trang ${questionFiles.length}; đọc các trang như một bài làm liên tục.` });
         for (let pageIndex=0; pageIndex<questionFiles.length; pageIndex++) {
           const file=questionFiles[pageIndex];
-          content.push({ type:'input_text', text:`CÂU ${q.number} — Ảnh trang ${pageIndex+1}/${questionFiles.length}. Đọc tiếp mạch lời giải ở trang trước nếu có; không tự sửa lỗi toán của học sinh.` });
-          content.push({ type:'input_image', image_url:dataUrl(file), detail:'high' });
+          questionContent.push({ type:'input_text', text:`CÂU ${q.number} — Ảnh trang ${pageIndex+1}/${questionFiles.length}. Đọc tiếp mạch lời giải ở trang trước nếu có; không tự sửa lỗi toán của học sinh.` });
+          questionContent.push({ type:'input_image', image_url:dataUrl(file), detail:'high' });
+        }
+        content.push(...questionContent);
+        contentByQuestion.set(String(q.id), questionContent);
+      }
+
+      const gradingBaseInput = [{ role:'user', content }];
+      const graderCore = 'Bạn là giám khảo Toán lớp 9 của MathSpark. Chấm từng câu theo rubric và bằng chứng gốc. Không suy đoán phần ảnh không đọc được. Không cộng/trừ hai lần cùng lỗi. Tôn trọng phương pháp giải tương đương hợp lệ. Trả duy nhất JSON hợp lệ theo schema đã nêu trong nội dung người dùng.';
+      const passAInstructions = `${graderCore} Đây là lượt chấm độc lập A. Hãy tự xác định các bước đúng/sai, tính điểm từng phần và kết luận theo rubric. Không biết và không được giả định có giám khảo khác.`;
+      const passBInstructions = `${graderCore} Đây là lượt chấm độc lập B. Hãy tự đọc lại bằng chứng ảnh từ đầu, kiểm tra phép tính và điều kiện, chủ động tìm cách giải tương đương hợp lệ trước khi kết luận. Không xem hoặc dựa vào kết quả của lượt A.`;
+      const passOutputTokens = Math.min(14000, 7000 + essayInputs.length * 1300);
+      const runGraderPass = async (label, instructions, model) => {
+        try {
+          const raw = await callOpenAI({ model, instructions, input:gradingBaseInput, maxOutputTokens:passOutputTokens, reasoningEffort:'medium', timeoutMs:85000, maxRetries:0 });
+          const parsed = parseModelJson(raw);
+          return new Map((Array.isArray(parsed.results) ? parsed.results : []).map(item => [String(item.questionId), item]));
+        } catch (gradeError) {
+          console.warn(`Dual grading ${label} (${model}) failed:`, String(gradeError?.message || gradeError).slice(0, 260));
+          return null;
+        }
+      };
+
+      // Both passes receive the exact same confirmed submission, source images, prompt and rubric.
+      // They run independently in parallel to reduce extra wait time.
+      const [passASettled, passBSettled] = await Promise.allSettled([
+        runGraderPass('A', passAInstructions, OPENAI_GRADER_A_MODEL),
+        runGraderPass('B', passBInstructions, OPENAI_GRADER_B_MODEL)
+      ]);
+      const passAMap = passASettled.status === 'fulfilled' ? passASettled.value : null;
+      const passBMap = passBSettled.status === 'fulfilled' ? passBSettled.value : null;
+      const gradeStates = new Map();
+      const disputed = [];
+
+      for (const {q} of essayInputs) {
+        const gradeA = normalizeEssayGradeAssessment(passAMap?.get(String(q.id)), q);
+        const gradeB = normalizeEssayGradeAssessment(passBMap?.get(String(q.id)), q);
+        if (gradeA && gradeB) {
+          const comparison = MathSparkDiagnosticEngine.compareDualGradeAssessments(gradeA, gradeB, q.points);
+          if (comparison.needsAdjudication) {
+            disputed.push({ q, gradeA, gradeB, comparison });
+            gradeStates.set(String(q.id), { q, gradeA, gradeB, comparison, outcome:'PENDING_ADJUDICATION' });
+          } else {
+            gradeStates.set(String(q.id), { q, finalGrade:mergeAgreedEssayAssessments(gradeA, gradeB, q), gradeA, gradeB, comparison, outcome:'AGREED' });
+          }
+        } else {
+          gradeStates.set(String(q.id), { q, gradeA, gradeB, comparison:{ needsAdjudication:false, hasBothGrades:false, reasons:['MISSING_GRADE'] }, outcome:gradeA || gradeB ? 'SINGLE_PASS_REVIEW' : 'UNAVAILABLE' });
         }
       }
-      const raw = await callOpenAI({
-        instructions:'Bạn là giáo viên chấm tự luận Toán 9. Chấm theo rubric, phân tích đúng bằng chứng, không cho điểm vượt điểm tối đa. Mã lỗi là dữ liệu nội bộ; không hiển thị mã cho học sinh. Kết quả AI là gợi ý cần kiểm tra khi ảnh mờ hoặc confidence thấp.',
-        input:[{ role:'user', content }], maxOutputTokens:Math.min(14000,7000+essayInputs.length*1300), reasoningEffort:'medium'
-      });
-      let parsed = null;
-      let gradingJsonFallback = false;
-      try { parsed = parseModelJson(raw); }
-      catch (parseErr) {
-        gradingJsonFallback = true;
-        console.error('Essay grading JSON parse failed; preserving submission and flagging essays for review:', String(parseErr?.message || parseErr).slice(0, 300));
-        parsed = { results: [] };
+
+      if (disputed.length) {
+        const adjudicationPayload = disputed.map(({q,gradeA,gradeB,comparison}) => ({
+          questionId:String(q.id), maxScore:Number(q.points)||0,
+          comparison:{ scoreDifference:comparison.scoreDifference, threshold:comparison.threshold, reasons:comparison.reasons },
+          graderA:assessmentForAdjudicator(gradeA), graderB:assessmentForAdjudicator(gradeB)
+        }));
+        const disputedEvidence = disputed.flatMap(({q}) => contentByQuestion.get(String(q.id)) || []);
+        const adjudicationContent = [
+          { type:'input_text', text:'Phân xử độc lập các câu sau. Đọc bằng chứng gốc và ảnh của từng câu; các đánh giá A/B ở phần cuối chỉ là ý kiến cần thẩm định.' },
+          ...disputedEvidence,
+          { type:'input_text', text:`\nYÊU CẦU PHÂN XỬ ĐỘC LẬP: Các giám khảo A và B đã có kết quả khác nhau ở một số câu. Dữ liệu dưới đây chỉ là ý kiến cần thẩm định, KHÔNG phải đáp án mặc định. Hãy quay lại đọc đề và ảnh bài làm gốc, tự kiểm tra toán học, rubric, từng bước và phương pháp tương đương; sau đó quyết định điểm cuối cùng có căn cứ. Không lấy trung bình máy móc. Nếu một đánh giá bỏ sót phương pháp hợp lệ hoặc chấm sai bước, hãy nói rõ trong adjudicationNote. Nếu ảnh không đủ rõ để phân xử, confidence="low" và solutionMethodAssessment="NEEDS_REVIEW". Chỉ phân xử các questionId được liệt kê, giữ nguyên questionId. Trả JSON duy nhất: {"results":[{"questionId":"...","score":0,"maxScore":2,"confidence":"high|medium|low","feedback":"...","mistakes":["..."],"correctedApproach":"...","solutionMethodAssessment":"STANDARD|ACCEPTED_CREATIVE|NEEDS_REVIEW","teacherFeedback":{"praise":"...","spotLight":"...","socraticPrompt":"...","actionGuide":"..."},"diagnostics":[{"errorCode":"L06","skillCode":"KT04","evidence":"..."}],"adjudicationNote":"..."}]}\nĐối chiếu hai đánh giá:\n${JSON.stringify(adjudicationPayload)}` }
+        ];
+        try {
+          const rawAdjudication = await callOpenAI({
+            model:OPENAI_ADJUDICATOR_MODEL,
+            instructions:'Bạn là Trưởng giám khảo MathSpark (AI Adjudicator). Bạn phân xử khi hai giám khảo độc lập bất đồng. Bắt buộc xem lại bằng chứng ảnh gốc và tự kiểm tra lời giải; không thiên vị A hoặc B, không lấy trung bình điểm theo thói quen. Ưu tiên đúng toán học, rubric, điểm từng phần và chấp nhận cách giải khác nếu hợp lệ. Nếu bằng chứng không đủ, đánh dấu NEEDS_REVIEW và confidence low. Trả duy nhất JSON hợp lệ theo yêu cầu trong nội dung.',
+            input:[{ role:'user', content:adjudicationContent }],
+            maxOutputTokens:Math.min(10000, 2500 + disputed.length * 1500), reasoningEffort:'medium', timeoutMs:85000, maxRetries:0
+          });
+          const parsedAdjudication = parseModelJson(rawAdjudication);
+          const adjudicatedMap = new Map((Array.isArray(parsedAdjudication.results) ? parsedAdjudication.results : []).map(item => [String(item.questionId), item]));
+          for (const entry of disputed) {
+            const adjudicated = normalizeEssayGradeAssessment(adjudicatedMap.get(String(entry.q.id)), entry.q);
+            const state = gradeStates.get(String(entry.q.id));
+            if (adjudicated) {
+              state.finalGrade = adjudicated;
+              state.outcome = adjudicated.confidence === 'low' || adjudicated.solutionMethodAssessment === 'NEEDS_REVIEW' ? 'ADJUDICATED_REVIEW' : 'ADJUDICATED';
+              state.adjudicationNote = adjudicated.adjudicationNote;
+            } else {
+              state.finalGrade = mergeAgreedEssayAssessments(entry.gradeA, entry.gradeB, entry.q);
+              state.finalGrade.confidence = 'low';
+              state.finalGrade.solutionMethodAssessment = 'NEEDS_REVIEW';
+              state.outcome = 'UNRESOLVED_REVIEW';
+            }
+          }
+        } catch (adjudicationError) {
+          console.warn('AI adjudicator failed; using provisional dual-pass average and flagging review:', String(adjudicationError?.message || adjudicationError).slice(0, 300));
+          for (const entry of disputed) {
+            const state = gradeStates.get(String(entry.q.id));
+            state.finalGrade = mergeAgreedEssayAssessments(entry.gradeA, entry.gradeB, entry.q);
+            state.finalGrade.confidence = 'low';
+            state.finalGrade.solutionMethodAssessment = 'NEEDS_REVIEW';
+            state.outcome = 'UNRESOLVED_REVIEW';
+          }
+        }
       }
-      const modelResults = new Map((Array.isArray(parsed.results) ? parsed.results : []).map(item => [String(item.questionId), item]));
+
       for (const {q} of essayInputs) {
-        const item = modelResults.get(String(q.id));
-        const score = item ? Math.max(0, Math.min(q.points, Number(item.score) || 0)) : 0;
-        const fallbackFeedback = gradingJsonFallback
-          ? 'Bài làm đã được nhận, nhưng AI trả kết quả không đúng định dạng nên câu này đang chờ chấm lại/giáo viên kiểm tra. Bạn không cần tải lại ảnh.'
-          : 'AI chưa trả về nhận xét riêng cho câu này.';
-        const teacher = item?.teacherFeedback && typeof item.teacherFeedback === 'object' ? item.teacherFeedback : {};
-        const teacherFeedback = [teacher.praise, teacher.spotLight, teacher.socraticPrompt, teacher.actionGuide].map(value=>safeText(value,1200)).filter(Boolean).join('\n\n');
-        const diagnostics = Array.isArray(item?.diagnostics) ? item.diagnostics.slice(0, 8).map(d => ({
-          errorCode:MathSparkDiagnosticEngine.validErrorCode(d?.errorCode),
-          skillCode:MathSparkDiagnosticEngine.validSkillCode(d?.skillCode),
-          evidence:safeText(d?.evidence,500)
-        })).filter(d=>d.errorCode || d.skillCode) : [];
+        const state = gradeStates.get(String(q.id));
+        const item = state?.finalGrade || state?.gradeA || state?.gradeB || null;
+        let outcome = state?.outcome || 'UNAVAILABLE';
+        if (outcome === 'PENDING_ADJUDICATION') outcome = 'UNRESOLVED_REVIEW';
+        if (outcome === 'AGREED') dualGradingSummary.agreed += 1;
+        else if (outcome === 'ADJUDICATED') dualGradingSummary.adjudicated += 1;
+        else if (outcome === 'ADJUDICATED_REVIEW') { dualGradingSummary.adjudicated += 1; dualGradingSummary.adjudicatedReview += 1; }
+        else if (outcome === 'SINGLE_PASS_REVIEW') dualGradingSummary.singlePassReview += 1;
+        else if (outcome === 'UNAVAILABLE') dualGradingSummary.unavailable += 1;
+        else dualGradingSummary.provisionalReview += 1;
+
+        const fallbackFeedback = outcome === 'UNAVAILABLE'
+          ? 'Hai lượt chấm AI chưa trả về kết quả hợp lệ. Bài làm và ảnh đã được lưu; câu này cần giáo viên kiểm tra hoặc chấm lại.'
+          : outcome === 'SINGLE_PASS_REVIEW'
+            ? 'Hiện chỉ có một lượt chấm hoàn tất. Điểm đang được giữ ở trạng thái tạm thời và cần giáo viên kiểm tra để bảo đảm công bằng.'
+            : outcome === 'UNRESOLVED_REVIEW'
+              ? 'Hai lượt chấm có khác biệt và AI phân xử chưa thể kết luận chắc chắn. Điểm dưới đây là tạm tính; cần giáo viên kiểm tra.'
+              : 'AI chưa trả về nhận xét riêng cho câu này.';
+        const finalGrade = item || {
+          questionId:String(q.id), score:0, maxScore:q.points, confidence:'low', feedback:fallbackFeedback,
+          mistakes:[], correctedApproach:'', solutionMethodAssessment:'NEEDS_REVIEW', teacherFeedback:{}, diagnostics:[]
+        };
+        const diagnostics = ['UNRESOLVED_REVIEW','SINGLE_PASS_REVIEW','ADJUDICATED_REVIEW','UNAVAILABLE'].includes(outcome)
+          ? [] : (Array.isArray(finalGrade.diagnostics) ? finalGrade.diagnostics : []);
         essayModelDiagnostics.set(String(q.id), diagnostics);
-        const solutionMethodAssessment = ['STANDARD','ACCEPTED_CREATIVE','NEEDS_REVIEW'].includes(String(item?.solutionMethodAssessment || '').toUpperCase())
-          ? String(item.solutionMethodAssessment).toUpperCase() : 'STANDARD';
+        const gradingNote = outcome === 'AGREED'
+          ? 'Hai lượt AI chấm độc lập đã thống nhất kết quả.'
+          : outcome === 'ADJUDICATED'
+            ? 'Kết quả đã được AI phân xử sau khi hai lượt chấm có khác biệt.'
+            : outcome === 'ADJUDICATED_REVIEW'
+              ? 'AI đã phân xử nhưng độ chắc chắn còn thấp; nên có giáo viên kiểm tra.'
+              : outcome === 'SINGLE_PASS_REVIEW'
+                ? 'Chỉ một lượt chấm hoàn tất; kết quả tạm thời cần giáo viên kiểm tra.'
+                : outcome === 'UNRESOLVED_REVIEW'
+                  ? 'Hai lượt chấm chưa thống nhất; điểm tạm tính cần giáo viên kiểm tra.'
+                  : 'Chưa có kết quả chấm AI hợp lệ; ảnh bài làm đã được nhận và cần kiểm tra lại.';
+        const solutionMethodAssessment = finalGrade.solutionMethodAssessment || 'NEEDS_REVIEW';
+        const needsTeacherReview = ['SINGLE_PASS_REVIEW','UNAVAILABLE','UNRESOLVED_REVIEW','ADJUDICATED_REVIEW'].includes(outcome)
+          || finalGrade.confidence === 'low' || solutionMethodAssessment === 'NEEDS_REVIEW';
         results.push({
-          questionId:q.id, number:q.number, type:q.type, score, maxScore:q.points,
-          correct: item ? score >= q.points - 0.001 : null,
-          confidence:['high','medium','low'].includes(item?.confidence) ? item.confidence : 'low',
-          feedback:safeText(item?.feedback || fallbackFeedback, 6000),
-          teacherFeedback,
+          questionId:q.id, number:q.number, type:q.type,
+          score:finalGrade.score, maxScore:q.points, correct:['AGREED','ADJUDICATED'].includes(outcome) ? finalGrade.score >= q.points - 0.001 : null,
+          confidence:finalGrade.confidence,
+          feedback:safeText(finalGrade.feedback || fallbackFeedback, 6000),
+          teacherFeedback:[finalGrade.teacherFeedback?.praise, finalGrade.teacherFeedback?.spotLight, finalGrade.teacherFeedback?.socraticPrompt, finalGrade.teacherFeedback?.actionGuide].map(value=>safeText(value,1200)).filter(Boolean).join('\n\n'),
           solutionMethodAssessment,
-          mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,500)):[],
-          correctedApproach:safeText(item?.correctedApproach || '',5000),
+          mistakes:Array.isArray(finalGrade.mistakes)?finalGrade.mistakes.slice(0,12).map(value=>safeText(value,500)):[],
+          correctedApproach:safeText(finalGrade.correctedApproach || '',5000),
           diagnosticCodes:[...new Set(diagnostics.map(d=>d.errorCode).filter(Boolean))],
           skillCodes:[...new Set(diagnostics.map(d=>d.skillCode).filter(Boolean))],
           diagnosticEvidence:diagnostics.map(d=>d.evidence).filter(Boolean).join(' | '),
-          needsTeacherReview:!item || item?.confidence === 'low' || solutionMethodAssessment === 'NEEDS_REVIEW', solution:q.solution || ''
+          gradingAudit:{ mode:'DUAL_GRADING', outcome, graderPasses:state?.gradeA && state?.gradeB ? 2 : (state?.gradeA || state?.gradeB ? 1 : 0),
+            scoreDifference:state?.comparison?.scoreDifference ?? null, adjudicatorUsed:['ADJUDICATED','ADJUDICATED_REVIEW'].includes(outcome),
+            disagreementReasons:state?.comparison?.reasons || [] },
+          gradingNote,
+          adjudicationNote:safeText(state?.adjudicationNote || '',1500),
+          needsTeacherReview, solution:q.solution || ''
         });
       }
     }
@@ -1112,7 +1228,7 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
     } else {
       diagnosticSummary = 'Rất tốt! Không phát hiện mã lỗi cần ưu tiên ôn trong các câu đã chấm được.';
     }
-    const resultJson = { diagnosticEngineVersion:'7.1-summary-schedule', examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString(), diagnosticSummary, diagnosticReport, adaptiveSchedule };
+    const resultJson = { diagnosticEngineVersion:'7.2-dual-grading', dualGradingSummary, examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString(), diagnosticSummary, diagnosticReport, adaptiveSchedule };
     let saved = false;
     let savedAttemptId = null;
     if (studentId && supabaseAdmin) {
@@ -1243,8 +1359,8 @@ function providerError(err) {
   if (status === 400) return { status: 400, message: 'Yêu cầu gửi đến AI chưa hợp lệ. Hãy thử lại với ảnh rõ hơn hoặc nội dung ngắn hơn.' };
   return { status: 502, message: 'OpenAI chưa xử lý được yêu cầu lúc này. Vui lòng thử lại sau.' };
 }
-async function callOpenAI({ instructions, input, maxOutputTokens = 1800, reasoningEffort, timeoutMs, maxRetries }) {
-  const params = { model: OPENAI_MODEL, instructions, input, max_output_tokens: maxOutputTokens };
+async function callOpenAI({ model = OPENAI_MODEL, instructions, input, maxOutputTokens = 1800, reasoningEffort, timeoutMs, maxRetries }) {
+  const params = { model: String(model || OPENAI_MODEL), instructions, input, max_output_tokens: maxOutputTokens };
   if (reasoningEffort) params.reasoning = { effort: reasoningEffort };
   const requestOptions = {};
   if (Number.isFinite(Number(timeoutMs)) && Number(timeoutMs) > 0) requestOptions.timeout = Number(timeoutMs);
@@ -1259,6 +1375,80 @@ function aiEndpointError(res, err) {
   return res.status(mapped.status).json({ error: mapped.message });
 }
 function safeText(value, max = 6000) { return String(value ?? '').trim().slice(0, max); }
+
+function normalizeEssayGradeAssessment(item, question) {
+  if (!item || !Number.isFinite(Number(item.score))) return null;
+  const maxScore = Math.max(0, Number(question?.points) || 0);
+  const score = Math.round(Math.max(0, Math.min(maxScore, Number(item.score))) * 100) / 100;
+  const teacher = item.teacherFeedback && typeof item.teacherFeedback === 'object' ? item.teacherFeedback : {};
+  const diagnostics = Array.isArray(item.diagnostics) ? item.diagnostics.slice(0, 8).map(d => ({
+    errorCode: MathSparkDiagnosticEngine.validErrorCode(d?.errorCode),
+    skillCode: MathSparkDiagnosticEngine.validSkillCode(d?.skillCode),
+    evidence: safeText(d?.evidence, 500)
+  })).filter(d => d.errorCode || d.skillCode) : [];
+  const method = String(item.solutionMethodAssessment || 'STANDARD').toUpperCase();
+  return {
+    questionId: String(question.id),
+    score,
+    maxScore,
+    confidence: ['high', 'medium', 'low'].includes(String(item.confidence || '').toLowerCase()) ? String(item.confidence).toLowerCase() : 'low',
+    feedback: safeText(item.feedback || '', 6000),
+    mistakes: Array.isArray(item.mistakes) ? item.mistakes.slice(0, 12).map(value => safeText(value, 500)).filter(Boolean) : [],
+    correctedApproach: safeText(item.correctedApproach || '', 5000),
+    solutionMethodAssessment: ['STANDARD', 'ACCEPTED_CREATIVE', 'NEEDS_REVIEW'].includes(method) ? method : 'STANDARD',
+    teacherFeedback: {
+      praise: safeText(teacher.praise, 1200),
+      spotLight: safeText(teacher.spotLight, 1200),
+      socraticPrompt: safeText(teacher.socraticPrompt, 1200),
+      actionGuide: safeText(teacher.actionGuide, 1200)
+    },
+    diagnostics,
+    adjudicationNote: safeText(item.adjudicationNote || '', 1500)
+  };
+}
+
+function assessmentForAdjudicator(assessment) {
+  if (!assessment) return null;
+  return {
+    score: assessment.score,
+    maxScore: assessment.maxScore,
+    confidence: assessment.confidence,
+    feedback: assessment.feedback,
+    mistakes: assessment.mistakes,
+    correctedApproach: assessment.correctedApproach,
+    solutionMethodAssessment: assessment.solutionMethodAssessment,
+    diagnostics: assessment.diagnostics
+  };
+}
+
+function preferredEssayAssessment(first, second) {
+  const rank = value => ({ high: 3, medium: 2, low: 1 }[String(value || 'low').toLowerCase()] || 1);
+  return rank(first?.confidence) >= rank(second?.confidence) ? first : second;
+}
+
+function mergeAgreedEssayAssessments(first, second, question) {
+  const preferred = preferredEssayAssessment(first, second);
+  const score = Math.round(((Number(first.score) + Number(second.score)) / 2) * 100) / 100;
+  const unique = values => [...new Set(values.flat().filter(Boolean))];
+  const diagnosticsMap = new Map();
+  for (const diagnostic of [...(first.diagnostics || []), ...(second.diagnostics || [])]) {
+    const key = `${diagnostic.errorCode || ''}|${diagnostic.skillCode || ''}|${diagnostic.evidence || ''}`;
+    diagnosticsMap.set(key, diagnostic);
+  }
+  return {
+    ...preferred,
+    questionId: String(question.id),
+    score,
+    maxScore: Math.max(0, Number(question.points) || 0),
+    confidence: first.confidence === 'high' && second.confidence === 'high' ? 'high' : 'medium',
+    mistakes: unique([first.mistakes || [], second.mistakes || []]).slice(0, 12),
+    diagnostics: [...diagnosticsMap.values()].slice(0, 8),
+    solutionMethodAssessment: first.solutionMethodAssessment === 'NEEDS_REVIEW' || second.solutionMethodAssessment === 'NEEDS_REVIEW'
+      ? 'NEEDS_REVIEW'
+      : (first.solutionMethodAssessment === 'ACCEPTED_CREATIVE' || second.solutionMethodAssessment === 'ACCEPTED_CREATIVE' ? 'ACCEPTED_CREATIVE' : 'STANDARD')
+  };
+}
+
 
 app.post('/api/ai/grade-solution', aiRateLimit(5, 10 * 60 * 1000), ensureOpenAI, aiUpload.fields([{ name: 'problemImage', maxCount: 1 }, { name: 'solutionImage', maxCount: 1 }]), async (req, res) => {
   try {

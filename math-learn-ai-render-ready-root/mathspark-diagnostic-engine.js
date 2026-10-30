@@ -325,12 +325,80 @@ function buildAdaptiveSessions({diagnostics, freeSlots, now = new Date(), maxSes
   };
 }
 
+
+function compareDualGradeAssessments(first, second, maxScore) {
+  const max = Math.max(0, Number(maxScore) || 0);
+  const scoreA = Number(first?.score);
+  const scoreB = Number(second?.score);
+  const hasA = Number.isFinite(scoreA);
+  const hasB = Number.isFinite(scoreB);
+  const reasons = [];
+  if (!hasA || !hasB) {
+    return {
+      needsAdjudication: false,
+      hasBothGrades: false,
+      scoreDifference: hasA || hasB ? null : null,
+      threshold: Math.max(0.25, max * 0.05),
+      reasons: ['MISSING_GRADE']
+    };
+  }
+
+  const safeA = Math.max(0, Math.min(max, scoreA));
+  const safeB = Math.max(0, Math.min(max, scoreB));
+  const difference = Math.round(Math.abs(safeA - safeB) * 100) / 100;
+  const threshold = Math.round(Math.max(0.25, max * 0.05) * 100) / 100;
+  if (difference > threshold) reasons.push('SCORE_GAP');
+
+  const fullA = max > 0 && safeA >= max - 0.001;
+  const fullB = max > 0 && safeB >= max - 0.001;
+  if (fullA !== fullB) reasons.push('CORRECTNESS_CONFLICT');
+
+  const diagnosticsOf = grade => Array.isArray(grade?.diagnostics) ? grade.diagnostics : [];
+  const codes = grade => [...new Set(diagnosticsOf(grade).map(item => validErrorCode(item?.errorCode)).filter(Boolean))].sort();
+  const skills = grade => [...new Set(diagnosticsOf(grade).map(item => validSkillCode(item?.skillCode)).filter(Boolean))].sort();
+  const codesA = codes(first);
+  const codesB = codes(second);
+  if (JSON.stringify(codesA) !== JSON.stringify(codesB) && (codesA.length || codesB.length)) {
+    reasons.push('DIAGNOSTIC_CODE_CONFLICT');
+  }
+  const skillsA = skills(first);
+  const skillsB = skills(second);
+  if (JSON.stringify(skillsA) !== JSON.stringify(skillsB) && (skillsA.length || skillsB.length)) {
+    reasons.push('SKILL_CODE_CONFLICT');
+  }
+
+  const methodA = String(first?.solutionMethodAssessment || 'STANDARD').toUpperCase();
+  const methodB = String(second?.solutionMethodAssessment || 'STANDARD').toUpperCase();
+  if (methodA === 'NEEDS_REVIEW' || methodB === 'NEEDS_REVIEW') {
+    reasons.push(methodA === methodB ? 'METHOD_NEEDS_REVIEW' : 'SOLUTION_METHOD_CONFLICT');
+  } else if (methodA !== methodB && (methodA === 'ACCEPTED_CREATIVE' || methodB === 'ACCEPTED_CREATIVE')) {
+    reasons.push('SOLUTION_METHOD_CONFLICT');
+  }
+
+  if (String(first?.confidence || 'low').toLowerCase() === 'low' || String(second?.confidence || 'low').toLowerCase() === 'low') {
+    reasons.push('LOW_CONFIDENCE');
+  }
+  const hasMistakesA = Array.isArray(first?.mistakes) && first.mistakes.length > 0;
+  const hasMistakesB = Array.isArray(second?.mistakes) && second.mistakes.length > 0;
+  if (hasMistakesA !== hasMistakesB) reasons.push('MISTAKE_PRESENCE_CONFLICT');
+
+  return {
+    needsAdjudication: reasons.length > 0,
+    hasBothGrades: true,
+    scoreDifference: difference,
+    threshold,
+    reasons,
+    scoreA: Math.round(safeA * 100) / 100,
+    scoreB: Math.round(safeB * 100) / 100
+  };
+}
+
 module.exports = {
   ERROR_CODES, SKILL_CODES, SKILL_NAMES, ERROR_NAMES,
   normalizeLabels, validErrorCode, validSkillCode, normalizeDistractorMap,
   analyzeMultiOptionResponse, classifyParallelAttempt, studentSafeParallelNote,
   studentSafeChoiceFeedback, normalizePreviousEvents, mapSkillToTopic,
-  aggregateDiagnosticErrors, buildAdaptiveSessions
+  aggregateDiagnosticErrors, buildAdaptiveSessions, compareDualGradeAssessments
 };
 
 function addMinutes(time, minutes) {
