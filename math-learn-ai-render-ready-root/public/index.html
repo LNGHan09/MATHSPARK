@@ -1089,6 +1089,23 @@
 </style>
 
 <style id="mathspark-exam-grading-result-styles">
+  .exam-diagnostic-report{margin:13px 0 16px;padding:13px;border:1px solid #dfd6c3;border-radius:12px;background:#fffdf7;color:#293754}
+  .exam-diagnostic-report h4{margin:0 0 7px;color:#1d2b50;font-size:14px}
+  .exam-diagnostic-report-intro,.exam-diagnostic-report-note,.exam-diagnostic-confidence{margin:5px 0;color:#626b7d;font-size:12px;line-height:1.55}
+  .exam-error-code-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px;margin-top:10px}
+  .exam-error-code-card{min-width:0;padding:10px;border:1px solid #e7ddc9;border-radius:10px;background:#fbf7ed}
+  .exam-error-code-top{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px}
+  .exam-error-code-top strong{font-size:12px;line-height:1.45;color:#27365e}
+  .exam-error-code-badge{flex:0 0 auto;padding:3px 6px;border-radius:6px;background:#1d2b50;color:#fff;font-size:10px;font-weight:800;letter-spacing:.02em}
+  .exam-error-code-card p{margin:5px 0;color:#626b7d;font-size:11px;line-height:1.45}
+  .exam-error-code-card small{display:block;margin-top:5px;color:#667084;font-size:10px;line-height:1.4}
+  .exam-error-code-card .exam-error-signal{color:#8a6229;font-weight:700}
+  .exam-weak-area-heading{margin-top:13px!important}
+  .exam-weak-area-list{display:grid;gap:6px;margin-top:8px}
+  .exam-weak-area-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 10px;border-radius:8px;background:#f2f4f8}
+  .exam-weak-area-row strong{font-size:12px;color:#27365e}
+  .exam-weak-area-row span{font-size:11px;line-height:1.45;text-align:right;color:#667084}
+  @media(max-width:620px){.exam-weak-area-row{display:grid;gap:3px}.exam-weak-area-row span{text-align:left}.exam-error-code-grid{grid-template-columns:1fr}}
   .exam-answer-summary{padding:9px 11px;border-radius:9px;background:#f4f1ea;margin:9px 0!important}
   .exam-answer-correct-text{font-weight:700;color:#26714e}
   .exam-result-item.correct{background:#fffefa}
@@ -3737,6 +3754,48 @@ async function renderExamResult(data){
       adaptiveHost.classList.remove('hidden');
       const heading=document.createElement('h3');heading.textContent='Nhận xét tiến bộ và lộ trình ôn tập';adaptiveHost.appendChild(heading);
       if(data.diagnosticSummary){const summary=document.createElement('p');summary.textContent=data.diagnosticSummary;adaptiveHost.appendChild(summary)}
+      const report=data.diagnosticReport;
+      if(report){
+        const reportWrap=document.createElement('section');reportWrap.className='exam-diagnostic-report';
+        const reportHeading=document.createElement('h4');reportHeading.textContent='Tổng hợp mã lỗi trong bài';reportWrap.appendChild(reportHeading);
+        const reportIntro=document.createElement('p');
+        reportIntro.className='exam-diagnostic-report-intro';
+        reportIntro.textContent=report.totalWrongQuestions
+          ? `Có ${report.totalWrongQuestions} câu cần củng cố trong bài này. Các mã dưới đây được tổng hợp từ phương án sai và phần chẩn đoán có bằng chứng.`
+          : 'Không ghi nhận câu sai có đủ bằng chứng để gắn mã lỗi trong bài này.';
+        reportWrap.appendChild(reportIntro);
+        if(Array.isArray(report.errorCodes)&&report.errorCodes.length){
+          const codeGrid=document.createElement('div');codeGrid.className='exam-error-code-grid';
+          report.errorCodes.forEach(entry=>{
+            const card=document.createElement('article');card.className='exam-error-code-card';
+            const top=document.createElement('div');top.className='exam-error-code-top';
+            const badge=document.createElement('span');badge.className='exam-error-code-badge';badge.textContent=String(entry.code||'');
+            const label=document.createElement('strong');label.textContent=String(entry.label||'Lỗi cần xem lại');
+            top.append(badge,label);
+            const frequency=document.createElement('p');frequency.textContent=`Ghi nhận ${Number(entry.count)||0} lượt · ${Array.isArray(entry.questionNumbers)&&entry.questionNumbers.length?`Câu ${entry.questionNumbers.join(', ')}`:'chưa xác định câu cụ thể'}.`;
+            card.append(top,frequency);
+            if(Array.isArray(entry.skillNames)&&entry.skillNames.length){const skill=document.createElement('small');skill.textContent=`Kỹ năng liên quan: ${entry.skillNames.join(', ')}`;card.appendChild(skill)}
+            const signal=document.createElement('small');signal.className='exam-error-signal';signal.textContent=entry.confidence==='repeated'?'Tín hiệu xuất hiện lặp lại':'Tín hiệu ban đầu từ bài này';card.appendChild(signal);
+            codeGrid.appendChild(card);
+          });
+          reportWrap.appendChild(codeGrid);
+        }
+        if(Array.isArray(report.weakAreas)&&report.weakAreas.length){
+          const weakHeading=document.createElement('h4');weakHeading.className='exam-weak-area-heading';weakHeading.textContent='Mảng kiến thức cần ưu tiên';reportWrap.appendChild(weakHeading);
+          const weakList=document.createElement('div');weakList.className='exam-weak-area-list';
+          report.weakAreas.slice(0,3).forEach(area=>{
+            const row=document.createElement('div');row.className='exam-weak-area-row';
+            const title=document.createElement('strong');title.textContent=String(area.name||area.skillCode||'Kỹ năng cần củng cố');
+            const meta=document.createElement('span');meta.textContent=`${Number(area.count)||0} câu${Array.isArray(area.questionNumbers)&&area.questionNumbers.length?` · Câu ${area.questionNumbers.join(', ')}`:''}${Array.isArray(area.errorCodes)&&area.errorCodes.length?` · ${area.errorCodes.join(', ')}`:''}`;
+            row.append(title,meta);weakList.appendChild(row);
+          });
+          reportWrap.appendChild(weakList);
+        }
+        if(Number(report.omissionQuestionCount)>0){const omission=document.createElement('p');omission.className='exam-diagnostic-report-note';omission.textContent=`Ngoài ra, có ${Number(report.omissionQuestionCount)} câu nhiều đáp án bị bỏ sót ít nhất một phương án đúng.`;reportWrap.appendChild(omission)}
+        if(Number(report.uncodedWrongQuestionCount)>0){const uncoded=document.createElement('p');uncoded.className='exam-diagnostic-report-note';uncoded.textContent=`${Number(report.uncodedWrongQuestionCount)} câu chưa đủ bằng chứng để gắn mã lỗi cụ thể; các câu này vẫn được tính vào phần cần xem lại.`;reportWrap.appendChild(uncoded)}
+        if(report.confidenceNote){const confidence=document.createElement('p');confidence.className='exam-diagnostic-confidence';confidence.textContent=String(report.confidenceNote);reportWrap.appendChild(confidence)}
+        adaptiveHost.appendChild(reportWrap);
+      }
       const schedule=data.adaptiveSchedule;
       if(schedule?.sessions?.length){
         const message=document.createElement('p');message.textContent=schedule.message||'Đã gợi ý các buổi ôn vào khung giờ rảnh.';adaptiveHost.appendChild(message);

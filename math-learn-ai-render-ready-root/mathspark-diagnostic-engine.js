@@ -163,9 +163,100 @@ function mapSkillToTopic(skillCode, errorCode) {
   return byError[validErrorCode(errorCode)] || SKILL_NAMES[validSkillCode(skillCode)] || 'Củng cố dạng bài đang mắc lỗi';
 }
 
+function aggregateDiagnosticErrors(diagnostics) {
+  const input = Array.isArray(diagnostics) ? diagnostics : [];
+  const wrong = input.filter(item => item && item.isCorrect === false);
+  const errorToSkill = {
+    L01: 'KT01', L02: 'KT02', L03: 'KT02', L04: 'KT03', L05: 'KT03',
+    L06: 'KT04', L07: 'KT05', L08: 'KT06', L09: 'KT07'
+  };
+  const codeStats = new Map();
+  const skillStats = new Map();
+  let omissionQuestionCount = 0;
+  let uncodedWrongQuestionCount = 0;
+
+  const uniqueCodes = value => [...new Set((Array.isArray(value) ? value : value ? [value] : [])
+    .map(validErrorCode).filter(Boolean))];
+  const uniqueSkills = value => [...new Set((Array.isArray(value) ? value : value ? [value] : [])
+    .map(validSkillCode).filter(Boolean))];
+
+  for (const item of wrong) {
+    const questionNumber = Number(item.questionNumber ?? item.number);
+    const questionLabel = Number.isFinite(questionNumber) && questionNumber > 0 ? questionNumber : null;
+    const codes = uniqueCodes([...(item.errorCodes || []), item.errorCode]);
+    const explicitSkills = uniqueSkills([...(item.skillCodes || []), item.skillCode]);
+    // Prefer the taxonomy's canonical mapping when a specific error code is available.
+    const skills = codes.length
+      ? [...new Set(codes.map(code => errorToSkill[code]).filter(Boolean))]
+      : explicitSkills;
+    const omitted = Array.isArray(item.omittedCorrectOptions) ? item.omittedCorrectOptions.length > 0
+      : (Array.isArray(item.omittedCorrect) ? item.omittedCorrect.length > 0 : item.diagnosisKind === 'OMISSION');
+    if (omitted) omissionQuestionCount += 1;
+
+    if (!codes.length && !skills.length) uncodedWrongQuestionCount += 1;
+
+    for (const code of codes) {
+      const skill = errorToSkill[code] || explicitSkills[0] || '';
+      if (!codeStats.has(code)) codeStats.set(code, { code, label: ERROR_NAMES[code] || 'lỗi cần kiểm tra', count: 0, questionNumbers: [], skillCodes: [] });
+      const stat = codeStats.get(code);
+      stat.count += 1;
+      if (questionLabel && !stat.questionNumbers.includes(questionLabel)) stat.questionNumbers.push(questionLabel);
+      if (skill && !stat.skillCodes.includes(skill)) stat.skillCodes.push(skill);
+    }
+    for (const skill of skills) {
+      if (!skillStats.has(skill)) skillStats.set(skill, { skillCode: skill, name: SKILL_NAMES[skill] || skill, count: 0, errorCodes: [], questionNumbers: [], hasPersistentGap: false });
+      const stat = skillStats.get(skill);
+      stat.count += 1;
+      if (questionLabel && !stat.questionNumbers.includes(questionLabel)) stat.questionNumbers.push(questionLabel);
+      for (const code of codes) if (!stat.errorCodes.includes(code)) stat.errorCodes.push(code);
+      if (item.parallelStatus === 'PERSISTENT_GAP') stat.hasPersistentGap = true;
+    }
+  }
+
+  const errorCodes = [...codeStats.values()]
+    .map(item => ({ ...item, questionNumbers: item.questionNumbers.sort((a,b)=>a-b), skillNames: item.skillCodes.map(code=>SKILL_NAMES[code]).filter(Boolean), confidence: item.count >= 2 ? 'repeated' : 'initial' }))
+    .sort((a,b)=>b.count-a.count || a.code.localeCompare(b.code));
+  const weakAreas = [...skillStats.values()]
+    .map(item => ({ ...item, questionNumbers: item.questionNumbers.sort((a,b)=>a-b), errorCodes: item.errorCodes.sort(), confidence: item.hasPersistentGap || item.count >= 2 ? 'repeated' : 'initial' }))
+    .sort((a,b)=>b.count-a.count || a.skillCode.localeCompare(b.skillCode));
+
+  const persistentGapCount = wrong.filter(item => item.parallelStatus === 'PERSISTENT_GAP').length;
+  const resolvedSlipCount = wrong.filter(item => item.parallelStatus === 'SLIP_RESOLVED').length;
+  return {
+    totalQuestions: input.length,
+    totalWrongQuestions: wrong.length,
+    omissionQuestionCount,
+    uncodedWrongQuestionCount,
+    persistentGapCount,
+    resolvedSlipCount,
+    errorCodes,
+    weakAreas,
+    topWeakArea: weakAreas[0] || null,
+    interpretation: persistentGapCount
+      ? 'confirmed_repeat'
+      : (wrong.length ? 'initial_signal' : 'no_error_signal'),
+    confidenceNote: persistentGapCount
+      ? 'Có ít nhất một dạng bài tương đương bị sai lặp lại; đây là bằng chứng mạnh hơn cho nhu cầu củng cố.'
+      : (wrong.length ? 'Đây là tín hiệu từ bài vừa làm, chưa đủ để kết luận học sinh bị hổng kiến thức gốc. Cần đối chiếu thêm câu tương đương ở lần sau.' : 'Không phát hiện tín hiệu lỗi cần ôn từ các câu đã chấm được.')
+  };
+}
+
 function buildAdaptiveSessions({diagnostics, freeSlots, now = new Date(), maxSessions = 2}) {
-  const persistent = (Array.isArray(diagnostics) ? diagnostics : []).filter(item => item?.parallelStatus === 'PERSISTENT_GAP');
-  if (!persistent.length) return null;
+  const all = Array.isArray(diagnostics) ? diagnostics : [];
+  const wrong = all.filter(item => item && item.isCorrect === false);
+  if (!wrong.length) return null;
+
+  const persistent = wrong.filter(item => item.parallelStatus === 'PERSISTENT_GAP');
+  const summary = aggregateDiagnosticErrors(wrong);
+  const hasCodedArea = summary.weakAreas.length > 0;
+  const focusAreas = persistent.length
+    ? aggregateDiagnosticErrors(persistent).weakAreas
+    : summary.weakAreas;
+  const pickedAreas = focusAreas.length ? focusAreas.slice(0, 2) : [{
+    skillCode: '', name: 'Rà soát các câu chưa chính xác', count: wrong.length,
+    errorCodes: [], questionNumbers: wrong.map(item=>Number(item.questionNumber ?? item.number)).filter(n=>Number.isFinite(n)&&n>0), confidence: 'initial'
+  }];
+
   const rawSlots = Array.isArray(freeSlots) ? freeSlots : [];
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const used = new Set();
@@ -179,13 +270,21 @@ function buildAdaptiveSessions({diagnostics, freeSlots, now = new Date(), maxSes
     used.add(`${date}_${start}`);
     return { date, start, end: end || addMinutes(start, Number(slot?.duration) || 30), startAt, day: String(slot?.day || ''), slotKey: String(slot?.key || '') };
   }).filter(Boolean).sort((a, b) => a.startAt - b.startAt);
+
+  // A first test creates one short, low-confidence review session. A confirmed repeated error
+  // may create up to two sessions, as described in the Master Engine specification.
+  const requestedSessions = persistent.length ? Math.max(1, Math.min(2, Number(maxSessions) || 2)) : 1;
   const sessions = [];
   const distinctDays = new Set();
   for (const slot of slots) {
-    if (sessions.length >= Math.max(1, Math.min(2, Number(maxSessions) || 2))) break;
+    if (sessions.length >= requestedSessions) break;
     if (distinctDays.has(slot.date)) continue;
-    const diagnosis = persistent[Math.min(sessions.length, persistent.length - 1)];
-    const topic = mapSkillToTopic(diagnosis.skillCode, diagnosis.errorCode);
+    const area = pickedAreas[Math.min(sessions.length, pickedAreas.length - 1)];
+    const topic = area?.errorCodes?.length
+      ? mapSkillToTopic(area.skillCode, area.errorCodes[0])
+      : (area?.name || 'Rà soát các câu chưa chính xác');
+    const areaQuestions = Array.isArray(area?.questionNumbers) ? area.questionNumbers : [];
+    const isPersistentPlan = persistent.length > 0;
     sessions.push({
       sessionNo: sessions.length + 1,
       date: slot.date,
@@ -194,24 +293,34 @@ function buildAdaptiveSessions({diagnostics, freeSlots, now = new Date(), maxSes
       end: slot.end,
       durationMinutes: 30,
       topic,
-      title: sessions.length === 0 ? `Buổi 1: Ôn nền tảng — ${topic}` : `Buổi 2: Luyện câu tương đương — ${topic}`,
-      task: sessions.length === 0
-        ? 'Nhắc lại quy tắc, xem một ví dụ mẫu và tự giải thích vì sao từng bước đúng.'
-        : 'Làm một câu tương đương với số liệu mới, kiểm tra điều kiện và tự đối chiếu lời giải.',
-      parallelKey: diagnosis.parallelKey
+      title: isPersistentPlan
+        ? (sessions.length === 0 ? `Buổi 1: Ôn nền tảng — ${topic}` : `Buổi 2: Luyện câu tương đương — ${topic}`)
+        : `Ôn tập gợi ý — ${topic}`,
+      task: isPersistentPlan
+        ? (sessions.length === 0
+          ? 'Nhắc lại quy tắc, xem một ví dụ mẫu và tự giải thích vì sao từng bước đúng.'
+          : 'Làm một câu tương đương với số liệu mới, kiểm tra điều kiện và tự đối chiếu lời giải.')
+        : `Xem lại câu ${areaQuestions.length ? areaQuestions.join(', ') : 'chưa chính xác'}; ghi lại bước làm đúng, sau đó thử một câu tương đương để kiểm tra lại.` ,
+      errorCodes: Array.isArray(area?.errorCodes) ? area.errorCodes : [],
+      skillCode: area?.skillCode || '',
+      questionNumbers: areaQuestions,
+      parallelKey: persistent[Math.min(sessions.length, persistent.length - 1)]?.parallelKey || '',
+      diagnosisConfidence: isPersistentPlan ? 'higher_after_repeat' : 'initial_signal'
     });
     distinctDays.add(slot.date);
   }
+  const isPersistentPlan = persistent.length > 0;
   return {
-    planTitle: 'Lộ trình củng cố lỗi lặp lại',
+    planTitle: isPersistentPlan ? 'Lộ trình củng cố lỗi lặp lại' : 'Buổi ôn tập gợi ý từ bài vừa làm',
     mappedToStudentFreeSlots: sessions.length > 0,
     totalSessions: sessions.length,
-    requiresMoreAvailability: sessions.length < 2,
-    message: sessions.length === 2
-      ? 'Đã xếp hai buổi ôn vào các khung giờ rảnh khác ngày.'
-      : sessions.length === 1
-        ? 'Chỉ tìm thấy một khung giờ rảnh phù hợp trong tuần hiện tại; hãy bổ sung giờ rảnh để xếp buổi thứ hai.'
-        : 'Đã phát hiện lỗi lặp lại nhưng chưa tìm thấy khung giờ rảnh sắp tới. Hãy đánh dấu thêm giờ rảnh trong Lịch trình.',
+    requiresMoreAvailability: sessions.length < requestedSessions,
+    diagnosisConfidence: isPersistentPlan ? 'higher_after_repeat' : 'initial_signal',
+    message: !slots.length
+      ? 'Đã xác định nội dung nên ôn nhưng chưa có khung giờ rảnh sắp tới. Hãy đánh dấu giờ rảnh trong Lịch trình để thêm buổi ôn.'
+      : (isPersistentPlan
+        ? (sessions.length === 2 ? 'Đã xếp hai buổi ôn vào các khung giờ rảnh khác ngày vì lỗi dạng tương đương lặp lại.' : 'Đã phát hiện lỗi lặp lại; hiện chỉ tìm thấy một khung giờ phù hợp. Hãy bổ sung giờ rảnh để xếp buổi thứ hai.')
+        : 'Đã thêm một buổi ôn ngắn vào Lịch trình dựa trên lỗi trong bài vừa làm. Đây là gợi ý ban đầu; bài tương đương sẽ giúp kiểm tra xem lỗi có lặp lại không.'),
     sessions
   };
 }
@@ -221,7 +330,7 @@ module.exports = {
   normalizeLabels, validErrorCode, validSkillCode, normalizeDistractorMap,
   analyzeMultiOptionResponse, classifyParallelAttempt, studentSafeParallelNote,
   studentSafeChoiceFeedback, normalizePreviousEvents, mapSkillToTopic,
-  buildAdaptiveSessions
+  aggregateDiagnosticErrors, buildAdaptiveSessions
 };
 
 function addMinutes(time, minutes) {

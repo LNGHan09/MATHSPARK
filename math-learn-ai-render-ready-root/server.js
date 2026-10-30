@@ -877,6 +877,10 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
           solution: q.solution || '',
           selectionAnalysis: { status: analysis.status, wrongSelected: analysis.wrongSelected, omittedCorrect: analysis.omittedCorrect },
           diagnosticFeedback: '',
+          diagnosticCodes: [...analysis.errorCodes],
+          skillCodes: q.skillCode ? [q.skillCode] : [],
+          diagnosisKind: analysis.wrongSelected.length && analysis.omittedCorrect.length ? 'MIXED_SELECTION_ERROR' : analysis.wrongSelected.length ? 'SELECTED_DISTRACTOR' : analysis.omittedCorrect.length ? 'OMISSION' : (!analysis.selectedOptions.length ? 'NO_ANSWER' : ''),
+          diagnosticEvidence: '',
           needsTeacherReview: !hasKnownAnswer || q.needsReview === true,
           ...(analysis.parallelKey ? { parallelFeedback: '' } : {})
         };
@@ -904,11 +908,18 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
           selectedWrong:analysis.wrongSelected,
           omittedCorrect:analysis.omittedCorrect,
           diagnosis:analysis.status,
-          mappedErrorNames:analysis.errorCodes.map(code => MathSparkDiagnosticEngine.ERROR_NAMES[code]).filter(Boolean),
-          skillName:MathSparkDiagnosticEngine.SKILL_NAMES[analysis.skillCode] || ''
+          mappedErrorNames:analysis.errorCodes.map(code => `${code}: ${MathSparkDiagnosticEngine.ERROR_NAMES[code] || ''}`).filter(Boolean),
+          wrongOptionDiagnostics:analysis.wrongSelected.map(label => ({
+            label,
+            optionText:(q.options||[]).find(option=>String(option.label).toUpperCase()===label)?.text || '',
+            mappedCode:q.distractorMap?.[label] || '',
+            mappedMeaning:MathSparkDiagnosticEngine.ERROR_NAMES[q.distractorMap?.[label]] || ''
+          })),
+          questionSkillCode:q.skillCode || '',
+          skillName:MathSparkDiagnosticEngine.SKILL_NAMES[q.skillCode] || ''
         }));
         const rawExplanations = await callOpenAI({
-          instructions:'Bạn là giáo viên Toán THCS và trợ lý chẩn đoán sư phạm MathSpark. Chỉ giải thích những câu sai, bỏ trống hoặc chọn thiếu; không viết lời giải cho câu đúng. Phân biệt rõ phương án sai đã chọn với phương án đúng bị bỏ sót. Dùng giọng động viên tự nhiên, không nhắc tới mã lỗi nội bộ L01-L09/KT01-KT07. Không suy đoán động cơ hoặc kết luận lỗ hổng kiến thức chỉ từ một câu. Với câu đầu tiên gặp dạng bài, xem chẩn đoán như giả thuyết cần kiểm tra. Công thức dùng LaTeX hợp lệ. Trả duy nhất JSON hợp lệ theo mẫu {"results":[{"questionId":"...","explanation":"...","praise":"...","spotLight":"...","socraticPrompt":"...","actionGuide":"..."}]} .',
+          instructions:'Bạn là giáo viên Toán THCS và chuyên gia chẩn đoán sư phạm MathSpark. Chỉ giải thích câu sai, bỏ trống, chọn sai hoặc bỏ sót đáp án đúng; không giải thích lại câu đúng. Nhận xét cho mỗi câu phải ngắn gọn (thường 2–4 câu, khoảng 40–70 từ tiếng Việt): nêu sai ở đâu, vì sao và cách sửa tiếp theo; không viết bài giảng dài, vì phần tổng hợp cuối bài sẽ gom các lỗi lặp. Với mỗi câu sai, trả diagnostics chỉ khi bằng chứng trong đề, phương án được chọn, đáp án đúng và lời giải đủ rõ. Mã L01=đọc/bóc tách dữ kiện; L02=đặt ẩn/ý nghĩa đại lượng; L03=điều kiện xác định/nghiệm; L04=biểu diễn đại lượng bằng công thức; L05=lập phương trình từ dữ kiện; L06=biến đổi đại số/quy tắc dấu; L07=tính toán/quy đồng; L08=kiểm tra nghiệm với điều kiện; L09=kết luận/đơn vị. Ánh xạ KT01=đọc hiểu dữ kiện; KT02=đặt ẩn/điều kiện; KT03=mô hình hóa/lập phương trình; KT04=biến đổi đại số; KT05=tính toán; KT06=kiểm tra nghiệm; KT07=kết luận/trình bày. Ưu tiên mã gắn sẵn cho phương án nhiễu; không đoán mã nếu không đủ bằng chứng, khi đó diagnostics=[]. Phân biệt SELECTED_DISTRACTOR, OMISSION và MIXED_SELECTION_ERROR. Không kết luận hổng kiến thức gốc rễ chỉ từ một câu; đây chỉ là tín hiệu ban đầu cho đến khi câu tương đương bị sai lặp lại. Các trường mã chỉ phục vụ tổng hợp chẩn đoán; không chèn mã vào lời nhận xét tự nhiên. Công thức dùng LaTeX hợp lệ. Trả duy nhất JSON hợp lệ theo mẫu {"results":[{"questionId":"...","explanation":"...","praise":"...","spotLight":"...","socraticPrompt":"...","actionGuide":"...","diagnostics":[{"errorCode":"L06","skillCode":"KT04","evidence":"..."}]}]} .',
           input:[{role:'user',content:[{type:'input_text',text:'Phân tích từng câu trong dữ liệu sau. Giữ nguyên questionId. Nếu đề hoặc đáp án chưa đủ căn cứ thì nêu rõ, không bịa lời giải.\n'+JSON.stringify(questionPayload)}]}],
           maxOutputTokens:Math.min(12000,1800+mcqNeedingExplanation.length*950), reasoningEffort:'medium'
         });
@@ -918,6 +929,16 @@ app.post('/api/exams/:id/submit', requireSupabase, aiRateLimit(5, 10 * 60 * 1000
           const generated = byQuestion.get(String(q.id)) || {};
           const explanation = safeText(generated.explanation || '', 6500);
           const coaching = [generated.praise, generated.spotLight, generated.socraticPrompt, generated.actionGuide].map(value=>safeText(value,1200)).filter(Boolean);
+          const modelDiagnostics = Array.isArray(generated.diagnostics) ? generated.diagnostics.slice(0,5).map(d=>({
+            errorCode:MathSparkDiagnosticEngine.validErrorCode(d?.errorCode),
+            skillCode:MathSparkDiagnosticEngine.validSkillCode(d?.skillCode),
+            evidence:safeText(d?.evidence,500)
+          })).filter(d=>d.errorCode || d.skillCode) : [];
+          const existingCodes = Array.isArray(resultItem.diagnosticCodes) ? resultItem.diagnosticCodes : [];
+          resultItem.diagnosticCodes = [...new Set([...existingCodes, ...modelDiagnostics.map(d=>d.errorCode)].filter(Boolean))];
+          resultItem.skillCodes = [...new Set([...(resultItem.skillCodes||[]), ...modelDiagnostics.map(d=>d.skillCode)].filter(Boolean))];
+          resultItem.diagnosticEvidence = modelDiagnostics.map(d=>d.evidence).filter(Boolean).join(' | ') || '';
+          if (!resultItem.diagnosticCodes.length) resultItem.diagnosisKind = analysis.status === 'OMITTED_CORRECT' ? 'OMISSION' : resultItem.diagnosisKind;
           resultItem.diagnosticFeedback = coaching.join('\n\n');
           if (explanation) resultItem.solution = explanation;
           else resultItem.explanationUnavailable = true;
@@ -993,6 +1014,9 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
           solutionMethodAssessment,
           mistakes:Array.isArray(item?.mistakes)?item.mistakes.slice(0,12).map(x=>safeText(x,500)):[],
           correctedApproach:safeText(item?.correctedApproach || '',5000),
+          diagnosticCodes:[...new Set(diagnostics.map(d=>d.errorCode).filter(Boolean))],
+          skillCodes:[...new Set(diagnostics.map(d=>d.skillCode).filter(Boolean))],
+          diagnosticEvidence:diagnostics.map(d=>d.evidence).filter(Boolean).join(' | '),
           needsTeacherReview:!item || item?.confidence === 'low' || solutionMethodAssessment === 'NEEDS_REVIEW', solution:q.solution || ''
         });
       }
@@ -1007,39 +1031,59 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
       if (!resultItem) continue;
       let attempted = false;
       let isCorrect = resultItem.correct === true;
-      let errorCode = '';
-      let skillCode = q.skillCode || '';
+      let errorCodes = Array.isArray(resultItem.diagnosticCodes) ? resultItem.diagnosticCodes.map(MathSparkDiagnosticEngine.validErrorCode).filter(Boolean) : [];
+      let skillCodes = Array.isArray(resultItem.skillCodes) ? resultItem.skillCodes.map(MathSparkDiagnosticEngine.validSkillCode).filter(Boolean) : [];
       let selectedOptions = [];
       let omittedCorrectOptions = [];
-      let diagnosticEvidenceText = '';
+      let diagnosticEvidenceText = safeText(resultItem.diagnosticEvidence || '', 1000);
+      let diagnosisKind = resultItem.diagnosisKind || '';
+
       if (q.type === 'mcq' || q.type === 'multi_select') {
         const choice = choiceAnalysisByQuestion.get(String(q.id));
         if (!choice || !choice.hasKnownAnswer) continue;
         attempted = true;
         isCorrect = choice.isCorrect === true;
-        errorCode = choice.analysis.primaryErrorCode || '';
-        skillCode = skillCode || choice.analysis.skillCode || '';
+        errorCodes = [...new Set([...errorCodes, ...(choice.analysis.errorCodes || [])])];
+        if (choice.analysis.primaryErrorCode && !errorCodes.includes(choice.analysis.primaryErrorCode)) errorCodes.unshift(choice.analysis.primaryErrorCode);
+        skillCodes = [...new Set([...skillCodes, q.skillCode || '', choice.analysis.skillCode || ''].map(MathSparkDiagnosticEngine.validSkillCode).filter(Boolean))];
         selectedOptions = choice.analysis.selectedOptions;
         omittedCorrectOptions = choice.analysis.omittedCorrect;
-        diagnosticEvidenceText = [selectedOptions.length ? `Đã chọn: ${selectedOptions.join(', ')}` : 'Không chọn phương án', choice.analysis.wrongSelected.length ? `Chọn sai: ${choice.analysis.wrongSelected.join(', ')}` : '', omittedCorrectOptions.length ? `Bỏ sót đáp án đúng: ${omittedCorrectOptions.join(', ')}` : ''].filter(Boolean).join('; ');
+        diagnosisKind = choice.analysis.wrongSelected.length && omittedCorrectOptions.length ? 'MIXED_SELECTION_ERROR' : choice.analysis.wrongSelected.length ? 'SELECTED_DISTRACTOR' : omittedCorrectOptions.length ? 'OMISSION' : (!selectedOptions.length ? 'NO_ANSWER' : '');
+        diagnosticEvidenceText = [
+          selectedOptions.length ? `Đã chọn: ${selectedOptions.join(', ')}` : 'Không chọn phương án',
+          choice.analysis.wrongSelected.length ? `Chọn sai: ${choice.analysis.wrongSelected.join(', ')}` : '',
+          omittedCorrectOptions.length ? `Bỏ sót đáp án đúng: ${omittedCorrectOptions.join(', ')}` : '',
+          diagnosticEvidenceText
+        ].filter(Boolean).join('; ');
       } else {
         if (!attemptedEssayIds.has(String(q.id)) || (resultItem.correct !== true && resultItem.correct !== false)) continue;
         attempted = true;
         const modelDiags = essayModelDiagnostics.get(String(q.id)) || [];
-        errorCode = modelDiags.find(d=>d.errorCode)?.errorCode || '';
-        skillCode = modelDiags.find(d=>d.skillCode)?.skillCode || skillCode;
-        diagnosticEvidenceText = modelDiags.find(d=>d.evidence)?.evidence || '';
+        errorCodes = [...new Set([...errorCodes, ...modelDiags.map(d=>d.errorCode).filter(Boolean)])];
+        skillCodes = [...new Set([...skillCodes, q.skillCode || '', ...modelDiags.map(d=>d.skillCode)].map(MathSparkDiagnosticEngine.validSkillCode).filter(Boolean))];
+        diagnosticEvidenceText = [diagnosticEvidenceText, modelDiags.find(d=>d.evidence)?.evidence || ''].filter(Boolean).join(' | ');
       }
       if (!attempted) continue;
       const previous = q.parallelKey ? previousByParallelKey.get(q.parallelKey) : null;
       const parallelStatus = MathSparkDiagnosticEngine.classifyParallelAttempt(previous?.is_correct, isCorrect);
-      const currentDiag = { questionId:q.id, parallelKey:q.parallelKey, isCorrect, parallelStatus, errorCode, skillCode };
+      const primaryErrorCode = errorCodes[0] || '';
+      const errorToSkill = { L01:'KT01', L02:'KT02', L03:'KT02', L04:'KT03', L05:'KT03', L06:'KT04', L07:'KT05', L08:'KT06', L09:'KT07' };
+      const primarySkillCode = errorToSkill[primaryErrorCode] || skillCodes[0] || q.skillCode || '';
+      const currentDiag = {
+        questionId:q.id, questionNumber:q.number, parallelKey:q.parallelKey,
+        isCorrect, parallelStatus, errorCode:primaryErrorCode, errorCodes,
+        skillCode:primarySkillCode, skillCodes, omittedCorrectOptions,
+        diagnosisKind, evidence:safeText(diagnosticEvidenceText,1000)
+      };
       diagnosticEvidence.push(currentDiag);
       const parallelFeedback = MathSparkDiagnosticEngine.studentSafeParallelNote(parallelStatus, currentDiag);
       if (parallelFeedback) resultItem.parallelFeedback = parallelFeedback;
+      resultItem.diagnosticCodes = errorCodes;
+      resultItem.skillCodes = skillCodes;
+      resultItem.diagnosisKind = diagnosisKind;
       internalEvents.push({
         user_id:studentId, exam_id:Number(row.id)||null, question_id:String(q.id), parallel_key:q.parallelKey || null,
-        skill_code:skillCode || null, error_code:errorCode || null, evidence:safeText(diagnosticEvidenceText,1000) || null, is_correct:Boolean(isCorrect),
+        skill_code:primarySkillCode || null, error_code:primaryErrorCode || null, evidence:safeText(diagnosticEvidenceText,1000) || null, is_correct:Boolean(isCorrect),
         selected_options:selectedOptions, omitted_correct_options:omittedCorrectOptions, is_repeat_attempt:Boolean(q.parallelKey && previous),
         diagnosis_status:parallelStatus, created_at:new Date().toISOString()
       });
@@ -1047,15 +1091,28 @@ Công thức dùng LaTeX hợp lệ với \\( ... \\) hoặc \\[ ... \\]. Trả 
 
     const maxScore = results.reduce((sum,item)=>sum+Number(item.maxScore||0),0);
     const score = Math.round(results.reduce((sum,item)=>sum+Number(item.score||0),0)*100)/100;
-    const adaptiveSchedule = studentId ? MathSparkDiagnosticEngine.buildAdaptiveSessions({ diagnostics:diagnosticEvidence, freeSlots, now:new Date(), maxSessions:2 }) : null;
-    const persistentGapCount = diagnosticEvidence.filter(item=>item.parallelStatus==='PERSISTENT_GAP').length;
-    const resolvedSlipCount = diagnosticEvidence.filter(item=>item.parallelStatus==='SLIP_RESOLVED').length;
-    const diagnosticSummary = persistentGapCount
-      ? `MathSpark nhận thấy ${persistentGapCount} dạng bài em từng làm sai vẫn còn khó ở lần làm tương đương. Hãy xem nhận xét từng câu và lịch ôn tập gợi ý.`
-      : resolvedSlipCount
-        ? 'Em đã sửa được ít nhất một lỗi từng gặp ở câu tương đương. Hãy tiếp tục duy trì cách kiểm tra lại bài.'
-        : '';
-    const resultJson = { diagnosticEngineVersion:'7.0-core', examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString(), diagnosticSummary, adaptiveSchedule };
+    const diagnosticReport = MathSparkDiagnosticEngine.aggregateDiagnosticErrors(diagnosticEvidence);
+    const adaptiveSchedule = MathSparkDiagnosticEngine.buildAdaptiveSessions({ diagnostics:diagnosticEvidence, freeSlots, now:new Date(), maxSessions:2 });
+    const persistentGapCount = diagnosticReport.persistentGapCount;
+    const resolvedSlipCount = diagnosticReport.resolvedSlipCount;
+    let diagnosticSummary = '';
+    if (diagnosticReport.totalWrongQuestions > 0) {
+      const topArea = diagnosticReport.topWeakArea;
+      const lead = `Bài này có ${diagnosticReport.totalWrongQuestions} câu chưa chính xác hoặc cần củng cố.`;
+      const focus = topArea ? ` Mảng nổi bật cần xem lại là ${topArea.name}${topArea.errorCodes.length ? ` (${topArea.errorCodes.join(', ')})` : ''}, xuất hiện ở ${topArea.questionNumbers.length ? `câu ${topArea.questionNumbers.join(', ')}` : `${topArea.count} lượt lỗi`}.` : '';
+      const omission = diagnosticReport.omissionQuestionCount ? ` Có ${diagnosticReport.omissionQuestionCount} câu trắc nghiệm nhiều đáp án bị bỏ sót lựa chọn đúng.` : '';
+      const history = persistentGapCount
+        ? ` Có ${persistentGapCount} câu tương đương tiếp tục sai so với lần trước; đây là tín hiệu lặp lại cần ưu tiên ôn.`
+        : resolvedSlipCount
+          ? ' Có ít nhất một dạng bài tương đương đã được làm đúng ở lần này, cho thấy tiến bộ so với lần trước.'
+          : ' Phân loại hiện tại là tín hiệu ban đầu từ bài này; cần thêm câu tương đương để xác nhận lỗi có lặp lại hay không.';
+      diagnosticSummary = `${lead}${focus}${omission}${history}`;
+    } else if (results.some(item=>item.correct === null || item.needsTeacherReview)) {
+      diagnosticSummary = 'Chưa đủ dữ liệu chắc chắn để phân loại lỗi ở một số câu. Hãy kiểm tra các câu được đánh dấu cần xem lại.';
+    } else {
+      diagnosticSummary = 'Rất tốt! Không phát hiện mã lỗi cần ưu tiên ôn trong các câu đã chấm được.';
+    }
+    const resultJson = { diagnosticEngineVersion:'7.1-summary-schedule', examId:String(row.id), examTitle:row.title, score, maxScore, results, integrity, submittedAt:new Date().toISOString(), diagnosticSummary, diagnosticReport, adaptiveSchedule };
     let saved = false;
     let savedAttemptId = null;
     if (studentId && supabaseAdmin) {
